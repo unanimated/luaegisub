@@ -1,7 +1,7 @@
 ﻿script_name="Unimportant"
 script_description="Import stuff, number stuff, do other stuff."
 script_author="unanimated"
-script_version="1.58"
+script_version="1.6"
 
 require "clipboard"
 re=require'aegisub.re'
@@ -33,9 +33,15 @@ numbering="01"				-- options: "1","01","001","0001"
 
 --	--	--	--
 
+function addtag(tag,text) text=text:gsub("^({\\[^}]-)}","%1"..tag.."}") return text end
+
 function important(subs, sel, act)
 	aline=subs[act]
 	atext=aline.text
+	atags=atext:match("^{(\\[^}]-)}") 
+	if atags==nil then atags="" end
+	atags=atags:gsub("\\move%([^%)]+%)","")
+	atxt=atext:gsub("^{\\[^}]-}","")
 	-- create table from user data (lyrics)
 	sdata={}
 	if res.mega=="update lyrics" and res.dat=="" then aegisub.dialog.display({{x=0,y=0,width=1,height=1,class="label",label="No lyrics given."}},{"ok"},{cancel='ok'}) aegisub.cancel()
@@ -73,14 +79,17 @@ function important(subs, sel, act)
 		{x=0,y=1,width=2,height=1,class="edit",name="signame"},
 		{x=1,y=0,width=2,height=1,class="dropdown",name="signs",items={"title","eptitle","custom","eyecatch"},value="custom"},
 		{x=2,y=1,width=1,height=1,class="label",label=".ass"},
-		{x=0,y=2,width=3,height=1,class="checkbox",name="matchtime",label="match times to current line",value=true,},
+		{x=0,y=2,width=3,height=1,class="checkbox",name="matchtime",label="keep current line's times",value=true,},
 		{x=0,y=3,width=3,height=1,class="checkbox",name="keeptext",label="keep current line's text",value=false,},
-		{x=0,y=4,width=3,height=1,class="checkbox",name="noshift",label="don't shift times (import as is)",value=false,},
-		{x=0,y=5,width=3,height=1,class="checkbox",name="deline",label="delete original line",value=false,},
+		{x=0,y=4,width=3,height=1,class="checkbox",name="keeptags",label="combine tags (current overrides) ",value=false,},
+		{x=0,y=5,width=3,height=1,class="checkbox",name="addtags",label="combine tags (imported overrides)",value=false,},
+		{x=0,y=6,width=3,height=1,class="checkbox",name="noshift",label="don't shift times (import as is)",value=false,},
+		{x=0,y=7,width=3,height=1,class="checkbox",name="deline",label="delete original line",value=false,},
 		},{"OK","Cancel"},{ok='OK',close='Cancel'})
 		if press=="Cancel" then aegisub.cancel() end
 		if reslt.signs=="custom" then signame=reslt.signame else signame=reslt.signs end
-		noshift=reslt.noshift		deline=reslt.deline
+		noshift=reslt.noshift		keeptxt=reslt.keeptext	deline=reslt.deline
+		keeptags=reslt.keeptags		addtags=reslt.addtags
 	    end
 	
 	    -- read signs.ass
@@ -132,15 +141,18 @@ function important(subs, sel, act)
 		button,reslt=aegisub.dialog.display({
 		{x=0,y=0,width=1,height=1,class="label",label="Choose a sign to import:"},
 		{x=0,y=1,width=1,height=1,class="dropdown",name="impsign",items=signlist,value=signlist[1]},
-		{x=0,y=2,width=1,height=1,class="checkbox",name="matchtime",label="match times to current line",value=true,},
+		{x=0,y=2,width=1,height=1,class="checkbox",name="matchtime",label="keep current line's times",value=true,},
 		{x=0,y=3,width=1,height=1,class="checkbox",name="keeptext",label="keep current line's text",value=false,},
-		{x=0,y=4,width=1,height=1,class="checkbox",name="noshift",label="don't shift times (import as is)",value=false,},
-		{x=0,y=5,width=1,height=1,class="checkbox",name="defect",label="delete 'effect'",value=false,},
-		{x=0,y=6,width=1,height=1,class="checkbox",name="deline",label="delete original line",value=false,},
+		{x=0,y=4,width=1,height=1,class="checkbox",name="keeptags",label="combine tags (current overrides) ",value=false,},
+		{x=0,y=5,width=1,height=1,class="checkbox",name="addtags",label="combine tags (imported overrides)",value=false,},
+		{x=0,y=6,width=1,height=1,class="checkbox",name="noshift",label="don't shift times (import as is)",value=false,},
+		{x=0,y=7,width=1,height=1,class="checkbox",name="defect",label="delete 'effect'",value=false,},
+		{x=0,y=8,width=1,height=1,class="checkbox",name="deline",label="delete original line",value=false,},
 		},{"OK","Cancel"},{ok='OK',close='Cancel'})
 		if button=="Cancel" then aegisub.cancel() end
 		if button=="OK" then whatsign=reslt.impsign end
 		noshift=reslt.noshift		defect=reslt.defect	keeptxt=reslt.keeptext	deline=reslt.deline
+		keeptags=reslt.keeptags		addtags=reslt.addtags
 		-- nuke lines for the other signs
 		for x=#slines,1,-1 do
 		    efct=slines[x]:match("%a+: %d+,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,([^,]-),.*")
@@ -177,8 +189,20 @@ function important(subs, sel, act)
 		l2.text=txt
 		atext=txt 
 		if keeptxt and actor~="x" then
-		btext=btext:gsub("{\\[^}]-}","")
-		l2.text=l2.text:gsub("^({\\[^}]-}).*","%1"..btext) atext=btext end
+		    btext2=btext:gsub("{\\[^}]-}","")
+		    l2.text=l2.text:gsub("^({\\[^}]-}).*","%1"..btext2) atext=btext2
+		end
+		if keeptags and actor~="x" then
+		    l2.text=addtag(atags,l2.text)
+		    l2.text=l2.text:gsub("({\\[^}]-})",function(tg) return duplikill(tg) end)
+		end
+		if addtags and actor~="x" then
+		    l2.text="{"..atags.."}"..l2.text
+		    l2.text=l2.text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
+		    :gsub("({\\[^}]-})",function(tg) return duplikill(tg) end)
+		end
+		
+		--aegisub.log("\n btext "..btext)
 		subs.insert(act+1,l2)
 	    end
 	    -- delete line if not keeping
@@ -186,7 +210,7 @@ function important(subs, sel, act)
 	    if not res.keep then subs.delete(act) else 
 	    -- keep line, restore initial state + comment out
 	    atext=btext aline.comment=true aline.start_time=basetime aline.end_time=basend aline.style=basestyle aline.actor="" aline.effect=""
-	    aline.layer=baselayer aline.text=atext subs[act]=aline 
+	    aline.layer=baselayer aline.text=atext subs[act]=aline
 	    end
 	end
 	
@@ -217,6 +241,7 @@ function important(subs, sel, act)
 
 	-- Update Lyrics
 	if res.mega=="update lyrics" then
+	  sup1=esc(sub1)	sup2=esc(sub2)
 	  for x, i in ipairs(sel) do
             local line=subs[i]
             local text=subs[i].text
@@ -228,15 +253,20 @@ function important(subs, sel, act)
 		elseif res.field=="effect" then marker=line.effect end
 		denumber=marker:gsub("%d","")
 		-- marked lines
-		if marker:match(sub1.."%d+"..sub2) and denumber==sub1..sub2 and pass==1 then
-		    index=tonumber(marker:match(sub1.."(%d+)"..sub2))
-		    puretext=text:gsub("^{\\[^}]-}","")
-		    if songlyr[index]~=nil then
-		    text=text:gsub("^({\\[^}]-}).*","%1"..songlyr[index])
-		    if not text:match("^{\\[^}]-}") then text=songlyr[index] end
+		if marker:match(sup1.."%d+"..sup2) and denumber==sub1..sub2 and pass==1 then
+		    index=tonumber(marker:match(sup1.."(%d+)"..sup2))
+		    puretext=text:gsub("{%*?\\[^}]-}","")
+		    lastag=text:match("({\\[^}]-}).$")
+		    if songlyr[index]~=nil and songlyr[index]~=puretext then
+			text=text:gsub("^({\\[^}]-}).*","%1"..songlyr[index])
+			if not text:match("^{\\[^}]-}") then text=songlyr[index] end
 		    end
 		    songcheck=1
-		    if songlyr[index]~=puretext then change="   (Changed)" else change="" end
+		    if songlyr[index]~=puretext then
+			if lastag~=nil then text=text:gsub("(.)$",lastag.."%1") end
+			change="   (Changed)" 
+			else change="" 
+		    end
 		    aegisub.log("\nupdate: "..puretext.." --> "..songlyr[index]..change)
 		end
 	    line.text=text
@@ -245,28 +275,32 @@ function important(subs, sel, act)
 	end
     
     if res.mega=="update lyrics" and songcheck==0 then press,reslt=aegisub.dialog.display({{x=0,y=0,width=1,height=1,class="label",label="The "..res.field.." field of selected lines doesn't match given pattern \""..sub1.."#"..sub2.."\".\n(Or style pattern wasn't matched if restriction enabled.)\n#=number sequence"}},{"ok"},{cancel='ok'}) end
+    
+    noshift=nil		defect=nil	keeptxt=nil	deline=nil	keeptags=nil	addtags=nil
 end
 
 --	 NUMBERS	--
 function numbers(subs, sel)
-    repl=0
-    for i=#sel,1,-1 do
+    z=zer:len()
+	if sub3:match("[,/;]") then startn,int=sub3:match("(%d+)[,/;](%d+)") else startn=sub3:gsub("%[.-%]","") int=1 end
+	if sub3:match("%[") then numcycle=tonumber(sub3:match("%[(%d+)%]")) else numcycle=0 end
+	if sub3=="" then startn=1 end
+	startn=tonumber(startn)
+	if startn==nil or numcycle>0 and startn>numcycle then
+	    aegisub.dialog.display({{class="label",label="Wrong parameters."}},{"OK"},{close='OK'}) 
+	    aegisub.cancel() 
+	end
+	
+    for i=1,#sel do
         line=subs[sel[i]]
         text=subs[sel[i]].text
 	
 	if res.modzero=="number lines" then
-		if sub3:match("[,/;]") then startn,int=sub3:match("(%d+)[,/;](%d+)") else startn=sub3:gsub("%[.-%]","") int=1 end
-		if sub3:match("%[") then numcycle=tonumber(sub3:match("%[(%d+)%]")) else numcycle=0 end
-		if sub3=="" then startn=1 end
 		index=i
 		count=math.ceil(index/int)+(startn-1)
-		  if numcycle>0 and count>numcycle then repeat count=count-numcycle until count<=numcycle end
-		if zer=="01" and count<10 then count="0"..count end
-		if zer=="001" and count<10 then count="00"..count
-		elseif zer=="001" and count>9 and count<100 then count="0"..count end
-		if zer=="0001" and count<10 then count="000"..count
-		elseif zer=="0001" and count>9 and count<100 then count="00"..count
-		elseif zer=="0001" and count>99 and count<1000 then count="0"..count end
+		  if numcycle>0 and count>numcycle then repeat count=count-(numcycle-startn+1) until count<=numcycle end
+		count=tostring(count)
+		if z>count:len() then repeat count="0"..count until z==count:len() end
 		number=sub1..count..sub2
 		
 		if res.field=="actor" then line.actor=number end 
@@ -426,6 +460,14 @@ function stuff(subs, sel)
     repl=0
     data={}	raw=res.dat.."\n"
     for dataline in raw:gmatch("(.-)\n") do table.insert(data,dataline) end
+    if res.stuff=="format dates" then
+	dategui=
+	{{x=0,y=0,class="dropdown",name="date",value="January 1st",items={"January 1","January 1st","1st of January","1st January"}},
+	{x=1,y=0,class="checkbox",name="log",label="log",value=false,}}
+	pres,rez=aegisub.dialog.display(dategui,{"OK","Cancel"},{ok='OK',close='Cancel'})
+	if pres=="Cancel" then aegisub.cancel() end
+	datelog=""
+    end
     for i=#sel,1,-1 do
         line=subs[sel[i]]
         text=line.text
@@ -552,6 +594,34 @@ function stuff(subs, sel)
 		text=text:gsub("{\\fs}([%w']+){\\fs}","{\\fs}%1")
 	    until not text:match("{\\fs}([%w']+){\\fs}")
 	    text=tags..text
+	    text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
+	end
+	
+	if res.stuff=="format dates" then
+	    text2=text:gsub("{[^}]-}","")
+	    if rez.date=="January 1" then
+		text=re.sub(text,"(January|February|March|April|May|June|July|August|September|October|November|December) (\\d+)(st|nd|th)","\\1 \\2")
+		text=re.sub(text,"(\\d+)(st|nd|th|st of|nd of|th of) (January|February|March|April|May|June|July|August|September|October|November|December)","\\3 \\1")
+	    end
+	    if rez.date=="January 1st" then
+		text=re.sub(text,"(January|February|March|April|May|June|July|August|September|October|November|December) (\\d+)","\\1 \\2th")
+		text=re.sub(text,"(\\d+)(st|nd|th|st of|nd of|th of) (January|February|March|April|May|June|July|August|September|October|November|December)","\\3 \\1th")
+		text=text:gsub("(%d)thth","%1th") :gsub("1thst","1st") :gsub("2thnd","2nd") :gsub("1th","1st") :gsub("2th","2nd")
+	    end
+	    if rez.date=="1st of January" then
+		text=re.sub(text,"(January|February|March|April|May|June|July|August|September|October|November|December) (\\d+)(st|nd|th)?","\\2\\3 of \\1")
+		text=re.sub(text,"(\\d+) of (January|February|March|April|May|June|July|August|September|October|November|December)","\\1th of \\2")
+		text=text:gsub("(%d)thth","%1th") :gsub("1thst","1st") :gsub("2thnd","2nd") :gsub("1th","1st") :gsub("2th","2nd")
+		text=re.sub(text,"(\\d+)(st|nd|th) (January|February|March|April|May|June|July|August|September|October|November|December)","\\1\\2 of \\3")
+	    end
+	    if rez.date=="1st January" then
+		text=re.sub(text,"(January|February|March|April|May|June|July|August|September|October|November|December) (\\d+)(st|nd|th)?","\\2\\3 \\1")
+		text=re.sub(text,"(\\d+) (January|February|March|April|May|June|July|August|September|October|November|December)","\\1th \\2")
+		text=text:gsub("(%d)thth","%1th") :gsub("1thst","1st") :gsub("2thnd","2nd") :gsub("1th","1st") :gsub("2th","2nd")
+		text=re.sub(text,"(\\d+)(st|nd|th) of (January|February|March|April|May|June|July|August|September|October|November|December)","\\1\\2 \\3")
+	    end
+	    textn=text:gsub("{[^}]-}","")
+	    if text2~=textn then datelog=text2.." -> "..textn.."\n"..datelog end
 	end
 	
 	if res.stuff=="transform \\k to \\t\\alpha" then
@@ -582,6 +652,7 @@ function stuff(subs, sel)
 	if repl==1 then rp=" modified line" else rp=" modified lines" end
 	press,reslt=aegisub.dialog.display({},{repl..rp},{cancel=repl..rp})
     end
+    if res.stuff=="format dates" and rez.log then aegisub.log(datelog) end
 end
 
 --	Jump to Next	--
@@ -827,6 +898,7 @@ function info(subs,sel,act)
     sdur=0
     S=subs[sel[1]].start_time
     E=subs[sel[#sel]].end_time
+    video=nil stitle=nil colorspace=nil resx=nil resy=nil
     prop=aegisub.project_properties()
     for x,i in ipairs(sel) do
 	line=subs[i]
@@ -892,7 +964,7 @@ function info(subs,sel,act)
     infodump=nfo.."Styles used: "..#styletab.."\nDialogue lines: "..dc..", Selected: "..#sel.."\nCombined length of selected lines: "..seldur.."s\nSelection duration: "..(E-S)/1000 .."s\n\n"..aktif
 end
 
-help_i="- IMPORT/EXPORT -\n\nThis allows you to import OP/ED or signs (or whatever) from an external .ass file.\nOP/ED must be saved as OP.ass and ED.ass; a sign can have any name.\nThe .ass file may contain headers, or it can be just the dialogue lines.\nThe imported stuff will be shifted to your currently selected line (or the first one in your selection).\nThe first line of the saved file works as a reference point, so use a \"First frame of OP\" line etc.\n(You can save your OP/ED shifted to 0 or you can just leave it as is; the times will be recalculated to start at the current line.)\n\"keep line\" will keep your current line and comment it. Otherwise the line gets deleted (you can change it in settings).\n\nIMPORT SIGN / IMPORT SIGNS - works like OP/ED, but you have to input the sign's name.\nThe difference between the two is:\nSIGN - each sign must be saved in its own .ass file. \nIn the GUI, input the sign's/file's name, for example \"eptitle\"[.ass].\nSIGNS - all signs must be saved in signs.ass. \nThey are distinguished by what's in the \"effect\" field - that's the sign's name.\nFor SIGN, make something like eptitle.ass, eyecatch.ass;\nfor SIGNS, put \"eptitle\" or \"eyecatch\" in the effect field, and put all the signs in signs.ass.\n(You can have blank lines between signs for clarity. The script can deal with those.)\nThe GUI will then show you a list of signs that it gets from the effect fields.\nI recommend using SIGNS, as it's imo more efficient (but SIGN was written first and I didn't nuke it).\n\nOptions:\nWith nothing checked, stuff is shifted to the first frame of your active line (like OP/ED).\n(SIGN) File name: \"custom\" will use what you type below. The other ones are presets.\n\"match times to current line\" - all imported lines will have the start/end time of your active line\n\"keep current text\" - all imported lines will have their text (not tags) replaced with your active line's text\n   - If you want to replace only some lines and keep others, like masks, put 'x' in actor field of the mask.\n\"don't shift times\" - times of imported lines will be kept as they were saved\n\"delete original line\" - this overrides the \"keep line\" option in the main menu. \n(I thought it would be convenient to have it here.)\n\nEXPORT SIGN - Saves the selected sign(s) either to 'signs.ass' or to a new file.\nEffect field must contain the signs' names.\n\nYou can use relative or absolute paths. (Check the settings below.)\nDefault is the script's folder. If you want the default to be one folder up, use \"..\\\".\nYou can use an absolute path, have one huge signs.ass there, \nand have all the signs marked \"show_name-sign_name\" in the effect field.\n\n"
+help_i="- IMPORT/EXPORT -\n\nThis allows you to import OP/ED or signs (or whatever) from an external .ass file.\nOP/ED must be saved as OP.ass and ED.ass; a sign can have any name.\nThe .ass file may contain headers, or it can be just the dialogue lines.\nThe imported stuff will be shifted to your currently selected line (or the first one in your selection).\nThe first line of the saved file works as a reference point, so use a \"First frame of OP\" line etc.\n(You can save your OP/ED shifted to 0 or you can just leave it as is; the times will be recalculated to start at the current line.)\n\"keep line\" will keep your current line and comment it. Otherwise the line gets deleted (you can change it in settings).\n\nIMPORT SIGN / IMPORT SIGNS - works like OP/ED, but you have to input the sign's name.\nThe difference between the two is:\nSIGN - each sign must be saved in its own .ass file. \nIn the GUI, input the sign's/file's name, for example \"eptitle\"[.ass].\nSIGNS - all signs must be saved in signs.ass. \nThey are distinguished by what's in the \"effect\" field - that's the sign's name.\nFor SIGN, make something like eptitle.ass, eyecatch.ass;\nfor SIGNS, put \"eptitle\" or \"eyecatch\" in the effect field, and put all the signs in signs.ass.\n(You can have blank lines between signs for clarity. The script can deal with those.)\nThe GUI will then show you a list of signs that it gets from the effect fields.\nI recommend using SIGNS, as it's imo more efficient (but SIGN was written first and I didn't nuke it).\n\nOptions:\nWith nothing checked, stuff is shifted to the first frame of your active line (like OP/ED).\n(SIGN) File name: \"custom\" will use what you type below. The other ones are presets.\n\"keep current line's times\" - all imported lines will have the start/end time of your active line\n\"keep current line's text\" - all imported lines will have their text (not tags) replaced with your active line's text\n   - If you want to replace only some lines and keep others, like masks, put 'x' in actor field of the mask.\n\"combine tags (current overrides)\" - tags from current + imported line get combined (current overrides imported)\n\"combine tags (imported overrides)\" - same as above, but imported overrides current\n   - Both of these will also be ignored for imported lines that have \"x\" in actor field.\n\"don't shift times\" - times of imported lines will be kept as they were saved\n\"delete original line\" - this overrides the \"keep line\" option in the main menu. \n(I thought it would be convenient to have it here.)\n\nEXPORT SIGN - Saves the selected sign(s) either to 'signs.ass' or to a new file.\nEffect field must contain the signs' names.\n\nYou can use relative or absolute paths. (Check the settings below.)\nDefault is the script's folder. If you want the default to be one folder up, use \"..\\\".\nYou can use an absolute path, have one huge signs.ass there, \nand have all the signs marked \"show_name-sign_name\" in the effect field.\n\n"
 
 help_u="UPDATE LYRICS\n\nThis is probably the most complicated part, but if your songs have some massive styling with layers and mocha tracking,\nthis will make updating lyrics, which would otherwise be a pain in the ass, really easy.\nThe only styling that will prevent this from working is inline tags - gradient by character etc.\n\nThe prerequisite here is that your OP/ED MUST have NUMBERED lines! (See NUMBERS section - might be good to read that first.)\nThe numbers must correspond to the verses, not to lines in the script.\nIf line 1 of the SONG is mocha-tracked over 200 frames, all of those frames must be numbered 01.\nIt is thus most convenient to number the lines before you start styling, when it's still simple.\n\nHow this works:\nPaste your updated lyrics into the large, top-left area of the GUI.\nUse the Left and Right fields to set the markers to detect the right lines.\nWithout markers it will just look for numbers.\nIf your OP lines are numbered with \"OP01eng\", you must set \"OP\" under Left and \"eng\" under Right.\nFor now, everything is case-sensitive (I might change that later if it gets really annoying and pointless).\nYou must also correctly set the actor/effect choice in the bottom-right part of the GUI.\nIf you pasted lyrics, selected \"update lyrics\", and set markers and actor/effect, then hit Import, and lyrics will be updated.\n\nHow it works - example: The lyrics you pasted in the data box get their lines assigned with numbers from 1 to whatever.\nLet's say your markers are \"OP01eng\" and you're using the effect field.\nThe script looks for lines with that pattern in the effect field.\nWhen it finds one, it reads the number (for example \"01\" from \"OP01eng\")\nand replaces the line's text (skipping tags) with line 1 from the pasted lyrics.\nFor every line marked \"OP##eng\" it replaces the current lyrics with line ## from your pasted updated lyrics.\n\nTo make sure this doesn't fuck up tremendously, it shows you a log with all replacements at the end.\n\nThat's pretty much all you really need to know for updating lyrics, but there are a few more things.\n\nIf the script doesn't find any lines that match the markers, it gives you a message like this:\n\"The effect field of selected lines doesn't match given pattern...\"\nThis means the lines either don't exist in your selection, or you probably forgot to set the markers.\n\n\"style restriction\" is an extra option that lets you limit the replacing to lines whose style contains given pattern.\nLet's give some examples:\nYou check the restriction and type \"OP\" in the field below.\nYou can now select the whole script instead of selecting only the OP lines, and only lines with \"OP\" in style will be updated.\nYou may have the ED numbered the same way, but the \"OP\" restriction will ignore it.\nThis can be also useful if you have lines numbered just 01, 02 etc., and you have english and romaji, all mixed together.\nIf your styles are OP-jap and OP-eng, you can type \"jap\" in the restriction field if you're updating romaji\nto make sure the script doesn't update the english lines as well (replacing them with romaji).\nIt is, however, recommended to just use different markers, like j01 / e01.\n"
 
@@ -928,7 +1000,7 @@ unconfig={
 	{x=6,y=17,width=3,height=1,class="edit",name="rep3",value=sub3,hint="start/count by[limit]"},
 	
 	-- import
-	{x=9,y=3,width=2,height=1,class="label",label="Import"},
+	{x=9,y=3,width=2,height=1,class="label",label="Import/Export"},
 	{x=9,y=4,width=2,height=1,class="dropdown",name="mega",
 	items={"import OP","import ED","import sign","import signs","export sign","update lyrics"},value=import},
 	{x=11,y=4,width=1,height=1,class="checkbox",name="keep",label="keep line",value=keep_line,},
@@ -954,7 +1026,7 @@ unconfig={
 	
 	-- stuff
 	{x=0,y=15,width=1,height=1,class="label",label="Stuff  "},
-	{x=1,y=15,width=2,height=1,class="dropdown",name="stuff",items={"save/load","lua replacer","perl replacer","lua calc","jump to next","alpha shift","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","fake capitals","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"},value="lua replacer"},
+	{x=1,y=15,width=2,height=1,class="dropdown",name="stuff",items={"save/load","lua replacer","perl replacer","lua calc","jump to next","alpha shift","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","fake capitals","format dates","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"},value="format dates"},
 	{x=8,y=15,width=1,height=1,class="label",label="Marker:"},
 	
 	-- textboxes
@@ -984,15 +1056,17 @@ unconfig={
 		end
 	  end
 	pressed,res=aegisub.dialog.display(unconfig,
-	{"Import","Do Stuff","Numbers","Chapters","Info","Help","Cancel"},{ok='Import',cancel='Cancel'})
+	{"Import/Export","Do Stuff","Numbers","Chapters","Info","Help","Cancel"},{ok='Import/Export',cancel='Cancel'})
 	until pressed~="Help" and pressed~="Info"
 	if pressed=="Cancel" then    aegisub.cancel() end
+	cancelled=aegisub.progress.is_cancelled()
+	if cancelled then aegisub.cancel() end
 	aegisub.progress.title("Doing Stuff") aegisub.progress.task(msge)
 	    sub1=res.rep1
 	    sub2=res.rep2
 	    sub3=res.rep3
 	    zer=res.zeros
-	if pressed=="Import" then    important(subs, sel, act) end
+	if pressed=="Import/Export" then    important(subs, sel, act) end
 	if pressed=="Numbers" then    numbers(subs, sel) end
 	if pressed=="Chapters" then    chopters(subs, sel) end
 	if pressed=="Do Stuff" then
