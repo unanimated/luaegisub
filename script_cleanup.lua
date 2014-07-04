@@ -3,7 +3,7 @@
 script_name="Script Cleanup"
 script_description="Removes unwanted stuff from script"
 script_author="unanimated"
-script_version="2.63"
+script_version="2.64"
 
 dont_delete_empty_tags=false	-- option to not delete {}
 
@@ -135,15 +135,15 @@ function cleanlines(subs,sel)
 	    
 	    if res.notag then text=text:gsub("{\\[^}]*}","") end
 	    
-	    if res.allcol then text=text:gsub("\\[1234]?c&H%x%x%x%x%x%x&","") :gsub("\\alpha&H%x%x&","") :gsub("{%*}","") end
+	    if res.allcol then text=text:gsub("\\[1234]?c[^\\}%)]*","") end
 	    
-	    if res.allphas then text=text:gsub("\\[1234]a&H%x%x&","") :gsub("\\alpha&H%x%x&","") end
+	    if res.allphas then text=text:gsub("\\[1234]a[^\\}%)]*","") :gsub("\\alpha[^\\}%)]*","") end
 	    
-	    if res.allrot then text=text:gsub("\\fr[xyz]%-?%d[%d%.]*","") end
+	    if res.allrot then text=text:gsub("\\fr[^\\}%)]*","") end
 	    
-	    if res.allpers then text=text:gsub("\\f[ar][xyz]%-?%d[%d%.]*","") :gsub("\\org%([^%)]+%)","") end
+	    if res.allpers then text=text:gsub("\\f[ar][xyz][^\\}%)]*","") :gsub("\\org%([^%)]*%)","") end
 	    
-	    if res.allsize then text=text:gsub("\\fs%d[%d%.]*","") :gsub("\\fsc[xy]%d[%d%.]*","") end
+	    if res.allsize then text=text:gsub("\\fs[%d%.]+","") :gsub("\\fs([\\}%)])","%1") :gsub("\\fsc[xy][^\\}%)]*","") end
 	    
 	    
 	if res.alphacol then
@@ -162,7 +162,7 @@ function cleanlines(subs,sel)
 	    :gsub("(fad%([%d,]+)([\\}])","%1)%2")
 	end
 	
-	text=text:gsub("^%s*","") :gsub("\\t%([^\\%)]-%)","")
+	text=text:gsub("^%s*","") :gsub("\\t%([^\\%)]-%)","") :gsub("{%*}","")
 	if not dont_delete_empty_tags then text=text:gsub("{}","") end
 	line.text=text
 	subs[i]=line
@@ -239,8 +239,9 @@ function nostyle(subs,sel)
 	    end
 	    if subs[i].class=="style" then
 		style=subs[i]
+		if res.nostyle2 and style.name:match("Defa") or res.nostyle2 and style.name:match("Alt") then nodel=1 else nodel=0 end
 		snm=esc(style.name)
-		if not stylist:match(","..snm..",") then 
+		if not stylist:match(","..snm..",") and nodel==0 then
 		    subs.delete(i) 
 		    aegisub.log("\n Deleted style: "..style.name)
 		    for s=1,#sel do sel[s]=sel[s]-1 end
@@ -364,7 +365,7 @@ cleanup_cfg=
 {x=2,y=4,width=1,height=1,class="checkbox",name="allsize",label="Remove size/scaling",value=false},
 
 {x=2,y=6,width=1,height=1,class="checkbox",name="nostyle",label="Delete unused styles",value=false},
---{x=2,y=7,width=1,height=1,class="checkbox",name="garbage",label="Delete Project Garbage",value=false},
+{x=2,y=7,width=1,height=1,class="checkbox",name="nostyle2",label="Delete unused styles (leave Default)",value=false},
 {x=2,y=8,width=1,height=1,class="checkbox",name="nobreak2",label="Remove linebreaks  - \\N (nospace)",value=false},  
 {x=2,y=9,width=1,height=1,class="checkbox",name="nobreak",label="Remove linebreaks  - \\N",value=false},  
 {x=2,y=10,width=1,height=1,class="checkbox",name="alphacol",label="Try to fix alpha / colour tags",value=false},
@@ -431,7 +432,7 @@ cleanup_cfg=
 		    if res.nocomline then sel=nocom_line(subs,sel) end
 		    if res.noempty then sel=noempty(subs,sel) end
 		end
-		if res.nostyle then act,sel=nostyle(subs,sel) end
+		if res.nostyle or res.nostyle2 then act,sel=nostyle(subs,sel) end
 	    end
 	end
 	aegisub.set_undo_point(script_name)
