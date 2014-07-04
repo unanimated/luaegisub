@@ -1,23 +1,28 @@
 ﻿--[[	alternative to aegisub's select tool. unlike that one, this can also select by layer.
 	version 2.0 includes sorting of selected/all lines, by the same markers as the selecting uses.
-
-	'Select by' 	This is what the search string is compared against. There are 4 'numbers' items and 4 'text' items. 
-	'Select from' 	'current selection' - only lines in the current selection will be scanned. 
-	'Numbers.' 	For 'numbers' items, you can select lines with higher or lower layer/duration instead of just exact match. 
-	'Match this' 	Only numbers for 'numbers' items. Duration is in milliseconds. 
-	'case sensitive' Obviously applies only to 'text' items. 
-	'exact match' 	Same. 
-	'use regexp' 	Not sure how well this is working, but it should work. Only for 'text' items.
+D
+E	'Select/sort' 	This is what the search string is compared against. There are 4 'numbers' items and 4 'text' items. 
+S	'Used area' 	'current selection' - only lines in the current selection will be scanned. 
+C	'Numbers.' 	For 'numbers' items, you can select lines with higher or lower layer/duration instead of just exact match.
+R		With "==", you can specify a range, like 2-4, to select for example lines with layers 2-4.
+I	'Match this' 	Only numbers for 'numbers' items. Duration is in milliseconds. 
+P	'case sensitive' Obviously applies only to 'text' items. 
+T	'exact match' 	Same. 
+I	'use regexp' 	Not sure how well this is working, but it should work. Only for 'text' items.
+O	'mod'		Modifies some functions:
+N		-> "sort by time" - sorts by end time
+		-> "OP/ED in style" - includes any lines timed between the first and last lines of OP/ED (for including signs in OP/ED)
+		-> "move sel. to top/bottom" - selection doesn't follow the moved lines
 --]]
 
 script_name="Selectricks"
 script_description="Selectricks and Sortricks"
 script_author="unanimated"
-script_version="2.41"
+script_version="2.5"
 
 -- SETTINGS --				you can choose from the options below to change the default settings
 
-search_in="text"			-- "layer","style","actor","effect","text"
+search_sort="text"			-- "layer","style","actor","effect","text"
 select_from="current selection"		-- "current selection","all lines"
 matches_or_not="matches"		-- "matches","doesn't match"
 numbers_option="=="			-- "==",">=","<="
@@ -26,7 +31,11 @@ exact_match=false			-- true/false
 use_regexp=false			-- true/false
 exclude_commented=true			-- true/false
 load_in_editor=false			-- true/false
-remember_last=true			-- true/false [will remember last search string]
+remember_last_search=true			-- true/false [will remember last search string]
+remember_select_sort=true		-- true/false [will remember last select/sort mode]
+remember_case=false			-- true/false [will remember case sensitive option]
+remember_regexp=false			-- true/false [will remember regexp option]
+remember_exact=false			-- true/false [will remember exact match option]
 your_retarded=false			-- set to true if your skiddiks
 
 -- end of settings --
@@ -34,6 +43,7 @@ your_retarded=false			-- set to true if your skiddiks
 require "clipboard"
 re=require'aegisub.re'
 
+--	Analyze Line
 function analyze(l)
     text=l.text
     style=l.style
@@ -48,8 +58,11 @@ function analyze(l)
     cps=math.ceil(char/dura)
     if dur==0 then cps=0 end
     blur=text:match("\\blur([%d%.]+)")	blur=tonumber(blur)	if blur==nil then blur=0 end
+    comment=""
+    for com in text:gmatch("{[^\\}]-}") do comment=comment..com end
 end
 
+--	Check Style
 function stylechk(subs,stylename)
   for i=1, #subs do
     if subs[i].class=="style" then
@@ -61,6 +74,7 @@ function stylechk(subs,stylename)
   return styleref
 end
 
+--	SELECT
 function slct(subs, sel)
     sel2={}
     eq=res.equal
@@ -73,7 +87,7 @@ function slct(subs, sel)
 	if res.mode=="style" then search_area=style end
 	if res.mode=="actor" then search_area=line.actor end
 	if res.mode=="effect" then search_area=line.effect end
-	if res.mode=="text" then search_area=text end
+	if res.mode=="text" then search_area=text if res.mod then search_area=comment end end
 	if res.mode=="visible text (no tags)" then search_area=text:gsub("{[^}]-}","") end
 	if res.mode=="layer" then numb=line.layer nums=1 end
 	if res.mode=="duration" then numb=dur nums=1 end
@@ -94,7 +108,18 @@ function slct(subs, sel)
 	if not numbers then s_area_lower=search_area:lower() end
 	
 	if numbers then
-	if eq=="==" and numb~=tonumber(res.match) then table.remove(sel,i) end
+	num1,num2=res.match:match("([%d%.]+)%-([%d%.]+)")
+	if num2~=nil then nmbrs={} 
+	    for n=num1,num2 do table.insert(nmbrs,n) end 
+	else nmbrs={res.match}
+	end
+	if eq=="==" then
+	    numatch=0
+	    for n=1,#nmbrs do
+	    if numb==tonumber(nmbrs[n]) then numatch=1  end
+	    end
+	    if numatch==0 then table.remove(sel,i) end
+	end
 	if eq==">=" and numb<tonumber(res.match) then table.remove(sel,i) end
 	if eq=="<=" and numb>tonumber(res.match) then table.remove(sel,i) end
 	end
@@ -138,13 +163,18 @@ function slct(subs, sel)
     if res.nomatch=="doesn't match" then return sel2 else return sel end
 end
 
+--	PRESET All
 function preset(subs, sel)
 for i=#sel,1,-1 do	table.remove(sel,i) end
+opst=5000000	opet=0
+edst=5000000	edet=0
     for i=1,#subs do
 	if subs[i].class=="dialogue" then
 	local line=subs[i]
 	local text=line.text
 	local st=line.style
+	local start=line.start_time
+	local endt=line.end_time
 	local nc=text:gsub("{[^\\}]-}","")
 	    if res.pres=="Default style - All" then
 		if st:match("Defa") or st:match("Alt") then table.insert(sel,i) end
@@ -153,13 +183,24 @@ for i=#sel,1,-1 do	table.remove(sel,i) end
 		if not st:match("Defa") and not st:match("Alt") then table.insert(sel,i) end
 	    end
 	    if res.pres=="OP in style" then
-		if st:match("OP") then table.insert(sel,i) end
+		if st:match("OP") then table.insert(sel,i)
+		    if start<opst then opst=start end
+		    if endt>opet then opet=endt end
+		end
 	    end
 	    if res.pres=="ED in style" then
-		if st:match("ED") then table.insert(sel,i) end
+		if st:match("ED") then table.insert(sel,i)
+		    if start<edst then edst=start end
+		    if endt>edet then edet=endt end
+		end
 	    end
 	    if res.pres=="layer 0" then
 		if line.layer==0 then table.insert(sel,i) end
+	    end
+	    if res.pres=="lines w/ comments 1" then
+		if not res.nocom or not line.comment then
+		  if text:match("{[^\\}]-}") then table.insert(sel,i) end
+		end
 	    end
 	    if res.pres=="skiddiks, your their?" then
 	      if st:match("Defa") or st:match("Alt") then
@@ -185,9 +226,27 @@ for i=#sel,1,-1 do	table.remove(sel,i) end
 	    end
 	end
     end
+    if res.mod and res.pres:match("in style") then
+      for i=1,#subs do
+	if subs[i].class=="dialogue" then
+	local line=subs[i]
+	local text=line.text
+	local st=line.style
+	local start=line.start_time
+	local endt=line.end_time
+	    if res.pres=="OP in style" then
+		if not st:match("OP") and start>opst and endt<opet then table.insert(sel,i) end
+	    end
+	    if res.pres=="ED in style" then
+		if not st:match("ED") and start>edst and endt<edet then table.insert(sel,i) end
+	    end
+	end
+      end
+    end
     return sel
 end
 
+--	PRESET From Selection
 function presel(subs, sel)
 	sorttab={}
     for i=#sel,1,-1 do
@@ -199,6 +258,9 @@ function presel(subs, sel)
 		if st:match("Defa") or st:match("Alt") or st:match("OP") or st:match("ED") or blur~=nil then table.remove(sel,i) end
 	    end
 	    if res.pres=="commented lines" and not line.comment then table.remove(sel,i) end
+	    if res.pres=="lines w/ comments 2" then 
+		if res.nocom and line.comment or not text:match("{[^\\}]-}") then table.remove(sel,i) end
+	    end
 	    if res.pres=="move sel. to the top" or res.pres=="move sel. to bottom" then  line.ind=i
 		table.insert(sorttab,subs[sel[i]])
 		subs.delete(sel[i])
@@ -207,13 +269,17 @@ function presel(subs, sel)
     if res.pres=="move sel. to the top" then    cs=1
       repeat   if subs[cs].class~="dialogue" then cs=cs+1 end   until subs[cs].class=="dialogue"
       for s=1,#sorttab do  subs.insert(cs,sorttab[s])  end
-      sel={}
-      for sl=cs,cs+#sorttab-1 do table.insert(sel,sl) end
+      if not res.mod then
+	sel={}
+	for sl=cs,cs+#sorttab-1 do table.insert(sel,sl) end
+      end
     end
     if res.pres=="move sel. to bottom" then
       for s=#sorttab,1,-1 do  subs.append(sorttab[s])  end
-      sel={}
-      for sl=#subs,#subs-#sorttab+1,-1 do table.insert(sel,sl) end
+      if not res.mod then
+	sel={}
+	for sl=#subs,#subs-#sorttab+1,-1 do table.insert(sel,sl) end
+      end
     end
     if res.pres=="sel: last to top" then
       sell={}
@@ -245,14 +311,19 @@ function presel(subs, sel)
     return sel
 end
 
+--	SELECTRIX GUI
 function konfig(subs, sel)
 	if lastmatch==nil then lastmatch="" end
+	if lastmode==nil then lastmode=search_sort end
+	if lastcase==nil then lastcase=case_sensitive end
+	if lastregexp==nil then lastregexp=use_regexp end
+	if lastexact==nil then lastexact=exact_match end
 	dialog_config=
 	{
-	    {x=0,y=0,width=1,height=1,class="label",label="Select by:"},
-	    {x=0,y=1,width=1,height=1,class="label",label="Select from:"},
+	    {x=0,y=0,width=1,height=1,class="label",label="Select/sort:"},
+	    {x=0,y=1,width=1,height=1,class="label",label="Used area:"},
 	    {x=0,y=2,width=1,height=1,class="label",label="Numbers:"},
-	    {x=1,y=0,width=1,height=1,class="dropdown",name="mode",value=search_in,
+	    {x=1,y=0,width=1,height=1,class="dropdown",name="mode",value=lastmode,
 		items={"--------text--------","style","actor","effect","text","visible text (no tags)","------numbers------","layer","duration","word count","character count","char. per second","blur","left margin","right margin","vertical margin","------sorting only------","sort by time","reverse","width of text","dialogue first","dialogue last","ts/dialogue/oped","{TS} to the top","masks to the bottom","by comments"}},
 	    {x=1,y=1,width=1,height=1,class="dropdown",name="selection",value=select_from,items={"current selection","all lines"}},
 	    {x=1,y=2,width=1,height=1,class="dropdown",name="equal",value=numbers_option,items={"==",">=","<="},
@@ -264,25 +335,26 @@ function konfig(subs, sel)
 	    
 	    {x=0,y=5,width=1,height=1,class="label",label="Sel. preset:"},
 	    {x=1,y=5,width=1,height=1,class="dropdown",name="pres",value="Default style - All",
-	    items={"Default style - All","nonDefault - All","OP in style","ED in style","layer 0","skiddiks, your their?","its/id/ill/were/wont","----from selection----","no-blur signs","commented lines","------sorting------","move sel. to the top","move sel. to bottom","sel: first to bottom","sel: last to top"}},
+	    items={"Default style - All","nonDefault - All","OP in style","ED in style","layer 0","lines w/ comments 1","skiddiks, your their?","its/id/ill/were/wont","----from selection----","no-blur signs","commented lines","lines w/ comments 2","------sorting------","move sel. to the top","move sel. to bottom","sel: first to bottom","sel: last to top"}},
 	    
 	    {x=2,y=0,width=1,height=1,class="label",label="Text:  "},
-	    {x=3,y=0,width=1,height=1,class="checkbox",name="case",label="case sensitive",value=case_sensitive},
-	    {x=3,y=1,width=1,height=1,class="checkbox",name="exact",label="exact match",value=exact_match},
-	    {x=2,y=1,width=1,height=1,class="checkbox",name="regexp",label="regexp",value=use_regexp},
+	    {x=3,y=0,width=1,height=1,class="checkbox",name="case",label="case sensitive",value=lastcase},
+	    {x=3,y=1,width=1,height=1,class="checkbox",name="exact",label="exact match",value=lastexact},
+	    {x=2,y=1,width=1,height=1,class="checkbox",name="regexp",label="regexp",value=lastregexp},
 	    {x=2,y=2,width=2,height=1,class="checkbox",name="nocom",label="exclude commented lines",value=exclude_commented},
 	    
 	    {x=2,y=3,width=1,height=1,class="label",label="Sorting:"},
 	    {x=3,y=3,width=1,height=1,class="checkbox",name="rev",label="reversed",value=false},
 	    
-	    {x=2,y=5,width=2,height=1,class="checkbox",name="editor",label="load results in an editor",value=load_in_editor},
+	    {x=2,y=5,width=1,height=1,class="checkbox",name="mod",label="mod",value=false},
+	    {x=3,y=5,width=1,height=1,class="checkbox",name="editor",label="load in editor",value=load_in_editor},
 	    
 	}
 	buttons={"Set Selection","Preset","Sort","Cancel"}
 	pressed, res=aegisub.dialog.display(dialog_config,buttons,{ok='Set Selection',close='Cancel'})
 	if pressed=="Cancel" then aegisub.cancel() end
 	if pressed=="Preset" then 
-		if res.pres=="no-blur signs" or res.pres=="commented lines" or res.pres=="move sel. to the top" or res.pres=="move sel. to bottom" or res.pres=="sel: last to top" or res.pres=="sel: first to bottom"
+		if res.pres=="no-blur signs" or res.pres=="commented lines" or res.pres=="lines w/ comments 2" or res.pres=="move sel. to the top" or res.pres=="move sel. to bottom" or res.pres=="sel: last to top" or res.pres=="sel: first to bottom"
 		then sel=presel(subs, sel)
 		else preset(subs, sel) end
 	end
@@ -291,10 +363,15 @@ function konfig(subs, sel)
 
 	if pressed=="Set Selection" and res.selection=="current selection" then slct(subs, sel) end
 	if pressed=="Set Selection" and res.selection=="all lines" then sel=selectall(subs, sel) slct(subs, sel) end
-	if remember_last then lastmatch=res.match end
+	if remember_last_search then lastmatch=res.match end
+	if remember_select_sort then lastmode=res.mode end
+	if remember_case then lastcase=res.case end
+	if remember_regexp then lastregexp=res.regexp end
+	if remember_exact then lastexact=res.exact end
 	return sel
 end
 
+--	SORTING
 function sorting(subs,sel)
     subtable={}
     -- lines into table
@@ -344,7 +421,8 @@ function sorting(subs,sel)
     if res.mode=="left margin" then table.sort(subtable,function(a,b) return a.ml<b.ml or (a.ml==b.ml and a.i<b.i) end) end
     if res.mode=="right margin" then table.sort(subtable,function(a,b) return a.mr<b.mr or (a.mr==b.mr and a.i<b.i) end) end
     if res.mode=="vertical margin" then table.sort(subtable,function(a,b) return a.mv<b.mv or (a.mv==b.mv and a.i<b.i) end) end
-    if res.mode=="sort by time" then table.sort(subtable,function(a,b) return a.start_time<b.start_time or (a.start_time==b.start_time and a.end_time<b.end_time) end) end
+    if res.mode=="sort by time" and not res.mod then table.sort(subtable,function(a,b) return a.start_time<b.start_time or (a.start_time==b.start_time and a.end_time<b.end_time) end) end
+    if res.mode=="sort by time" and res.mod then table.sort(subtable,function(a,b) return a.end_time<b.end_time or (a.end_time==b.end_time and a.start_time<b.start_time) end) end
     if res.mode=="reverse" then table.sort(subtable,function(a,b) return a.i>b.i end) end
     if res.mode=="width of text" then table.sort(subtable,function(a,b) return a.width<b.width or (a.width==b.width and a.i<b.i) end) end
     if res.mode=="dialogue first" then table.sort(subtable,function(a,b) return a.st<b.st or (a.st==b.st and a.i<b.i) end) end
@@ -362,6 +440,7 @@ function sorting(subs,sel)
     end
 end
 
+--	Select All
 function selectall(subs, sel)
 sel={}
     for i=1, #subs do
@@ -370,6 +449,22 @@ sel={}
     return sel
 end
 
+function esc(str)
+str=str
+:gsub("%%","%%%%")
+:gsub("%(","%%%(")
+:gsub("%)","%%%)")
+:gsub("%[","%%%[")
+:gsub("%]","%%%]")
+:gsub("%.","%%%.")
+:gsub("%*","%%%*")
+:gsub("%-","%%%-")
+:gsub("%+","%%%+")
+:gsub("%?","%%%?")
+return str
+end
+
+--	EDITOR
 function editlines(subs, sel)
 	editext=""
 	dura=""
@@ -395,21 +490,7 @@ function editlines(subs, sel)
     return sel
 end
 
-function esc(str)
-str=str
-:gsub("%%","%%%%")
-:gsub("%(","%%%(")
-:gsub("%)","%%%)")
-:gsub("%[","%%%[")
-:gsub("%]","%%%]")
-:gsub("%.","%%%.")
-:gsub("%*","%%%*")
-:gsub("%-","%%%-")
-:gsub("%+","%%%+")
-:gsub("%?","%%%?")
-return str
-end
-
+--	EDITOR GUI
 function editbox(subs, sel)
 	if #sel<=4 then boxheight=6 end
 	if #sel>=5 and #sel<9 then boxheight=8 end
@@ -439,7 +520,7 @@ function editbox(subs, sel)
 	    
 	    {x=32,y=boxheight+1,width=20,height=1,class="edit",name="info",value="Lines loaded: "..#sel..", Characters: "..editext:len()..", Words: "..words },
 
-	} 	
+	}
 	buttons={"Save","Replace","Remove tags","Rm. comments","Remove \"- \"","Remove \\N","Add italics","Add \\an8","Reload text","Cancel"}
 	repeat
 	if pressed=="Replace" or pressed=="Add italics" or pressed=="Add \\an8" or pressed=="Remove \\N" or pressed=="Reload text"
@@ -470,8 +551,8 @@ function editbox(subs, sel)
 		  end
 		end
 	end
-	pressed, res=aegisub.dialog.display(dialog,buttons,{save='Save',close='Cancel'})
-	until pressed~="Add italics" and pressed~="Add \\an8" and pressed~="Remove \\N" and pressed~="Reload text" 
+	pressed, res=aegisub.dialog.display(dialog,buttons,{save='Save',cancel='Cancel'})
+	until pressed~="Add italics" and pressed~="Add \\an8" and pressed~="Remove \\N" and pressed~="Reload text"
 		and pressed~="Remove tags"and pressed~="Rm. comments" and pressed~="Remove \"- \"" and pressed~="Replace"
 
 	if pressed=="Cancel" then aegisub.cancel() end
@@ -481,6 +562,7 @@ function editbox(subs, sel)
 	return sel
 end
 
+--	EDITOR SAVE
 function savelines(subs, sel)
     local data={}	raw=res.dat.."\n"
     if #sel==1 then raw=raw:gsub("\n(.)","\\N%1") raw=raw:gsub("\\N "," \\N") end
