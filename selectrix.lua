@@ -1,24 +1,27 @@
 ﻿--[[	alternative to aegisub's select tool. unlike that one, this can also select by layer.
 	version 2.0 includes sorting of selected/all lines, by the same markers as the selecting uses.
-D
-E	'Select/sort' 	This is what the search string is compared against. There are 4 'numbers' items and 4 'text' items. 
-S	'Used area' 	'current selection' - only lines in the current selection will be scanned. 
-C	'Numbers.' 	For 'numbers' items, you can select lines with higher or lower layer/duration instead of just exact match.
-R		With "==", you can specify a range, like 2-4, to select for example lines with layers 2-4.
-I	'Match this' 	Only numbers for 'numbers' items. Duration is in milliseconds. 
-P	'case sensitive' Obviously applies only to 'text' items. 
-T	'exact match' 	Same. 
-I	'use regexp' 	Not sure how well this is working, but it should work. Only for 'text' items.
-O	'mod'		Modifies some functions:
-N		-> "sort by time" - sorts by end time
-		-> "OP/ED in style" - includes any lines timed between the first and last lines of OP/ED (for including signs in OP/ED)
+
+D	'Select/sort' 	This is what the search string is compared against. There are 4 'numbers' items and 4 'text' items. 
+E	'Used area' 	'current selection' - only lines in the current selection will be scanned. 
+S	'Numbers.' 	For 'numbers' items, you can select lines with higher or lower layer/duration instead of just exact match.
+C		With "==", you can specify a range, like 2-4, to select for example lines with layers 2-4.
+R	'Match this' 	Only numbers for 'numbers' items. Duration is in milliseconds. 
+I	'case sensitive' Obviously applies only to 'text' items. 
+P	'exact match' 	Same. 
+T	'use regexp' 	Not sure how well this is working, but it should work. Only for 'text' items.
+I	'mod'		Modifies some functions:
+O		-> "sort by time" - sorts by end time
+N		-> "OP/ED in style" - includes any lines timed between the first and last lines of OP/ED (for including signs in OP/ED)
 		-> "move sel. to top/bottom" - selection doesn't follow the moved lines
+	Presets:
+	same text (contin.) - reads texts of selected lines and selects all following lines with the same texts until it reaches new text
+	same text (all lines) - selects all lines in the script with the same texts as the current selection (clean text - no tags/comments)
 --]]
 
 script_name="Selectricks"
 script_description="Selectricks and Sortricks"
 script_author="unanimated"
-script_version="2.5"
+script_version="2.6"
 
 -- SETTINGS --				you can choose from the options below to change the default settings
 
@@ -31,7 +34,7 @@ exact_match=false			-- true/false
 use_regexp=false			-- true/false
 exclude_commented=true			-- true/false
 load_in_editor=false			-- true/false
-remember_last_search=true			-- true/false [will remember last search string]
+remember_last_search=true		-- true/false [will remember last search string]
 remember_select_sort=true		-- true/false [will remember last select/sort mode]
 remember_case=false			-- true/false [will remember case sensitive option]
 remember_regexp=false			-- true/false [will remember regexp option]
@@ -165,9 +168,21 @@ end
 
 --	PRESET All
 function preset(subs, sel)
+act=sel[1]
+if res.pres:match("same text") then
+  marks={}  lm=nil
+  for x,i in ipairs(sel) do
+    rine=subs[i]
+    mark=rine.text:gsub("{[^}]-}","")
+    if mark=="" then mark="_empty_" end
+    if mark~=lm then table.insert(marks,mark) end
+    lm=mark
+  end
+end
 for i=#sel,1,-1 do	table.remove(sel,i) end
-opst=5000000	opet=0
-edst=5000000	edet=0
+opst=10000000	opet=0
+edst=10000000	edet=0
+
     for i=1,#subs do
 	if subs[i].class=="dialogue" then
 	local line=subs[i]
@@ -202,6 +217,18 @@ edst=5000000	edet=0
 		  if text:match("{[^\\}]-}") then table.insert(sel,i) end
 		end
 	    end
+	    if res.pres=="same text (contin.)" then
+		if i==act then table.insert(sel,i) end
+		if i>act then ct=text:gsub("{[^}]-}","")	ch=0
+		    for m=1,#marks do if marks[m]==ct then ch=1 end end
+		    if ch==1 then table.insert(sel,i) else break end
+		end
+	    end
+	    if res.pres=="same text (all lines)" then
+		ct=text:gsub("{[^}]-}","")	ch=0
+		for m=1,#marks do if marks[m]==ct then ch=1 end end
+		if ch==1 then table.insert(sel,i) end
+	    end
 	    if res.pres=="skiddiks, your their?" then
 	      if st:match("Defa") or st:match("Alt") then
 		if nc:match("[Yy]ou\'?re?%s")
@@ -214,7 +241,7 @@ edst=5000000	edet=0
 	    end
 	    if res.pres=="its/id/ill/were/wont" then
 	      if st:match("Defa") or st:match("Alt") then
-		nc=" "..nc:lower()
+		nc=" "..nc:lower().." "
 		if nc:match(" its ")
 		or nc:match(" id ")
 		or nc:match(" ill ")
@@ -226,6 +253,7 @@ edst=5000000	edet=0
 	    end
 	end
     end
+    -- OP/ED mod
     if res.mod and res.pres:match("in style") then
       for i=1,#subs do
 	if subs[i].class=="dialogue" then
@@ -323,6 +351,7 @@ function konfig(subs, sel)
 	    {x=0,y=0,width=1,height=1,class="label",label="Select/sort:"},
 	    {x=0,y=1,width=1,height=1,class="label",label="Used area:"},
 	    {x=0,y=2,width=1,height=1,class="label",label="Numbers:"},
+	    -- MAIN MODE
 	    {x=1,y=0,width=1,height=1,class="dropdown",name="mode",value=lastmode,
 		items={"--------text--------","style","actor","effect","text","visible text (no tags)","------numbers------","layer","duration","word count","character count","char. per second","blur","left margin","right margin","vertical margin","------sorting only------","sort by time","reverse","width of text","dialogue first","dialogue last","ts/dialogue/oped","{TS} to the top","masks to the bottom","by comments"}},
 	    {x=1,y=1,width=1,height=1,class="dropdown",name="selection",value=select_from,items={"current selection","all lines"}},
@@ -333,9 +362,10 @@ function konfig(subs, sel)
 	    {x=0,y=4,width=1,height=1,class="label",label="Match this:"},
 	    {x=1,y=4,width=3,height=1,class="edit",name="match",value=lastmatch},
 	    
+	    -- PRESETS
 	    {x=0,y=5,width=1,height=1,class="label",label="Sel. preset:"},
 	    {x=1,y=5,width=1,height=1,class="dropdown",name="pres",value="Default style - All",
-	    items={"Default style - All","nonDefault - All","OP in style","ED in style","layer 0","lines w/ comments 1","skiddiks, your their?","its/id/ill/were/wont","----from selection----","no-blur signs","commented lines","lines w/ comments 2","------sorting------","move sel. to the top","move sel. to bottom","sel: first to bottom","sel: last to top"}},
+	    items={"Default style - All","nonDefault - All","OP in style","ED in style","layer 0","lines w/ comments 1","same text (contin.)","same text (all lines)","skiddiks, your their?","its/id/ill/were/wont","----from selection----","no-blur signs","commented lines","lines w/ comments 2","------sorting------","move sel. to the top","move sel. to bottom","sel: first to bottom","sel: last to top"}},
 	    
 	    {x=2,y=0,width=1,height=1,class="label",label="Text:  "},
 	    {x=3,y=0,width=1,height=1,class="checkbox",name="case",label="case sensitive",value=lastcase},
