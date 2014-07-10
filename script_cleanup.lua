@@ -3,7 +3,7 @@
 script_name="Script Cleanup"
 script_description="Removes unwanted stuff from script"
 script_author="unanimated"
-script_version="2.64"
+script_version="2.7"
 
 dont_delete_empty_tags=false	-- option to not delete {}
 
@@ -144,6 +144,12 @@ function cleanlines(subs,sel)
 	    if res.allpers then text=text:gsub("\\f[ar][xyz][^\\}%)]*","") :gsub("\\org%([^%)]*%)","") end
 	    
 	    if res.allsize then text=text:gsub("\\fs[%d%.]+","") :gsub("\\fs([\\}%)])","%1") :gsub("\\fsc[xy][^\\}%)]*","") end
+	    
+	    if res.inline then 
+		tags=text:match("^{\\[^}]-}") if tags==nil then tags="" end
+		text=text:gsub("{%*?\\[^}]-}","")
+		text=tags..text
+	    end
 	    
 	    
 	if res.alphacol then
@@ -363,7 +369,7 @@ cleanup_cfg=
 {x=2,y=2,width=1,height=1,class="checkbox",name="allrot",label="Remove all rotations",value=false},
 {x=2,y=3,width=1,height=1,class="checkbox",name="allpers",label="Remove all perspective",value=false},
 {x=2,y=4,width=1,height=1,class="checkbox",name="allsize",label="Remove size/scaling",value=false},
-
+{x=2,y=5,width=1,height=1,class="checkbox",name="inline",label="Remove inline tags",value=false},
 {x=2,y=6,width=1,height=1,class="checkbox",name="nostyle",label="Delete unused styles",value=false},
 {x=2,y=7,width=1,height=1,class="checkbox",name="nostyle2",label="Delete unused styles (leave Default)",value=false},
 {x=2,y=8,width=1,height=1,class="checkbox",name="nobreak2",label="Remove linebreaks  - \\N (nospace)",value=false},  
