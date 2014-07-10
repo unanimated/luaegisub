@@ -1,7 +1,7 @@
 ﻿script_name="Copyfax This"
 script_description="Copyfax This"
 script_author="unanimated"
-script_version="2.51"
+script_version="2.6"
 
 -- all the "copy" things copy things from first selected line and paste them to the other lines
 -- clip shift coordinates will shift the clip by that amount each line
@@ -19,6 +19,7 @@ Copy Stuff
 	If you need to copy to a line that's above the source like in the grid, just click Copy with the selected things
 	and then use Paste Saved on the line(s) you want to copy to.
 	You can copy inline tags too, but they will only be pasted to the first tag block.
+	By placing * in the text in the GUI, selected tags will be copied to that position (first selected line only).
 	[Un]hide lets you hide/unhide checked tags (by making them comments). Nothing checked = unhide. Good for clips, for example.
 
 Copy Tags
@@ -133,7 +134,7 @@ function textmod(orig,text)
 	if stags==nil then stags="" end
 	text=text:gsub("^{\\[^}]-}","") :gsub("{[^\\}]-}","")
 	count=0
-	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
+	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
 	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
 	    pos=chars:len()+count
 	    tgl={p=pos,t=tak,a=as}
@@ -141,7 +142,7 @@ function textmod(orig,text)
 	    count=pos
 	end
 	count=0
-	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
+	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
 	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
 	    pos=chars:len()+count
 	    tgl={p=pos,t=tak,a=as}
@@ -167,6 +168,7 @@ function copystuff(subs, sel)
     rine=subs[sel[1]]
     ftags=rine.text:match("^{(\\[^}]-)}")
     cstext=rine.text:gsub("^{(\\[^}]-)}","")
+    vis=rine.text:gsub("{([^}]-)}","")
     csstyle=rine.style
     csst=rine.start_time
     cset=rine.end_time
@@ -186,8 +188,10 @@ function copystuff(subs, sel)
 	{x=0,y=1,width=1,height=1,class="checkbox",name="chke",label="[   End Tim   ]",value=false},
 	{x=1,y=0,width=1,height=1,class="checkbox",name="css",label="[   Style   ]   ",value=false},
 	{x=1,y=1,width=1,height=1,class="checkbox",name="tkst",label="[   Text   ]",value=false},
-	    }
-    ftw=2
+	{x=2,y=0,width=1,height=1,class="label",label="Place * in text below to copy tags there"},
+	{x=0,y=2,width=3,height=1,class="edit",name="ltxt",value=vis,hint="only works for first selected line"},
+	}
+    ftw=3
     -- regular tags -> GUI
     for f in ftags:gmatch("\\[^\\]+") do lab=f
 	if f:match("\\i?clip%(m") then lab=f:match("\\i?clip%(m [%d%.%-]+ [%d%.%-]+ %a [%d%.%-]+ [%d%.%-]+ ").."..." end
@@ -213,10 +217,10 @@ function copystuff(subs, sel)
 	cb={x=0,y=ftw,width=2,height=1,class="checkbox",name="chk"..ftw,label=f,value=false}
 	table.insert(copyshit,cb)	ftw=ftw+1
     end
-    itw=2
+    itw=3
     -- inline tags
     if cstext:match("{[^}]-\\[^Ntrk]") then
-      cb={x=2,y=0,width=1,height=2,class="label",label="inline tags...\n(will only be added to first block)"} table.insert(copyshit,cb)
+      cb={x=2,y=1,width=1,height=1,class="label",label="inline tags (will only be added to 1st block)"} table.insert(copyshit,cb)
       for f in cstext:gmatch("\\[^tNhrk][^\\}%)]+") do lab=f
 	if itw==22 then lab="(that's enough...)" f="" end
 	if itw==23 then break end
@@ -255,10 +259,11 @@ function copystuff(subs, sel)
 	savedcss=rez.css savedchks=rez.chks savedchke=rez.chke
 	savedtext=cstext savedtkst=rez.tkst
 	end
+	if rez.ltxt:match"%*" then inline=true sn=1 maxx=1 else inline=false maxx=#sel end
 
     -- lines 2+
     if press~="[Un]hide" then
-    for i=sn,#sel do
+    for i=sn,maxx do
         local line=subs[sel[i]]
         local text=subs[sel[i]].text
 	text=text:gsub("\\1c","\\c")
@@ -274,8 +279,20 @@ function copystuff(subs, sel)
 	    elseif copytfs~="" then trnsfrm=copytfs
 	    end
 	    -- add + clean tags
-	    text=text:gsub("^({\\[^}]-)}","%1"..kopytags.."}")
-	    text=duplikill(text)
+	    if inline then
+		initags=text:match("^{\\[^}]-}") if initags==nil then initags="" end
+		endcom=""
+		repeat
+		  ec=text:match("{[^\\}]-}$") text=text:gsub("{[^\\}]-}$","") if ec~=nil then endcom=ec..endcom end
+		until ec==nil
+		orig=text
+		text=rez.ltxt:gsub("%*","{"..kopytags.."}")
+		text=textmod(orig,text)
+		text=initags..text..endcom
+	    else
+		text=text:gsub("^({\\[^}]-)}","%1"..kopytags.."}")
+	    end
+	    text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	    text=extrakill(text)
 	    -- add transforms
 	    if trnsfrm~=nil then text=text:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}") end
@@ -548,7 +565,7 @@ function splitbreak(subs, sel)		-- 1.6
 		        count=count+1
 		        --line2.effect=count+1
 		        line2.text=line2.text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-		        line2.text=duplikill(line2.text)
+		        line2.text=line2.text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 		        tags=line2.text:match("^({\\[^}]*})")
 		        subs.insert(sel[i]+count,line2)		-- insert each match one line further 
 		      end
@@ -609,19 +626,27 @@ function cleantr(tags)
 	return tags
 end
 
-function duplikill(text)
-	tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay","an","b","i"}
+function duplikill(tagz)
+	tf=""
+	if tagz:match("\\t") then 
+	    for t in tagz:gmatch("(\\t%([^%(%)]-%))") do tf=tf..t end
+	    for t in tagz:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","") do tf=tf..t end
+	    tagz=tagz:gsub("\\t%([^%(%)]+%)","")
+	    tagz=tagz:gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","")
+	end
+	tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
 	for i=1,#tags1 do
 	    tag=tags1[i]
-	    text=text:gsub("(\\"..tag.."[%d%.%-]+)([^}]-)(\\"..tag.."[%d%.%-]+)","%3%2")
+	    tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1")
 	end
-	text=text:gsub("\\1c&","\\c&")
+	tagz=tagz:gsub("\\1c&","\\c&")
 	tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
 	for i=1,#tags2 do
 	    tag=tags2[i]
-	    text=text:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%1%2")
-	end	
-	return text
+	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1")
+	end
+	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf.."}")
+	return tagz
 end
 
 function extrakill(text)
