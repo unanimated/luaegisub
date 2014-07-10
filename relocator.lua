@@ -4,7 +4,7 @@
 script_name="Hyperdimensional Relocator"
 script_description="Makes things appear different from before"
 script_author="reanimated"
-script_version="2.6"
+script_version="2.62"
 
 --	SETTINGS	--
 
@@ -118,7 +118,7 @@ function positron(subs,sel)
 	    faks=round1(tangf*100)/100
 	    text=addtag("\\fax"..faks,text)
 	    text=text:gsub("\\org%([^%)]+%)","")
-	    text=text:gsub("({\\[^}]-})",function(tg) return duplikill(tg) end)
+	    text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	
 	-- clip to fax
 	elseif res.posi=="clip to fax" then
@@ -139,7 +139,7 @@ function positron(subs,sel)
 	    faks=round1(tangf*100)/100
 	    text=addtag("\\fax"..faks,text)
 	    text=text:gsub("\\clip%([^%)]+%)","")
-	    text=text:gsub("({\\[^}]-})",function(tg) return duplikill(tg) end)
+	    text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	
 	-- clip to frz
 	elseif res.posi=="clip to frz" then
@@ -157,7 +157,7 @@ function positron(subs,sel)
 	    if ad<0 then rota=rota-180 end
 	    text=addtag("\\frz"..rota,text)
 	    text=text:gsub("\\clip%([^%)]+%)","")
-	    text=text:gsub("({\\[^}]-})",function(tg) return duplikill(tg) end)
+	    text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	
 	-- shake
 	elseif res.posi=="shake" then
@@ -825,7 +825,7 @@ function movetofbf(subs, sel)
 			l2.text=l2.text:gsub("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","")	:gsub("(\\t%([^%(%)]-%))","")
 			l2.text=l2.text:gsub("^({[^}]*)}","%1"..ftags.."}")
 			
-			l2.text=l2.text:gsub("({\\[^}]-})",function(tg) return duplikill(tg) end)
+			l2.text=l2.text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 		    end
 		    
 		    l2.start_time=fr2ms(frm)
@@ -1204,7 +1204,7 @@ function teleport(subs, sel)
 	fy=tpfy*(x-1)
 
 	if res.tppos then
-	    if res.autopos and not text:match("\\pos") then text=getpos(subs,text) end
+	    if res.autopos and not text:match("\\pos") and not text:match("\\move") then text=getpos(subs,text) end
 	    text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)%)",
 	    function(a,b) return "\\pos("..a+xx+fx..","..b+yy+fy..")" end)
 	end
@@ -1268,6 +1268,7 @@ function getpos(subs, text)
 		acright=st.margin_r
 		acvert=st.margin_t
 		acalign=st.align
+		if text:match("\\an%d") then acalign=text:match("\\an(%d)") end
 		aligntop="789" alignbot="123" aligncent="456"
 		alignleft="147" alignright="369" alignmid="258"
 		if alignleft:match(acalign) then horz=acleft
