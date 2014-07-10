@@ -1,7 +1,7 @@
 script_name="Masquerade"
 script_description="Masquerade"
 script_author="unanimated"
-script_version="2.01"
+script_version="2.1"
 
 -- \ko has been removed. much improved version is in 'Apply fade'. alpha shift does a similar thing differently.
 
@@ -251,6 +251,7 @@ function shiftag(subs,sel,act)
     table.insert(shiftab,{x=0,y=ftw+1,width=1,height=1,class="label",label="Shift by letter /",})
     table.insert(shiftab,{x=1,y=ftw+1,width=1,height=1,class="checkbox",name="word",label="word",value=false})
     table.insert(shiftab,{x=0,y=ftw+2,width=2,height=1,class="intedit",name="rept",value=1,min=1})
+    table.insert(shiftab,{x=0,y=ftw+3,width=2,height=1,class="checkbox",name="nuke",label="remove selected tags"})
     itw=1
     -- inline tags
     if cstext:match("{%*?\\[^}]-}") then
@@ -278,7 +279,24 @@ function shiftag(subs,sel,act)
 	if press=="Cancel" then aegisub.cancel() end
 	if press=="Shift Right" then R=true else R=false end
 	if press=="Shift Left" then L=true else L=false end
+	
+	-- nuke tags
+	if rez.nuke then
+	  for key,val in ipairs(shiftab) do
+	    if val.class=="checkbox" and rez[val.name]==true and val.x==0 and val.name~="nuke" then
+	      tagname=esc(val.realname)
+	      tags=tags:gsub(tagname,"")
+	      rez[val.name]=false
+	    end
+	    if val.class=="checkbox" and rez[val.name]==true and val.x==3 then
+	      tagname=esc(val.realname)
+	      cstext=cstext:gsub(tagname,"")
+	      rez[val.name]=false
+	    end
+	  end
+	end
 
+	-- shift inline tags
 	if R then
 	  for s=#shiftab,1,-1 do stab=shiftab[s]
 	    if rez[stab.name]==true and stab.x==3 then stag=stab.realname etag=esc(stag)
@@ -298,11 +316,9 @@ function shiftag(subs,sel,act)
 		:gsub(etag.."(%s?\\N%s?)","%1"..stag)
 		:gsub(etag.."({[^}]-})","%1"..stag)
 		:gsub(etag.."(%s?\\N%s?)","%1"..stag)
-		end		
+		end
 		rep=rep+1
 		until rep==rez.rept
-		
-		
 	    end
 	  end
 	elseif L then
@@ -331,9 +347,10 @@ function shiftag(subs,sel,act)
 	
 	cstext=cstext:gsub("({\\[^}]-})",function(tg) return duplikill(tg) end)
 	
+	--shift start tags
 	startags=""
 	for key,val in ipairs(shiftab) do
-	    if rez[val.name]==true and val.x==0 then stag=val.realname etag=esc(stag)
+	    if rez[val.name]==true and val.x==0 and val.name~="nuke" then stag=val.realname etag=esc(stag)
 		if R then
 		startags=startags..stag
 		tags=tags:gsub(etag,"")
