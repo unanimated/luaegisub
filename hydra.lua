@@ -1,7 +1,7 @@
 ﻿script_name="HYDRA"
 script_description="A multi-headed typesetting tool"
 script_author="unanimated"
-script_version="3.58"
+script_version="3.6"
 
 -- SETTINGS - feel free to change these
 
@@ -21,7 +21,7 @@ order="\\r\\fad\\fade\\an\\q\\blur\\be\\bord\\shad\\fn\\fs\\fsp\\fscx\\fscy\\frx
 
 function hh9(subs, sel)
 	-- get colours from input
-	    getcolours()
+	getcolours()
 	
     for z, i in ipairs(sel) do
     cancelled=aegisub.progress.is_cancelled()
@@ -124,15 +124,17 @@ function hh9(subs, sel)
 		:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") :gsub("_ast_","*")
 	    else
 	    -- AT ASTERISK POINT
-		pl1=esc(pl1)	pl3=esc(pl3)
-		text=text:gsub(pl1.."({\\[^}]-)}"..pl3,pl1.."%1"..tags.."}"..pl3)
-		if bkp==text then text=text:gsub(pl1..pl3,pl1.."{"..tags.."}"..pl3) end
+		initags=text:match("^{\\[^}]-}") if initags==nil then initags="" end
+		orig=text
+		text=place:gsub("%*","{"..tags.."}")
+		text=textmod(orig,text)
+		text=initags..text
 	    end
 	else
 	-- REGULAR STARTING TAGS
 	    text=text:gsub("^({\\[^}]-)}","%1"..tags.."}")
 	end
-	text=text:gsub("({\\[^}]-})",function(tg) return duplikill(tg) end)
+	text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	
 	
 	-- bold
@@ -285,7 +287,7 @@ function special(subs, sel)
 	    text=text:gsub("(\\[1234]?c&H%x+&)","") :gsub("{}","") 
 	    text=tags.."{"..klrs.."}"..text
 	    text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-	    text=text:gsub("({\\[^}]-})",function(tg) return duplikill(tg) end)
+	    text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	end
 	
 	if res.spec=="convert clip <-> iclip" then
@@ -304,7 +306,7 @@ function special(subs, sel)
 		text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 		until text:match("{(\\[^}]-)}{(\\[^}]-)}")==nil
 	    text=text:gsub("^{(\\[^}]-)\\frx0\\fry0([\\}])","{%1%2")
-	    text=text:gsub("({\\[^}]-})",function(tg) return duplikill(tg) end)
+	    text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	end
 	
 	-- SORT TAGS
@@ -587,6 +589,49 @@ function duplikill(tagz)
 	return tagz
 end
 
+function textmod(orig,text)
+    tk={}
+    tg={}
+	text=text:gsub("{\\\\k0}","")
+	repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
+	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
+	vis=text:gsub("{[^}]-}","")
+	  for c in vis:gmatch(".") do
+	    table.insert(tk,c)
+	  end
+	stags=text:match("^{(\\[^}]-)}")
+	if stags==nil then stags="" end
+	text=text:gsub("^{\\[^}]-}","") :gsub("{[^\\}]-}","")
+	count=0
+	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
+	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
+	    pos=chars:len()+count
+	    tgl={p=pos,t=tak,a=as,typ="old"}
+	    table.insert(tg,tgl)
+	    count=pos
+	end
+	count=0
+	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
+	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
+	    pos=chars:len()+count
+	    tgl={p=pos,t=tak,a=as,typ="new"}
+	    table.insert(tg,tgl)
+	    count=pos
+	end
+    newline=""
+    for i=1,#tk do
+	newline=newline..tk[i]
+	newt=""
+	for n, t in ipairs(tg) do
+	    if t.p==i then newt=newt..t.a..t.t end
+	end
+	if newt~="" then newline=newline.."{"..as..newt.."}" end
+    end
+    newtext="{"..stags.."}"..newline
+    text=newtext
+    return text
+end
+
 function esc(str)
 str=str
 :gsub("%%","%%%%")
@@ -784,17 +829,20 @@ hh3={
 	pressed,res=aegisub.dialog.display(hh_gui,hh_buttons,{ok='Apply',cancel='Cancel'})
 	
 	if pressed=="Load Medium" then aegisub.progress.title(string.format("Loading Heads 4-5"))
+	    for key,val in ipairs(hh_gui) do val.value=res[val.name] end
 	    for i=1,#hh2 do l=hh2[i] table.insert(hh_gui,l) end loaded=2
 	    pressed,res=aegisub.dialog.display(hh_gui,buttons[2],{ok='Apply',cancel='Cancel'})
 	end
 	
 	if pressed=="Load Full" then aegisub.progress.title(string.format("Loading Heads "..(loaded+1)*2 .."-7"))
+	    for key,val in ipairs(hh_gui) do val.value=res[val.name] end
 	    if loaded<2 then  for i=1,#hh2 do l=hh2[i] table.insert(hh_gui,l) end  end
 	    for i=1,#hh3 do l=hh3[i] table.insert(hh_gui,l) end loaded=3
 	    pressed,res=aegisub.dialog.display(hh_gui,buttons[3],{ok='Apply',cancel='Cancel'})
 	end
 	
 	if pressed=="Help" then aegisub.progress.title(string.format("Loading Head 8"))
+	for key,val in ipairs(hh_gui) do val.value=res[val.name] end
 	hhh={x=0,y=14,width=10,height=1,class="dropdown",name="herp",items={"HELP (scroll/click to read)",
 	"Standard mode: check tags, set values, click 'Apply'.",
 	"Transform mode normal: check tags, set values, set t1/t2/accel if needed, click 'Transform'.",
@@ -802,7 +850,7 @@ hh3={
 	"Transform mode add2all: the transforms will be added to all existing transforms in the line.",
 	"Additional tags: type any extra tags you want to add.",
 	"Tag position: This shows the text of your first line. Type * where you want your tags to go.",
-	"Tag position: You can create your won patterns. '*abc' will put tags before every instance of 'abc'.",
+	"Tag position: You can create your own patterns. '*abc' will put tags before every instance of 'abc'.",
 	"Tag position: If other selected lines match the same pattern, it will apply to them too.",
 	"Tag position presets: This places tags in specified positions, proportionally for each selected line.",
 	"Special functions: select a function, click 'Special'.",
@@ -813,9 +861,6 @@ hh3={
 	table.insert(hh_gui,hhh)
 	pressed,res=aegisub.dialog.display(hh_gui,{"Apply","Transform","Repeat Last","Special","Cancel"},{ok='Apply',cancel='Cancel'})
 	end
-	
-	--aegisub.log("\n res.alph1 "..res.alph1)
-	--res.alph1=res.alph1:gsub("#(%x%x)(%x%x)(%x%x)(%x%x)","%4")
 	
 	if res.tmode=="normal" then tmode=1 end
 	if res.tmode=="add2first" then tmode=2 end
