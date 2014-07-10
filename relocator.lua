@@ -4,7 +4,7 @@
 script_name="Hyperdimensional Relocator"
 script_description="Makes things appear different from before"
 script_author="reanimated"
-script_version="2.62"
+script_version="2.7"
 
 --	SETTINGS	--
 
@@ -643,6 +643,45 @@ function modifier(subs, sel)
 		draw2=draw:gsub("([%d%.%-]+) ([%d%.%-]+)",function(a,b) return 0-a.." "..b end)
 		draw=esc(draw)
 		text=text:gsub("(}m )"..draw,"%1"..draw2)
+	    end
+	    
+	    if res.mod=="adjust drawing" then
+		if not text:match("\\p%d") then aegisub.cancel() end
+		-- drawing 2 clip
+		if not text:match("\\clip") then
+		  klip="\\clip("..text:match("\\p1[^}]-}(m [^{]*)")..")"
+		  scx=text:match("\\fscx([%d%.]+)")	if scx==nil then scx=100 end
+		  scy=text:match("\\fscy([%d%.]+)")	if scy==nil then scy=100 end
+		  if text:match("\\pos") then
+		    local xx,yy=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)")
+		    xx=round1(xx) yy=round1(yy)
+		    coord=klip:match("\\clip%(m ([^%)]+)%)")
+		    coord2=coord:gsub("([%d%-]+)%s([%d%-]+)",function(a,b) return round1(a*scx/100+xx).." "..round1(b*scy/100+yy) end)
+		    coord=coord:gsub("%-","%%-")
+		    klip=klip:gsub(coord,coord2)
+		  end
+		  if not text:match("\\pos") then text=text:gsub("^{","{\\pos(0,0)") end
+		  text=addtag(klip,text)
+		-- clip 2 drawing
+		else
+		  text=text:gsub("\\clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c,d) 
+		    a,b,c,d=round(a,b,c,d) return string.format("\\clip(m %d %d l %d %d %d %d %d %d)",a,b,c,b,c,d,a,d) end)
+		  klip=text:match("\\clip%((m.-)%)")
+		  if text:match("\\pos") then
+		  local xx,yy=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)")
+		    xx=round1(xx) yy=round1(yy)
+		    coord=klip:match("m ([%d%a%s%-]+)")
+		    coord2=coord:gsub("([%d%-]+)%s([%d%-]+)",function(a,b) return a-xx.." "..b-yy end)
+		    coord=coord:gsub("%-","%%-")
+		    klip=klip:gsub(coord,coord2)
+		  end
+		  text=text:gsub("(\\p1[^}]-})(m [^{]*)","%1"..klip)
+		  if not text:match("\\pos") then text=text:gsub("^{","{\\pos(0,0)") end
+		  if text:match("\\an") then text=text:gsub("\\an%d","\\an7") else text=text:gsub("^{","{\\an7") end
+		  if text:match("\\fscx") then text=text:gsub("\\fscx[%d%.]+","\\fscx100") else text=text:gsub("\\p1","\\fscx100\\p1") end
+		  if text:match("\\fscy") then text=text:gsub("\\fscy[%d%.]+","\\fscy100") else text=text:gsub("\\p1","\\fscy100\\p1") end
+		  text=text:gsub("\\clip%(.-%)","")
+		end
 	    end
 	    
 	    if res.mod=="randomask" then
@@ -1343,7 +1382,7 @@ morphorg="Calculate Origin:\n\nThis calculates \\org from a tetragonal vectorial
 
 morphclip="Transform Clip:\n\nGo from \\clip(x1,y1,x2,y2) to \\clip(x1,y1,x2,y2)\\t(\\clip(x3,y3,x4,y4)).\nCoordinates are read from the line.\nYou can set by how much x and y should change, and new coordinates will be calculated.\n\n'use next line's clip' allows you to use clip from the next line.\n   Create a line after your current one (or just duplicate), set the clip you want to transform to on it,\n   and check \"use next line's clip\".\n   The clip from the next line will be used for the transform, and the line will be deleted."
 
-morphmasks="Extend Mask: Use Teleporter X and Y fields to extend a mask in either or both directions.\n   This is mainly intended to easily convert something like a rounded square to another rounded rectangle.\n   Works optimally with 0,0 coordinate in the centre. May do weird things with curves.\n   When all coordinates are to one side from 0,0, then this works like shifting.\n\nExpand Mask: This works like Recalculator's 'Multiply', except 1 is the basic value (equals to 100%).\n   Not good for extending rounded squares, but good for turning a circle into an ellipsis.\n\nFlip mask: Flips a mask so that when used with its non-flipped counterpart, they create hollow space.\n   For example you have a rounded square. Duplicate it, extend one by 10 pixels in each direction, flip it,\n   and then merge them. You'll get a 10 px outline.\n\nRandomask: Moves points in a drawing, each in a random direction, by a factor taken from the positioning field.\n\n"
+morphmasks="Extend Mask: Use Teleporter X and Y fields to extend a mask in either or both directions.\n   This is mainly intended to easily convert something like a rounded square to another rounded rectangle.\n   Works optimally with 0,0 coordinate in the centre. May do weird things with curves.\n   When all coordinates are to one side from 0,0, then this works like shifting.\n\nExpand Mask: This works like Recalculator's 'Multiply', except 1 is the basic value (equals to 100%).\n   Not good for extending rounded squares, but good for turning a circle into an ellipsis.\n\nFlip mask: Flips a mask so that when used with its non-flipped counterpart, they create hollow space.\n   For example you have a rounded square. Duplicate it, extend one by 10 pixels in each direction, flip it,\n   and then merge them. You'll get a 10 px outline.\n\nAdjust Drawing: (You must not have an unrelated clip in the line.)\n   1. Creates a clip that copies the drawing.\n   2. You adjust points with clip tool.\n   3. Applies new coordinates to the drawing.	\n\nRandomask: Moves points in a drawing, each in a random direction, by a factor taken from the positioning field."
 
 cloan="This copies specified tags from first line to the others.\nOptions are position, move, origin point, clip, and rotations.\n\nreplicate missing tags: creates tags if they're not present\n\nstack clips: allows stacking of 1 normal and 1 vector clip in one line\n\nmatch type: if current clip/iclip doesn't match the first line, it will be switched to match\n\ncv (combine vectors): if the first line has a vector clip, then for all other lines with vector clips \n   the vectors will be combined into 1 clip\n\ncopyrot: copies all rotations"
 
@@ -1366,13 +1405,13 @@ stg_morph={x=0,y=1,width=2,height=17,class="textbox",name="gd",value=morph}
 stg_morph2fbf={x=0,y=1,width=2,height=8,class="textbox",name="gd",value=morph2fbf}
 stg_morphorg={x=0,y=1,width=2,height=8,class="textbox",name="gd",value=morphorg}
 stg_morphclip={x=0,y=1,width=2,height=8,class="textbox",name="gd",value=morphclip}
-stg_morpmsk={x=0,y=1,width=2,height=9,class="textbox",name="gd",value=morphmasks}
+stg_morpmsk={x=0,y=1,width=2,height=11,class="textbox",name="gd",value=morphmasks}
 stg_cloan={x=0,y=1,width=2,height=9,class="textbox",name="gd",value=cloan}
 stg_port={x=0,y=1,width=2,height=8,class="textbox",name="gd",value=port}
 
 cp_main={"Positron Cannon","Hyperspace Travel","Metamorphosis","Cloning Sequence","Teleportation","Disintegrate"}
 cp_back={"Warp Back"}
-cp_morph={"Warp Back","Metamorphosis","Line2fbf","Calculate Origin","Transform Clip","Masks"}
+cp_morph={"Warp Back","Metamorphosis","Line2fbf","Calculate Origin","Transform Clip","Masks/drawings"}
 esk1={close='Disintegrate'}
 esk2={cancel='Warp Back'}
 stg={stg_top,stg_toptop,stg_intro} control_panel=cp_main esk=esk1
@@ -1386,7 +1425,7 @@ repeat
 	if press=="Line2fbf" then 		stg={stg_top,stg_toporph,stg_morph2fbf} control_panel=cp_morph esk=esk2 end
 	if press=="Calculate Origin" then 	stg={stg_top,stg_toporph,stg_morphorg} control_panel=cp_morph esk=esk2 end
 	if press=="Transform Clip" then 	stg={stg_top,stg_toporph,stg_morphclip} control_panel=cp_morph esk=esk2 end
-	if press=="Masks" then 		stg={stg_top,stg_toporph,stg_morpmsk} control_panel=cp_morph esk=esk2 end
+	if press=="Masks/drawings" then 		stg={stg_top,stg_toporph,stg_morpmsk} control_panel=cp_morph esk=esk2 end
 	if press=="Warp Back" then 		stg={stg_top,stg_toptop,stg_intro} control_panel=cp_main esk=esk1 end
 press,rez=aegisub.dialog.display(stg,control_panel,esk)
 until press=="Disintegrate"
@@ -1422,7 +1461,7 @@ hyperconfig={
     
     {x=5,y=0,width=2,height=1,class="label",label="Morphing Grounds",},
     {x=5,y=1,width=2,height=1,class="dropdown",name="mod",
-	items={"round numbers","line2fbf","join fbf lines","killmovetimes","fullmovetimes","fulltranstimes","move v. clip","set origin","calculate origin","transform clip","FReeZe","rotate 180","flip hor.","flip vert.","negative rot","vector2rect.","rect.2vector","find centre","extend mask","expand mask","flip mask","randomask","randomize...","letterbreak","wordbreak"},value="round numbers"},
+	items={"round numbers","line2fbf","join fbf lines","killmovetimes","fullmovetimes","fulltranstimes","move v. clip","set origin","calculate origin","transform clip","FReeZe","rotate 180","flip hor.","flip vert.","negative rot","vector2rect.","rect.2vector","find centre","extend mask","expand mask","flip mask","adjust drawing","randomask","randomize...","letterbreak","wordbreak"},value="round numbers"},
     {x=5,y=2,width=1,height=1,class="label",label="Round:",},
     {x=6,y=2,width=1,height=1,class="dropdown",name="rnd",items={"all","pos","move","org","clip","mask"},value="all"},
     {x=6,y=3,width=1,height=1,class="dropdown",name="freeze",
