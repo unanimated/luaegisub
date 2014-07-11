@@ -1,7 +1,7 @@
 ﻿script_name="Unimportant"
-script_description="Import stuff, number stuff, do other stuff."
+script_description="Import stuff, number stuff, chapter stuff, replace stuff, do other stuff to stuff."
 script_author="unanimated"
-script_version="1.6"
+script_version="1.7"
 
 require "clipboard"
 re=require'aegisub.re'
@@ -9,7 +9,7 @@ re=require'aegisub.re'
 --	SETTINGS	--
 
 -- IMPORT --
-import="import signs"			-- options: "import OP","import ED","import sign","import signs","update lyrics"
+import="import signs"			-- options: "import OP","import ED","import sign","import signs","export sign","update lyrics"
 keep_line=true				-- options: true / false
 style_restriction=false		-- options: true / false
 script_path="relative"			-- options: "relative" / "absolute"
@@ -21,6 +21,7 @@ absolute_path="D:\\typesetting\\"	-- absolute path to import scripts from if you
 default_marker="actor"			-- options: "actor","effect","comment"
 default_chapter_name="comment"		-- options: "comment","effect"
 default_save_name="script"		-- options: "script","video"
+deafault_chapter_mark="OP"		-- options: "Intro","OP","Part A","Part B","Part C","ED","Preview"
 autogenerate_intro=true			-- options: true / false
 ch_script_path="relative"		-- options: "relative" / "absolute"
 ch_relative_path=""			-- relative to where your script is -> "..\\chapters\\" = one folder up and then 'chapters' folder
@@ -30,6 +31,9 @@ ch_absolute_path="D:\\typesetting\\"	-- absolute path to save chapters if you se
 -- NUMBERS --
 actor_effect="effect"			-- options: "actor","effect","layer","style","text"
 numbering="01"				-- options: "1","01","001","0001"
+
+-- STUFF --
+default_stuff="lua replacer"		-- options: just read them in the menu (backslashes must be double)
 
 --	--	--	--
 
@@ -194,12 +198,12 @@ function important(subs, sel, act)
 		end
 		if keeptags and actor~="x" then
 		    l2.text=addtag(atags,l2.text)
-		    l2.text=l2.text:gsub("({\\[^}]-})",function(tg) return duplikill(tg) end)
+		    l2.text=l2.text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 		end
 		if addtags and actor~="x" then
 		    l2.text="{"..atags.."}"..l2.text
 		    l2.text=l2.text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-		    :gsub("({\\[^}]-})",function(tg) return duplikill(tg) end)
+		    :gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 		end
 		
 		--aegisub.log("\n btext "..btext)
@@ -322,6 +326,25 @@ end
 
 --	CHAPTERS	--
 function chopters(subs, sel)
+  if res.marker=="effect" and res.nam=="effect" then 
+	aegisub.dialog.display({{class="label",label="Error. Both marker and name cannot be 'effect'."}},{"OK"},{close='OK'}) aegisub.cancel() 
+  end
+  if res.chmark then
+    if res.lang~="" then kap=res.lang else kap=res.chap end
+    for x, i in ipairs(sel) do
+      line=subs[i]
+      text=line.text
+	if res.marker=="actor" then line.actor="chptr" end
+	if res.marker=="effect" then line.effect="chptr" end
+	if res.marker=="comment" then text=text.."{chptr}" end
+	if res.nam=="effect" then line.effect=kap end
+	if res.nam=="comment" then text="{"..kap.."}"..text end
+	--line.effect="chptr"
+	--text="{"..res.chap.."}"
+      line.text=text
+      subs[i]=line
+    end
+  else
 	euid=2013
 	chptrs={}
 	subchptrs={}
@@ -453,6 +476,7 @@ function chopters(subs, sel)
 	file:write(chapters)
 	file:close()
     end
+  end
 end
 
 --	STUFF	--
@@ -583,6 +607,23 @@ function stuff(subs, sel)
 		:gsub("([^}])({\\[^}]-})$","%1}%2")
 		:gsub("{}","")
 		:gsub("_br_","\\N")
+	end
+	
+	if res.stuff=="reverse text" then
+	    tags=text:match("^{\\[^}]-}") if tags==nil then tags="" end
+	    text=text:gsub("{[^}]-}","")
+	    nt=""
+	    for l in text:gmatch(".") do nt=l..nt end
+	    text=tags..nt
+	end
+	
+	if res.stuff=="reverse words" then
+	    tags=text:match("^{\\[^}]-}") if tags==nil then tags="" end
+	    text=text:gsub("{[^}]-}","")
+	    nt=""
+	    for l in text:gmatch("[^%s]+") do nt=" "..l..nt end
+	    nt=nt:gsub("^ ","")
+	    text=tags..nt
 	end
 	
 	if res.stuff=="fake capitals" then
@@ -968,12 +1009,11 @@ help_i="- IMPORT/EXPORT -\n\nThis allows you to import OP/ED or signs (or whatev
 
 help_u="UPDATE LYRICS\n\nThis is probably the most complicated part, but if your songs have some massive styling with layers and mocha tracking,\nthis will make updating lyrics, which would otherwise be a pain in the ass, really easy.\nThe only styling that will prevent this from working is inline tags - gradient by character etc.\n\nThe prerequisite here is that your OP/ED MUST have NUMBERED lines! (See NUMBERS section - might be good to read that first.)\nThe numbers must correspond to the verses, not to lines in the script.\nIf line 1 of the SONG is mocha-tracked over 200 frames, all of those frames must be numbered 01.\nIt is thus most convenient to number the lines before you start styling, when it's still simple.\n\nHow this works:\nPaste your updated lyrics into the large, top-left area of the GUI.\nUse the Left and Right fields to set the markers to detect the right lines.\nWithout markers it will just look for numbers.\nIf your OP lines are numbered with \"OP01eng\", you must set \"OP\" under Left and \"eng\" under Right.\nFor now, everything is case-sensitive (I might change that later if it gets really annoying and pointless).\nYou must also correctly set the actor/effect choice in the bottom-right part of the GUI.\nIf you pasted lyrics, selected \"update lyrics\", and set markers and actor/effect, then hit Import, and lyrics will be updated.\n\nHow it works - example: The lyrics you pasted in the data box get their lines assigned with numbers from 1 to whatever.\nLet's say your markers are \"OP01eng\" and you're using the effect field.\nThe script looks for lines with that pattern in the effect field.\nWhen it finds one, it reads the number (for example \"01\" from \"OP01eng\")\nand replaces the line's text (skipping tags) with line 1 from the pasted lyrics.\nFor every line marked \"OP##eng\" it replaces the current lyrics with line ## from your pasted updated lyrics.\n\nTo make sure this doesn't fuck up tremendously, it shows you a log with all replacements at the end.\n\nThat's pretty much all you really need to know for updating lyrics, but there are a few more things.\n\nIf the script doesn't find any lines that match the markers, it gives you a message like this:\n\"The effect field of selected lines doesn't match given pattern...\"\nThis means the lines either don't exist in your selection, or you probably forgot to set the markers.\n\n\"style restriction\" is an extra option that lets you limit the replacing to lines whose style contains given pattern.\nLet's give some examples:\nYou check the restriction and type \"OP\" in the field below.\nYou can now select the whole script instead of selecting only the OP lines, and only lines with \"OP\" in style will be updated.\nYou may have the ED numbered the same way, but the \"OP\" restriction will ignore it.\nThis can be also useful if you have lines numbered just 01, 02 etc., and you have english and romaji, all mixed together.\nIf your styles are OP-jap and OP-eng, you can type \"jap\" in the restriction field if you're updating romaji\nto make sure the script doesn't update the english lines as well (replacing them with romaji).\nIt is, however, recommended to just use different markers, like j01 / e01.\n"
 
-	
-help_c="- CHAPTERS -\n\nThis will generate chapters from the .ass file\n\nMARKER: For a line to be used for chapters, it has to be marked with \"chapter\"/\"chptr\"/\"chap\" in actor/effect field (depending on settings) or the same 3 options as a separate comment, ie. {chapter} etc.\n\nCHAPTER NAME: What will be used as chapter name. It's either the content of the effect field, or the line's FIRST comment. If the comment is {OP first frame} or {ED start}, the script will remove \" first frame\" or \" start\", so you can keep those.\n\nIf you use default settings, just put \"chapter\" in actor field and make comments like {OP} or {Part A}.\n\nSubchapters: You can make subchapters like this {Part A::Scene 5}. This will be a subchapter of \"Part A\" called \"Scene 5\"."
+help_c="- CHAPTERS -\n\nThis will generate chapters from the .ass file\n\nMARKER: For a line to be used for chapters, it has to be marked with \"chapter\"/\"chptr\"/\"chap\" in actor/effect field (depending on settings) or the same 3 options as a separate comment, ie. {chapter} etc.\n\nCHAPTER NAME: What will be used as chapter name. It's either the content of the effect field, or the line's FIRST comment. If the comment is {OP first frame} or {ED start}, the script will remove \" first frame\" or \" start\", so you can keep those.\n\nIf you use default settings, just put \"chapter\" in actor field and make comments like {OP} or {Part A}.\n\nSubchapters: You can make subchapters like this {Part A::Scene 5}. This will be a subchapter of \"Part A\" called \"Scene 5\".\n\nIf you want a different LANGUAGE than 'eng', set it in the textbox below \"chapter mark\"\n\nCHAPTER MARK: Sets the selected chapter for selected line(s). Uses marker and name. (Doesn't create xml.)\nIf you want a custom chapter name, type it in the textbox below this."
 
 help_n="- NUMBERS -\n\nThis is a tool to number lines and add various markers to actor/effect fields.\nThe dropdown with \"01\" lets you choose how many leading zeros you want.\nThe Left and Right fields will add stuff to the numbers. If Left is \"x\" and Right is \"yz\", the first marker will be \"x01yz\".\nWhat makes this function much more versatile is the \"Mod\" field.\nIf you put in one number, then that's the number from which the numbering will start, so \"5\" -> 5, 6, 7, etc.\nYou can, however, use a comma or slash to modify the numbering some more.\n\"8,3\" or \"8/3\" will start numbering from 8, repeating each number 3 times, so 8, 8, 8, 9, 9, 9, 10, 10, 10, etc.\nThis allows you to easily number lines that are typeset in layers etc.\nAdditionally, you can set a limit in [], for example 1/3[2], which will start from 1, use each number 3 times,\nand only go up to 2 and then start again, so: 1 1 1 2 2 2 1 1 1 2 2 2\n2/3[4] would give you 2 2 2 3 3 3 4 4 4 1 1 1 2 2 2 3 3 3 4 4 4 1 1 1...\nIf the first number is higher than the limit, like 5/3[4], it will subtract the limit from the starting number.\n\n\"add to marker\" uses the Left and Right fields to add stuff to the current content of actor/effect/text.\nIf you number lines for the OP, you can set \"OP-\" in Left and \"-eng\" in Right to get \"OP-01-eng\".\n(Mod does nothing when adding markers.)"
 
-help_d="- DO STUFF -\n\n- Save/Load -\nYou can use this to save for example bits of text you need to paste frequently (like a multi-clipboard).\nPaste text in the data area to save it. If the data area is empty, the function will load your saved texts.\n\n- Lua Replacer -\nUse \"Left\" and \"Right\" for a lua regexp replace function.\n\n- Perl Replacer -\nUse \"Left\" and \"Right\" for a perl regexp replace function.\n\n- Lua Calc -\nUse \"Left\" and \"Right\" with lua regexp to perform calculations on captured numbers.\nCaptures will be named a, b, c... up to p (16 captures max).\nFunctions are +, -, *, /, and round(a), which rounds the number captured in a.\n> Example: (%d)(%d)(%d) -> a+1b*2c-3\nThis will match 3-digit patterns, add 1 to first digit, multiply the second by 2, and subtract 3 from the 3rd.\nIf you want to leave one of the captures as is, use .. to separate it from other letters: a+1b..c-3 \n> Example: pos%(([%d%.]+),([%d%.]+) -> pos(a+50,b-100\nThis will shift position right by 50 and up by 100. \n\n- Jump to Next -\nThis is meant to get you to the \"next sign\" in the subtitle grid.\nWhen mocha-tracking 1000+ lines, it can be a pain in the ass to find where one sign ends and another begins.\nSelect lines that belong to the current \"sign\", ie. different layers/masks/texts.\nThe script will search for the first line in the grid that doesn't match any of the selected ones, based on the \"Marker\".\n\n- Alpha Shift -\nShifts {\\alpha&HFF&} by one letter for each line. Text thus appears letter by letter.\nIt's an alternative to the script that spawns \\ko, but this works with shadow too.\nDuplicate a line with {\\alpha&HFF&} however many times you need and run the script on the whole selection.\n\n- Merge Inline Tags -\nSelect lines with the same text but different tags, and they will be merged into one line with tags from all of them. For example:\n{\\bord2}AB{\\shad3}C\nA{\\fs55}BC\n-> {\\bord2}A{\\fs55}B{\\shad3}C\n\n- Add Comment -\nText that you type here in this box will be added as a {comment} at the end of selected lines.\n\n- Make Comments Visible -\nNukes { } from comments, thus making them part of the text visible on screen.\n\n- Switch Commented/Visible -\nComments out what's visible and makes visible what's commented. Allows switching between two texts.\n\n- Honorificslaughterhouse -\nComments out honorifics.\n\n- Convert Framerate -\nConverts framerate from a to b where a is the input from \"Left\" and b is input from \"Right\".\n"
+help_d="- DO STUFF -\n\n- Save/Load -\nYou can use this to save for example bits of text you need to paste frequently (like a multi-clipboard).\nPaste text in the data area to save it. If the data area is empty, the function will load your saved texts.\n\n- Lua Replacer -\nUse \"Left\" and \"Right\" for a lua regexp replace function.\n\n- Perl Replacer -\nUse \"Left\" and \"Right\" for a perl regexp replace function.\n\n- Lua Calc -\nUse \"Left\" and \"Right\" with lua regexp to perform calculations on captured numbers.\nCaptures will be named a, b, c... up to p (16 captures max).\nFunctions are +, -, *, /, and round(a), which rounds the number captured in a.\n> Example: (%d)(%d)(%d) -> a+1b*2c-3\nThis will match 3-digit patterns, add 1 to first digit, multiply the second by 2, and subtract 3 from the 3rd.\nIf you want to leave one of the captures as is, use .. to separate it from other letters: a+1b..c-3 \n> Example: pos%(([%d%.]+),([%d%.]+) -> pos(a+50,b-100\nThis will shift position right by 50 and up by 100. \n\n- Jump to Next -\nThis is meant to get you to the \"next sign\" in the subtitle grid.\nWhen mocha-tracking 1000+ lines, it can be a pain in the ass to find where one sign ends and another begins.\nSelect lines that belong to the current \"sign\", ie. different layers/masks/texts.\nThe script will search for the first line in the grid that doesn't match any of the selected ones, based on the \"Marker\".\n\n- Alpha Shift -\nShifts {\\alpha&HFF&} by one letter for each line. Text thus appears letter by letter.\nIt's an alternative to the script that spawns \\ko, but this works with shadow too.\nDuplicate a line with {\\alpha&HFF&} however many times you need and run the script on the whole selection.\n\n- Merge Inline Tags -\nSelect lines with the same text but different tags, and they will be merged into one line with tags from all of them. For example:\n{\\bord2}AB{\\shad3}C\nA{\\fs55}BC\n-> {\\bord2}A{\\fs55}B{\\shad3}C\n\n- Add Comment -\nText that you type here in this box will be added as a {comment} at the end of selected lines.\n\n- Make Comments Visible -\nNukes { } from comments, thus making them part of the text visible on screen.\n\n- Switch Commented/Visible -\nComments out what's visible and makes visible what's commented. Allows switching between two texts.\n\n- Reverse text -\nReverses text (character by character). Nukes comments and inline tags.\n\n- Reverse Words -\nReverses text (word by word). Nukes comments and inline tags.\n\n- Honorificslaughterhouse -\nComments out honorifics.\n\n- Convert Framerate -\nConverts framerate from a to b where a is the input from \"Left\" and b is input from \"Right\".\n"
 
 
 function unimportant(subs, sel, act)
@@ -990,6 +1030,7 @@ if sub3==nil then sub3=1 end
 --if res.stuff~=nil then val_stuff=res.stuff else val_stuff="lua replacer" end
 msg={"If it breaks, it's your fault.","This should be doing something...","Breaking your computer. Please wait.","Unspecified operations in progress.","This may or may not work.","Trying to avoid bugs...","Zero one one zero one zero...","10110101001101101010110101101100001","I'm surprised anyone's using this","If you're seeing this for too long, it's a bad sign."}
 rm=math.random(1,#msg)	msge=msg[rm]
+dmark=deafault_chapter_mark
 unconfig={
 	-- Sub --
 	{x=0,y=16,width=3,height=1,class="label",label="Left                                                    "},
@@ -1016,7 +1057,9 @@ unconfig={
 	{x=11,y=9,width=1,height=1,class="dropdown",name="nam",items={"comment","effect"},value=default_chapter_name},
 	{x=9,y=10,width=2,height=1,class="label",label="filename from:"},
 	{x=11,y=10,width=1,height=1,class="dropdown",name="sav",items={"script","video"},value=default_save_name},
-	{x=9,y=11,width=3,height=1,class="edit",name="lang"},
+	{x=9,y=11,width=2,height=1,class="checkbox",name="chmark",label="chapter mark:",value=false,hint="just sets the marker. no xml."},
+	{x=11,y=11,width=1,height=1,class="dropdown",name="chap",items={"Intro","OP","Part A","Part B","Part C","ED","Preview"},value=dmark},
+	{x=9,y=12,width=3,height=1,class="edit",name="lang"},
 	
 	-- numbers
 	{x=9,y=13,width=2,height=1,class="label",label="Numbers"},
@@ -1026,7 +1069,7 @@ unconfig={
 	
 	-- stuff
 	{x=0,y=15,width=1,height=1,class="label",label="Stuff  "},
-	{x=1,y=15,width=2,height=1,class="dropdown",name="stuff",items={"save/load","lua replacer","perl replacer","lua calc","jump to next","alpha shift","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","fake capitals","format dates","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"},value="format dates"},
+	{x=1,y=15,width=2,height=1,class="dropdown",name="stuff",items={"save/load","lua replacer","perl replacer","lua calc","jump to next","alpha shift","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","reverse text","reverse words","fake capitals","format dates","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"},value=default_stuff},
 	{x=8,y=15,width=1,height=1,class="label",label="Marker:"},
 	
 	-- textboxes
@@ -1035,7 +1078,7 @@ unconfig={
 	
 	-- help
 	{x=9,y=0,width=3,height=1,class="dropdown",name="help",items={"--- Help menu ---","Import/Export","Update Lyrics","Do Stuff","Numbers","Chapters"},value="--- Help menu ---"},
-	{x=10,y=17,width=2,height=1,class="label",label=" Unimportant version: "..script_version},
+	{x=9,y=17,width=3,height=1,class="label",label="   Unimportant version: "..script_version},
 }
 
 	repeat
