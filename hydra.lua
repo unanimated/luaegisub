@@ -1,7 +1,7 @@
 ﻿script_name="HYDRA"
 script_description="A multi-headed typesetting tool"
 script_author="unanimated"
-script_version="3.6"
+script_version="3.61"
 
 -- SETTINGS - feel free to change these
 
@@ -122,13 +122,21 @@ function hh9(subs, sel)
 		  until m==lngth	end	--aegisub.log("\n text "..text)
 		text=text:gsub("%*","{"..tags.."}") :gsub("({"..tags.."})({[^}]-})","%2%1") 
 		:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") :gsub("_ast_","*")
+	    elseif res.tagpres=="custom pattern" then
+		pl1=esc(pl1)	pl3=esc(pl3)
+		text=text:gsub(pl1.."({\\[^}]-)}"..pl3,pl1.."%1"..tags.."}"..pl3)
+		if bkp==text then text=text:gsub(pl1..pl3,pl1.."{"..tags.."}"..pl3) end
 	    else
 	    -- AT ASTERISK POINT
 		initags=text:match("^{\\[^}]-}") if initags==nil then initags="" end
 		orig=text
-		text=place:gsub("%*","{"..tags.."}")
-		text=textmod(orig,text)
-		text=initags..text
+		replace=place:gsub("%*","{"..tags.."}")
+		v1=orig:gsub("{[^}]-}","")
+		v2=replace:gsub("{[^}]-}","")
+		if v1==v2 then
+		  text=textmod(orig,replace)
+		  text=initags..text
+		end
 	    end
 	else
 	-- REGULAR STARTING TAGS
@@ -811,7 +819,7 @@ hh3={
     
     {x=0,y=13,width=1,height=1,class="label",label="Tag position*:"},
     {x=1,y=13,width=5,height=1,class="edit",name="linetext",value=linetext,hint="Place asterisk where you want the tags"},
-    {x=6,y=13,width=2,height=1,class="dropdown",name="tagpres",items={"--- presets ---","before last char.","in the middle","1/4 of text","3/4 of text","1/8 of text","3/8 of text","5/8 of text","7/8 of text"},value="--- presets ---"},
+    {x=6,y=13,width=2,height=1,class="dropdown",name="tagpres",items={"--- presets ---","before last char.","in the middle","1/4 of text","3/4 of text","1/8 of text","3/8 of text","5/8 of text","7/8 of text","custom pattern"},value="--- presets ---"},
     
     {x=8,y=9,width=2,height=1,class="label",label="Apply to:"},
     {x=8,y=10,width=2,height=1,class="dropdown",name="applay",items=app_lay,value="All Layers"},
@@ -850,8 +858,6 @@ hh3={
 	"Transform mode add2all: the transforms will be added to all existing transforms in the line.",
 	"Additional tags: type any extra tags you want to add.",
 	"Tag position: This shows the text of your first line. Type * where you want your tags to go.",
-	"Tag position: You can create your own patterns. '*abc' will put tags before every instance of 'abc'.",
-	"Tag position: If other selected lines match the same pattern, it will apply to them too.",
 	"Tag position presets: This places tags in specified positions, proportionally for each selected line.",
 	"Special functions: select a function, click 'Special'.",
 	"Special functions - back and forth transform: select tags, set interval (ms). Missing initial tags are taken from style.",
