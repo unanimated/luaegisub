@@ -4,9 +4,13 @@
 script_name="Hyperdimensional Relocator"
 script_description="Makes things appear different from before"
 script_author="reanimated"
-script_version="2.7"
+script_version="2.72"
 
 --	SETTINGS	--
+
+default_pos="Align X"
+default_move="transmove"
+default_morph="round numbers"
 
 align_with_first=true
 posi_rotate=false
@@ -46,7 +50,7 @@ function positron(subs,sel)
         aegisub.progress.title(string.format("Depositing line %d/%d",x,#sel))
 	local line=subs[i]
 	local text=line.text
-	if x==1 and not text:match("\\pos") and res.posi~="clip to fax" and not res.posi:match"mirror" then 
+	if x==1 and not text:match("\\pos") and not res.posi:match"clip to" and not res.posi:match"mirror" then 
 	aegisub.dialog.display({{class="label",
 	    label="No \\pos tag in the first line.",x=0,y=0,width=1,height=2}},{"OK"},{close='OK'}) aegisub.cancel()  end
 		    
@@ -1105,10 +1109,10 @@ function transclip(subs,sel,act)
 	label="Error: second line must contain a rectangular clip.",x=0,y=0,width=1,height=2}},{"OK"},{close='OK'}) aegisub.cancel()
 	else
 	nextclip=nextext:match("\\i?clip%(([%d%.%-,]+)%)")
-	text=text:gsub("^({\\[^}]*)}","%1\\t("..res.accel..ctype.."("..nextclip..")}")
+	text=text:gsub("^({\\[^}]*)}","%1\\t("..res.accel..ctype.."("..nextclip.."))}")
       end
     else
-	text=text:gsub("^({\\[^}]*)}","%1\\t("..res.accel..ctype.."("..newcoord..")}")
+	text=text:gsub("^({\\[^}]*)}","%1\\t("..res.accel..ctype.."("..newcoord.."))}")
     end	
     
     text=text:gsub("0,0,1,\\","\\")
@@ -1437,13 +1441,17 @@ rin=subs[act]	tk=rin.text
 if tk:match"\\move" then 
 m1,m2,m3,m4=tk:match("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)") M1=m3-m1 M2=m4-m2 mlbl="mov: "..M1..","..M2
 else mlbl="" end
+if remember then posdrop=lastpos movedrop=lastmove morphdrop=lastmod
+else posdrop=default_pos movedrop=default_move morphdrop=default_morph
+end
 hyperconfig={
     {x=11,y=0,width=2,height=1,class="label",label="Teleportation"},
     {x=11,y=1,width=3,height=1,class="floatedit",name="eks",hint="X"},
     {x=11,y=2,width=3,height=1,class="floatedit",name="wai",hint="Y"},
 
     {x=0,y=0,width=3,height=1,class="label",label="Repositioning Field",},
-    {x=0,y=1,width=2,height=1,class="dropdown",name="posi",items={"Align X","Align Y","org to fax","clip to fax","clip to frz","horizontal mirror","vertical mirror","shake","shake rotation"},value="Align X",},
+    {x=0,y=1,width=2,height=1,class="dropdown",name="posi",value=posdrop,
+        items={"Align X","Align Y","org to fax","clip to fax","clip to frz","horizontal mirror","vertical mirror","shake","shake rotation"}},
     {x=0,y=2,width=2,height=1,class="floatedit",name="post",value=0},
     {x=0,y=3,width=1,height=1,class="checkbox",name="first",label="by first",value=align_with_first,hint="align with first line"},
     {x=1,y=3,width=1,height=1,class="checkbox",name="rota",label="rotate",value=posi_rotate,},
@@ -1453,15 +1461,15 @@ hyperconfig={
     {x=0,y=5,width=2,height=1,class="checkbox",name="space",label="space travel guide",value=false,},
     
     {x=3,y=0,width=2,height=1,class="label",label="Soul Bilocator"},
-    {x=3,y=1,width=1,height=1,class="dropdown",name="move",
-	items={"transmove","horizontal","vertical","multimove","rvrs. move","shiftstart","shiftmove","move clip"},value="transmove",},
+    {x=3,y=1,width=1,height=1,class="dropdown",name="move",value=movedrop,
+	items={"transmove","horizontal","vertical","multimove","rvrs. move","shiftstart","shiftmove","move clip"}},
     {x=3,y=2,width=1,height=1,class="checkbox",name="keep",label="keep both",value=keep_both,hint="keeps both lines for transmove"},
     {x=3,y=3,width=3,height=1,class="checkbox",name="rot",label="rotation acceleration",value=rotation_acceleration,hint="transmove option"},
     {x=3,y=5,width=3,height=1,class="label",name="moo",label=mlbl},
     
     {x=5,y=0,width=2,height=1,class="label",label="Morphing Grounds",},
-    {x=5,y=1,width=2,height=1,class="dropdown",name="mod",
-	items={"round numbers","line2fbf","join fbf lines","killmovetimes","fullmovetimes","fulltranstimes","move v. clip","set origin","calculate origin","transform clip","FReeZe","rotate 180","flip hor.","flip vert.","negative rot","vector2rect.","rect.2vector","find centre","extend mask","expand mask","flip mask","adjust drawing","randomask","randomize...","letterbreak","wordbreak"},value="round numbers"},
+    {x=5,y=1,width=2,height=1,class="dropdown",name="mod",value=morphdrop,
+	items={"round numbers","line2fbf","join fbf lines","killmovetimes","fullmovetimes","fulltranstimes","move v. clip","set origin","calculate origin","transform clip","FReeZe","rotate 180","flip hor.","flip vert.","negative rot","vector2rect.","rect.2vector","find centre","extend mask","expand mask","flip mask","adjust drawing","randomask","randomize...","letterbreak","wordbreak"}},
     {x=5,y=2,width=1,height=1,class="label",label="Round:",},
     {x=6,y=2,width=1,height=1,class="dropdown",name="rnd",items={"all","pos","move","org","clip","mask"},value="all"},
     {x=6,y=3,width=1,height=1,class="dropdown",name="freeze",
@@ -1496,6 +1504,8 @@ hyperconfig={
 	ms2fr=aegisub.frame_from_ms
 	fr2ms=aegisub.ms_from_frame
 	keyframes=aegisub.keyframes()
+	remember=true
+	lastpos=res.posi	lastmove=res.move	lastmod=res.mod
 		
 	if pressed=="Positron Cannon" then if res.space then guide(subs,sel) else sel=positron(subs, sel) end end
 	if pressed=="Hyperspace Travel" then
