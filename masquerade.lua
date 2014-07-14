@@ -1,7 +1,7 @@
 script_name="Masquerade"
 script_description="Masquerade"
 script_author="unanimated"
-script_version="2.1"
+script_version="2.11"
 
 -- \ko has been removed. much improved version is in 'Apply fade'. alpha shift does a similar thing differently.
 
@@ -33,7 +33,8 @@ alpha shift
 Alpha Time
 	Either select lines that are already timed for alpha timing and need alpha tags, or just one line that needs to be alpha timed.
 	In the GUI, split the line by hitting Enter where you want the alpha tags.
-	Alpha Text is for when yuo have the lines already timed and just need the tags.
+	If you make no line breaks, text will be split by spaces.
+	Alpha Text is for when you have the lines already timed and just need the tags.
 	Alpha Time is for one line. It will be split to equally long lines with alpha tags added.
 	If you add "@" to your line first, alpha tags will replace the @, and no GUI will pop up.
 	Example text:	This @is @a @test.
@@ -345,7 +346,7 @@ function shiftag(subs,sel,act)
 	  cstext=cstext:gsub("{%*?(\\[^}]-)}{%*?(\\[^}]-)}","{%1%2}")
 	end
 	
-	cstext=cstext:gsub("({\\[^}]-})",function(tg) return duplikill(tg) end)
+	cstext=cstext:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	
 	--shift start tags
 	startags=""
@@ -388,7 +389,7 @@ function shiftag(subs,sel,act)
 	text=tags..cstext
 	text=text:gsub("{(%*?\\[^}]-)}{(%*?\\[^}]-)}","{%1%2}")
 	:gsub("^{}","")
-	:gsub("({\\[^}]-})",function(tg) return duplikill(tg) end) :gsub("^{%*","{")
+	:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end) :gsub("^{%*","{")
 	
     rine.text=text
     subs[act]=rine
@@ -419,6 +420,7 @@ function alfatime(subs,sel)
 	data=alfatext:gsub("@","\n")
 	pressed="Alpha Time"
     end
+	if not data:match("\n") then data=data:gsub(" "," \n") end
 	-- sort data into a table
 	altab={}	data=data.."\n"
 	ac=1
