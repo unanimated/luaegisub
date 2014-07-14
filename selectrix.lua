@@ -16,12 +16,13 @@ N		-> "OP/ED in style" - includes any lines timed between the first and last lin
 	Presets:
 	same text (contin.) - reads texts of selected lines and selects all following lines with the same texts until it reaches new text
 	same text (all lines) - selects all lines in the script with the same texts as the current selection (clean text - no tags/comments)
+	move sel. up/down - moves the selection by 1 unless given a different number in the match field
 --]]
 
 script_name="Selectricks"
 script_description="Selectricks and Sortricks"
 script_author="unanimated"
-script_version="2.6"
+script_version="2.7"
 
 -- SETTINGS --				you can choose from the options below to change the default settings
 
@@ -277,6 +278,8 @@ end
 --	PRESET From Selection
 function presel(subs, sel)
 	sorttab={}
+	if res.pres=="move sel. up" then table.sort(sel,function(a,b) return a>b end) end
+	if res.match:match("^%d+$") then moveby=res.match:match("^(%d+)$") else moveby=1 end
     for i=#sel,1,-1 do
 	local line=subs[sel[i]]
 	local text=line.text
@@ -292,6 +295,12 @@ function presel(subs, sel)
 	    if res.pres=="move sel. to the top" or res.pres=="move sel. to bottom" then  line.ind=i
 		table.insert(sorttab,subs[sel[i]])
 		subs.delete(sel[i])
+	    end
+	    if res.pres=="move sel. up" then
+		sel[i]=sel[i]-moveby
+	    end
+	    if res.pres=="move sel. down" then
+		sel[i]=sel[i]+moveby
 	    end
     end
     if res.pres=="move sel. to the top" then    cs=1
@@ -365,7 +374,7 @@ function konfig(subs, sel)
 	    -- PRESETS
 	    {x=0,y=5,width=1,height=1,class="label",label="Sel. preset:"},
 	    {x=1,y=5,width=1,height=1,class="dropdown",name="pres",value="Default style - All",
-	    items={"Default style - All","nonDefault - All","OP in style","ED in style","layer 0","lines w/ comments 1","same text (contin.)","same text (all lines)","skiddiks, your their?","its/id/ill/were/wont","----from selection----","no-blur signs","commented lines","lines w/ comments 2","------sorting------","move sel. to the top","move sel. to bottom","sel: first to bottom","sel: last to top"}},
+	    items={"Default style - All","nonDefault - All","OP in style","ED in style","layer 0","lines w/ comments 1","same text (contin.)","same text (all lines)","skiddiks, your their?","its/id/ill/were/wont","----from selection----","no-blur signs","commented lines","lines w/ comments 2","move sel. up","move sel. down","------sorting------","move sel. to the top","move sel. to bottom","sel: first to bottom","sel: last to top"}},
 	    
 	    {x=2,y=0,width=1,height=1,class="label",label="Text:  "},
 	    {x=3,y=0,width=1,height=1,class="checkbox",name="case",label="case sensitive",value=lastcase},
@@ -384,7 +393,8 @@ function konfig(subs, sel)
 	pressed, res=aegisub.dialog.display(dialog_config,buttons,{ok='Set Selection',close='Cancel'})
 	if pressed=="Cancel" then aegisub.cancel() end
 	if pressed=="Preset" then 
-		if res.pres=="no-blur signs" or res.pres=="commented lines" or res.pres=="lines w/ comments 2" or res.pres=="move sel. to the top" or res.pres=="move sel. to bottom" or res.pres=="sel: last to top" or res.pres=="sel: first to bottom"
+		if res.pres=="no-blur signs" or res.pres=="commented lines" or res.pres=="lines w/ comments 2" 
+		    or res.pres:match"move sel." or res.pres:match"sel:"
 		then sel=presel(subs, sel)
 		else preset(subs, sel) end
 	end
