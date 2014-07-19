@@ -20,7 +20,7 @@ Negative fade gives you the inverse with respect to duration, so if dur=3000 and
 script_name="Apply fade"
 script_description="Applies fade to selected lines"
 script_author="unanimated"
-script_version="3.52"
+script_version="3.6"
 
 --	SETTINGS	--
 
@@ -191,11 +191,16 @@ function fadalpha(subs, sel)
 	if fadin<0 then fadin=0 end
 	if fadout<0 then fadout=0 end
 	blin="\\blur"..res.bli	blout="\\blur"..res.blu
+	if res.vin or res.vout then vfcheck() vt=math.floor((fr2ms(vframe+1)+fr2ms(vframe))/2) end
 	for z, i in ipairs(sel) do
-	    local line=subs[i]
-	    local text=subs[i].text
+	    line=subs[i]
+	    text=subs[i].text
 	    styleref=stylechk(subs,line.style)
-	    dur=line.end_time-line.start_time
+	    st=line.start_time
+	    et=line.end_time
+	    if res.vin then fadin=vt-st end
+	    if res.vout then fadout=et-vt end
+	    dur=et-st
 	    if not text:match("^{\\[^}]-}") then text="{\\arfa}"..text end
 
 	    col1=res.c1:gsub("#(%x%x)(%x%x)(%x%x)","&H%3%2%1&")
@@ -488,17 +493,20 @@ function fadeacross(subs, sel)
 	end
 end
 
-function vfade(subs, sel)
+function vfcheck()
     if aegisub.project_properties==nil then
 	aegisub.dialog.display({{class="label",label="Current frame unknown.\nProbably your Aegisub is too old.\nMinimum required: r8374."}},
 	{"OK"},{close='OK'}) aegisub.cancel()
     end
     vframe=aegisub.project_properties().video_position
-    fr2ms=aegisub.ms_from_frame
     if vframe==nil or fr2ms(1)==nil then
 	aegisub.dialog.display({{class="label",label="Current frame unknown. Probably no video loaded."}},
 	{"OK"},{close='OK'}) aegisub.cancel()
     end
+end
+
+function vfade(subs, sel)
+    vfcheck()
     for z, i in ipairs(sel) do
 	line=subs[i]
 	text=line.text
@@ -628,10 +636,11 @@ function fadeconfig(subs, sel)
 	    {x=3,y=8,width=3,height=1,class="checkbox",name="vout",label="out from current frame",value=false},
 	} 	
 	pressed, res=aegisub.dialog.display(dialog_config,{"Apply Fade", "Letter by Letter","Cancel"},{ok='Apply Fade',cancel='Cancel'})
+	fr2ms=aegisub.ms_from_frame
 	if pressed=="Apply Fade" then
-		if res.vin or res.vout then vfade(subs,sel)
-		elseif res.alf or res.blur or res.clr or res.crl then fadalpha(subs,sel)
+		if res.alf or res.blur or res.clr or res.crl then fadalpha(subs,sel)
 		elseif res.mult then fadeacross(subs,sel)
+		elseif res.vin or res.vout then vfade(subs,sel)
 		else fade(subs,sel) end
 	end
 	if pressed=="Letter by Letter" then if res.ko or res.word then koko_da(subs, sel) else fade(subs, sel) end end
