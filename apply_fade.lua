@@ -20,7 +20,7 @@ Negative fade gives you the inverse with respect to duration, so if dur=3000 and
 script_name="Apply fade"
 script_description="Applies fade to selected lines"
 script_author="unanimated"
-script_version="3.5"
+script_version="3.52"
 
 --	SETTINGS	--
 
@@ -152,7 +152,7 @@ function textmod(orig)
 	if stags==nil then stags="" end
 	text=text:gsub("^{\\[^}]-}","") :gsub("{[^\\}]-}","")
 	count=0
-	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
+	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
 	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
 	    pos=chars:len()+count
 	    tgl={p=pos,t=tak,a=as}
@@ -160,7 +160,7 @@ function textmod(orig)
 	    count=pos
 	end
 	count=0
-	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
+	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
 	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
 	    pos=chars:len()+count
 	    tgl={p=pos,t=tak,a=as}
@@ -196,6 +196,7 @@ function fadalpha(subs, sel)
 	    local text=subs[i].text
 	    styleref=stylechk(subs,line.style)
 	    dur=line.end_time-line.start_time
+	    if not text:match("^{\\[^}]-}") then text="{\\arfa}"..text end
 
 	    col1=res.c1:gsub("#(%x%x)(%x%x)(%x%x)","&H%3%2%1&")
 	    col2=res.c2:gsub("#(%x%x)(%x%x)(%x%x)","&H%3%2%1&")
@@ -353,6 +354,7 @@ function fadalpha(subs, sel)
 		if not text:match("\\fad%(0,0%)") then text=text:gsub("\\fad%(%d+,%d+%)","") end	-- nuke fade
 		text=text:gsub("\\\\","\\")
 	    end
+	    text=text:gsub("\\arfa","")
 	    line.text=text
 	    subs[i]=line
 	end
@@ -488,7 +490,7 @@ end
 
 function vfade(subs, sel)
     if aegisub.project_properties==nil then
-	aegisub.dialog.display({{class="label",label="Current frame unknown. Probably your Aegisub is too old."}},
+	aegisub.dialog.display({{class="label",label="Current frame unknown.\nProbably your Aegisub is too old.\nMinimum required: r8374."}},
 	{"OK"},{close='OK'}) aegisub.cancel()
     end
     vframe=aegisub.project_properties().video_position
@@ -617,7 +619,7 @@ function fadeconfig(subs, sel)
 	    {x=5,y=5,width=1,height=1,class="checkbox",name="del",label="Delete",value=false,hint="delete letter-by-letter"},
 	    
 	    {x=0,y=6,width=4,height=1,class="checkbox",name="ko",label="Letter by letter using \\ko",value=false},
-	    {x=4,y=6,width=4,height=1,class="checkbox",name="word",label="\\ko by word",value=false},
+	    {x=4,y=6,width=2,height=1,class="checkbox",name="word",label="\\ko by word",value=false},
 	    
 	    {x=0,y=7,width=4,height=1,class="checkbox",name="mult",label="Fade across multiple lines",value=false},
 	    {x=4,y=7,width=2,height=1,class="checkbox",name="time",label="Global time",value=false},
@@ -626,11 +628,11 @@ function fadeconfig(subs, sel)
 	    {x=3,y=8,width=3,height=1,class="checkbox",name="vout",label="out from current frame",value=false},
 	} 	
 	pressed, res=aegisub.dialog.display(dialog_config,{"Apply Fade", "Letter by Letter","Cancel"},{ok='Apply Fade',cancel='Cancel'})
-	if pressed=="Apply Fade" then 
-		if res.alf or res.blur or res.clr or res.crl then fadalpha(subs, sel)
-		elseif res.mult then fadeacross(subs, sel)
-		elseif res.vin or res.vout then vfade(subs,sel)
-		else fade(subs, sel) end 
+	if pressed=="Apply Fade" then
+		if res.vin or res.vout then vfade(subs,sel)
+		elseif res.alf or res.blur or res.clr or res.crl then fadalpha(subs,sel)
+		elseif res.mult then fadeacross(subs,sel)
+		else fade(subs,sel) end
 	end
 	if pressed=="Letter by Letter" then if res.ko or res.word then koko_da(subs, sel) else fade(subs, sel) end end
 	lastin=res.fadein		lastout=res.fadeout
