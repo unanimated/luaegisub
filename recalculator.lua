@@ -6,7 +6,7 @@
 script_name="Recalculator"
 script_description="recalculates sizes of things"
 script_author="unanimated"
-script_version="2.1"
+script_version="2.11"
 
 -- SETTINGS: type the names of checkboxes you want checked by default as you see them in the GUI, separated by commas
 
@@ -35,6 +35,7 @@ function multiply(subs, sel)
     c=(res.pc-100)/100
     oc=res.pc/100
     rnd=10^res.rnd
+    if res.alt then ac=res.altval/100 else ac=oc end
     if pressed=="Multiply" then alt=(res.altval-100)/100 else alt=res.altval end
     if res.mov1 or res.mov2 or res.mov3 or res.mov4 then move=1 else move=0 end
     if res.clipx or res.clipy then clip=1 else clip=0 end
@@ -102,18 +103,18 @@ function multiply(subs, sel)
 	return "\\fad("..a..","..calc2(tonumber(b))..")" end) end
 	
 	if clip==1 then neg=1
-		if res.anchor and pressed=="Multiply" then m=1/oc
+		if res.anchor and pressed=="Multiply" then m=1/oc m2=1/ac
 		  text=text:gsub("clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
 		    function(a,b,c,d) x=0 y=0
 		      if res.clipx then x=(a+c)/2-((a+c)/2)*m end
-		      if res.clipy then y=(b+d)/2-((b+d)/2)*m end
+		      if res.clipy then y=(b+d)/2-((b+d)/2)*m2 end
 		    return "clip("..a-x..","..b-y..","..c-x..","..d-y end)
 		  if text:match("clip%(m [%d%a%s%-%.]+%)") then
 		    ctext=text:match("clip%(m ([%d%a%s%-%.]+)%)")
 		    c1,c2=ctext:match("([%d%-%.]+)%s([%d%-%.]+)")
 		    x=0 y=0
 		    if res.clipx then x=c1-c1*m end
-		    if res.clipy then y=c2-c2*m end
+		    if res.clipy then y=c2-c2*m2 end
 		    ctext2=ctext:gsub("([%d%-%.]+)%s([%d%-%.]+)",function(a,b) return a-x.." "..b-y end)
 		    ctext=ctext:gsub("%-","%%-")
 		    text=text:gsub("clip%(m "..ctext,"clip(m "..ctext2)
