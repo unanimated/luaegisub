@@ -1,7 +1,7 @@
 ﻿script_name="MultiCopy"
 script_description="Copy tags or text from multiple lines and paste to others"
 script_author="unanimated"
-script_version="2.01"
+script_version="2.1"
 
 -- Use the Help button for info
 
@@ -12,6 +12,8 @@ require "clipboard"
 function copy(subs, sel)	-- tags
 	copytags=""
     for x, i in ipairs(sel) do
+    	cancelled=aegisub.progress.is_cancelled()	if cancelled then aegisub.cancel() end
+	aegisub.progress.title(string.format("Copying from line: %d/%d",x,#sel))
 	text=subs[i].text
 	if text:match("^({\\[^}]*})") then tags=text:match("^({\\[^}]*})") copytags=copytags..tags.."\n" end
 	if x==#sel then copytags=copytags:gsub("\n$","") end
@@ -26,6 +28,8 @@ end
 function copyt(subs, sel)	-- text
 	copytekst=""
     for x, i in ipairs(sel) do
+    	cancelled=aegisub.progress.is_cancelled()	if cancelled then aegisub.cancel() end
+	aegisub.progress.title(string.format("Copying from line: %d/%d",x,#sel))
 	text=subs[i].text
 	text=text:gsub("^{\\[^}]-}","")
 	copytekst=copytekst..text.."\n"
@@ -46,8 +50,14 @@ function copyc(subs, sel)	-- clip etc
 	cc=""
 	tag=res.dat:gsub("\n","")
     for x, i in ipairs(sel) do
+	cancelled=aegisub.progress.is_cancelled()	if cancelled then aegisub.cancel() end
+	aegisub.progress.title(string.format("Copying from line: %d/%d",x,#sel))
 	line=subs[i]
 	text=subs[i].text
+	vis=text:gsub("{[^}]-}","")
+	nospace=vis:gsub(" ","")
+	comments=""
+	for com in text:gmatch("{[^\\}]-}") do comments=comments..com end
 	tagst=text:match("^{\\[^}]-}") if tagst==nil then tagst="" end
 	tags=tagst:gsub("\\t%([^%(%)]+%)","") :gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","")
 	
@@ -90,6 +100,9 @@ function copyc(subs, sel)	-- clip etc
 	if CM=="effect" then cc=cc..line.effect.."\n" end
 	if CM=="style" then cc=cc..line.style.."\n" end
 	if CM=="duration" then cc=cc..line.end_time-line.start_time.."\n" end
+	if CM=="comments" then cc=cc..comments.."\n" end
+	if CM=="# of characters" then cc=cc..vis:len().."\n" end
+	if CM=="# of chars (no space)" then cc=cc..nospace:len().."\n" end
 	
 	if x==#sel then cc=cc:gsub("\n$","") end
     end
@@ -283,6 +296,7 @@ raw=res.dat	raw=raw:gsub("\n","")
 	if PM=="actor" then line.actor=raw end
 	if PM=="effect" then line.effect=raw end
 	if PM=="duration" then line.end_time=line.start_time+raw end
+	if PM=="comments" then text=text..raw end
 	if PM=="text mod." then text=textmod(raw) end
 	if PM=="gbc text" then
 	    stags=text:match("^({\\[^}]-})")
@@ -290,7 +304,7 @@ raw=res.dat	raw=raw:gsub("\n","")
 	    lastag=text:match("({\\[^}]-}).$")
 	    text=stags..raw:gsub("(.)$",lastag.."%1")
 	end
-	text=text:gsub("({\\[^}]-})",function(tg) return duplikill(tg) end)
+	text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	text=text:gsub("\\mc","")
 	text=text:gsub("{}","")
 	line.text=text
@@ -490,6 +504,7 @@ raw=res.dat	raw=raw:gsub("\n","")
 	if PM=="actor" then line.actor=text2 end
 	if PM=="effect" then line.effect=text2 end
 	if PM=="duration" then line.end_time=line.start_time+text2 end
+	if PM=="comments" then text=text..text2 end
 	if PM=="text mod." then text=textmod(text2) end
 	if PM=="gbc text" then
 	    stags=text:match("^({\\[^}]-})")
@@ -502,7 +517,7 @@ raw=res.dat	raw=raw:gsub("\n","")
 	    text=line.text
 	end
 	
-	text=text:gsub("({\\[^}]-})",function(tg) return duplikill(tg) end)
+	text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	text=text:gsub("\\mc","")
 	text=text:gsub("{}","")
 	line.text=text
@@ -657,13 +672,13 @@ end
 function multicopy(subs, sel)
 	gui={
 	{x=1,y=18,width=3,height=1,class="dropdown",name="copymode",value="tags",
-	items={"tags","text","all","------","export CR for pad","------","clip","position","blur","border","\\1c","\\3c","\\4c","alpha","\\fscx","\\fscy","any tag","------","layer","duration","actor","effect","style"}},
+	items={"tags","text","all","------","export CR for pad","------","clip","position","blur","border","\\1c","\\3c","\\4c","alpha","\\fscx","\\fscy","any tag","------","layer","duration","actor","effect","style","comments","# of characters","# of chars (no space)"}},
 	{x=0,y=17,width=10,height=1,class="label",label="Copy stuff from selected lines, select new lines [same number of them], run script again to paste stored data to new lines"},
 	{x=0,y=0,width=10,height=17,class="textbox",name="dat"},
 	{x=0,y=18,width=1,height=1,class="label",label="Copy:"},
 	{x=4,y=18,width=1,height=1,class="label",label="Paste extra: "},
 	{x=5,y=18,width=1,height=1,class="dropdown",name="pastemode",value="all",
-	items={"all","text mod.","super pasta","gbc text","de-irc","clip","position","blur","border","\\1c","\\3c","\\4c","alpha","\\fscx","\\fscy","\\fscx\\fscy","any tag","------","layer","duration","actor","effect"}},
+	items={"all","text mod.","super pasta","gbc text","de-irc","clip","position","blur","border","\\1c","\\3c","\\4c","alpha","\\fscx","\\fscy","\\fscx\\fscy","any tag","------","layer","duration","actor","effect","comments"}},
 	{x=6,y=18,width=5,height=1,class="checkbox",name="oneline",label="Paste one line to all selected lines",value=false},
 	}
 	buttons={"Copy","Paste tags","Paste text","Paste spec.","Paste from clipboard","Help","Cancel"}
