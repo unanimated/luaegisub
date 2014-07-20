@@ -1,7 +1,7 @@
 ﻿script_name="Unimportant"
 script_description="Import stuff, number stuff, chapter stuff, replace stuff, do other stuff to stuff."
 script_author="unanimated"
-script_version="1.7"
+script_version="1.8"
 
 require "clipboard"
 re=require'aegisub.re'
@@ -38,6 +38,7 @@ default_stuff="lua replacer"		-- options: just read them in the menu (backslashe
 --	--	--	--
 
 function addtag(tag,text) text=text:gsub("^({\\[^}]-)}","%1"..tag.."}") return text end
+function round(num) num=math.floor(num+0.5) return num end
 
 function important(subs, sel, act)
 	aline=subs[act]
@@ -484,6 +485,8 @@ function stuff(subs, sel)
     repl=0
     data={}	raw=res.dat.."\n"
     for dataline in raw:gmatch("(.-)\n") do table.insert(data,dataline) end
+    
+    -- DATES GUI --
     if res.stuff=="format dates" then
 	dategui=
 	{{x=0,y=0,class="dropdown",name="date",value="January 1st",items={"January 1","January 1st","1st of January","1st January"}},
@@ -492,9 +495,229 @@ function stuff(subs, sel)
 	if pres=="Cancel" then aegisub.cancel() end
 	datelog=""
     end
+    
+    -- DISSOLVE GUI ---------------------------------------------------------------------------------------------
+    if res.stuff=="dissolve text" then
+	if dlast then ddistance=v_dist ddlines=dlines dshape=shape dalter=alternate dissin=disin otherd=otherdis v2direction=v2d
+	else ddistance=10 ddlines=10 dshape="square" dalter=true dissin=false otherd=false v2direction="randomly"
+	end
+	dissgui={
+	  {x=0,y=0,class="label",label="Distance between points:  "},
+	  {x=1,y=0,class="floatedit",name="ddist",value=ddistance,min=4,step=2},
+	  {x=0,y=1,class="label",label="Shape of clips:"},
+	  {x=1,y=1,class="dropdown",name="shape",items={"square","square 2","diamond","triangle 1","triangle 2","hexagon","wave/hexagram","vertical lines","horizontal lines"},value=dshape},
+	  {x=0,y=2,class="checkbox",name="alt",label="Shift even rows (all except vertical/horizontal lines)",value=dalter,width=2},
+	  {x=0,y=3,class="checkbox",name="disin",label="Reverse effect (fade in rather than out)",value=dissin,width=2},
+	  {x=0,y=4,class="checkbox",name="otherdiss",label="Dissolve v2.  ...  Lines:",value=otherd,hint="only square, diamond, vertical lines"},
+	  {x=1,y=4,class="floatedit",name="modlines",value=ddlines,min=6,step=2},
+	  {x=0,y=5,class="label",label="      Dissolve v2:   Dissolve"},
+	  {x=1,y=5,class="dropdown",name="v2dir",items={"randomly","from top","from bottom","from left","from right"},value=v2direction},
+	}
+	pres,rez=aegisub.dialog.display(dissgui,{"OK","What Is This","Cancel"},{ok='OK',close='Cancel'})
+	if pres=="What Is This" then
+	    dishelp={x=0,y=6,width=10,height=8,class="textbox",value="The script can either automatically draw a clip around the text,\nor you can make your own clip.\nThe automation only considers position, alignment, and scaling,\nso for anything more complex, make your own.\nYou can just try it without a clip,\nand if the result isn't right, draw a clip first. (Only 4 points!)\n\n'Distance between points' will be the distance between the\nstarting points of all the little iclips.\nLess Distance = more clips = more lag,\nso use the lowest values only for smaller text.\nYou can run this on one line or fbf lines.\nThe ideal 'fade' is as many frames as the given Distance.\nThat way the clips grow by 1 pixel per frame.\nAny other way doesn't look too good,\nbut you can apply Distance 10 over 20 lines\nand have each 2 consecutive lines identical.\nMore Distance than lines doesn't look so bad, and the effect is 'faster'.\nIf you apply this to 1 line, the line will be split to have the effect applied to as many frames as the Distance is. (This is preferred.)\nFor hexagon, the actual distance is twice the input. (It grows faster.)\n\nThe shapes should be self-explanatory, so just experiment.\n\n'Shift even rows' means that even rows will have an offset\nfrom odd rows by half of the given Distance.\nNot checking this will have a slightly different and less regular effect,\nthough it also depends on the shape. Again, experiment.\n\nIf you need to apply this to several layers, you have to do it one by one. The GUI remembers last values. But more layers = more lag.\n\nAll kinds of things can make this lag, so use carefully.\nLines are less laggy than other shapes.\nHorizontal lines are the least laggy. (Unless you have vertical text.)\n\nFor longer fades, use more Distance.\nThis works great with vertical lines but is pretty useless with horizontal.\n\n'Reverse effect' is like fade in while the default is fade out.\nWith one line selected, it applies to the first frames.\n\n'Dissolve v2' is a different kind of dissolve\nand only works with square, diamond, and vertical lines.\nLine count for this is independent on distance between points.\nIt's the only effect that allows Distance 4.\n'Shift even rows' has no effect here.\n\nYou can set a direction of Dissolve v2.\nObviously top and bottom is nonsense for vertical lines.\n'Reverse effect' reverses the direction too, so choose the opposite.\n\nThere may be weird results with some combinations of settings.\nThere may be some malfunctions, as the script is pretty complex.\nSome of them -might- be fixed by reloading automation scripts.\nMakes no sense with \\move. Nukes \\fad.\n\nThere are some fun side effects.\nFor example with 'square 2' and 'Shift even rows',\nyou get a brick wall on the last frame."}
+	    table.insert(dissgui,dishelp)
+	    pres,rez=aegisub.dialog.display(dissgui,{"OK","Cancel"},{ok='OK',close='Cancel'})
+	end
+	if pres=="Cancel" then aegisub.cancel() end
+	dlast=true
+	v_dist=rez.ddist
+	shape=rez.shape
+	alternate=rez.alt
+	disin=rez.disin
+	otherdis=rez.otherdiss
+	dlines=rez.modlines
+	v2d=rez.v2dir
+	dis2=false
+	if v2d=="randomly" then dir=5 end
+	if v2d=="from top" then dir=8 end
+	if v2d=="from bottom" then dir=2 end
+	if v2d=="from left" then dir=4 end
+	if v2d=="from right" then dir=6 end
+	if not otherdis and v_dist==4 then
+	  aegisub.dialog.display({{class="label",label="Distance 4 is only allowed for square mod. Changing to 6."}},{"OK"},{close='OK'})
+	  v_dist=6
+	end
+	if otherdis then
+	    if shape=="square" or shape=="diamond" or shape=="vertical lines" then dis2=true else dis2=false end
+	    if shape=="square" then alternate=false end
+	    if shape=="diamond" then alternate=true end
+	end
+	if dis2 and #sel==1 then linez=dlines 
+	elseif dis2 and #sel>1 then linez=#sel
+	else linez=v_dist end
+	
+	-- DISSOLVE create lines if only one selected ------------------------
+	if #sel==1 then
+	    rine=subs[sel[1]]
+	    rine.text=rine.text:gsub("\\fad%(.-%)","")
+	    start=rine.start_time	    endt=rine.end_time
+	    startf=ms2fr(start)		    endf=ms2fr(endt)
+	    lframes=ms2fr(endt-start)
+	      if lframes<linez then
+		aegisub.dialog.display({{class="label",label="Line must be at least "..linez.." frames long."}},
+		{"OK"},{close='OK'})		aegisub.cancel()
+	      end
+	    if disin then
+	      for l=1,linez do
+		rine.start_time=fr2ms(startf+l-1)
+		rine.end_time=fr2ms(startf+l)
+		subs.insert(sel[1],rine)
+		sel[1]=sel[1]+1
+	      end
+	      for s=1,linez do   table.insert(sel,sel[1]-s)   end
+	      table.sort(sel)
+	      rine.start_time=fr2ms(startf+linez)
+	      rine.end_time=endt
+	      subs[sel[#sel]]=rine
+	      table.remove(sel,#sel)
+	    else
+	      for l=1,linez do
+		rine.start_time=fr2ms(endf-l)
+		rine.end_time=fr2ms(endf-l+1)
+		subs.insert(sel[1]+1,rine)
+	      end
+	      for s=1,linez do   table.insert(sel,sel[1]+s)   end
+	      rine.start_time=start
+	      rine.end_time=fr2ms(endf-linez)
+	      subs[sel[1]]=rine
+	      table.remove(sel,1)
+	    end
+	end
+    if disin then table.sort(sel,function(a,b) return a>b end) end
+    
+    -- DISSOLVE Initial Calculations -----------------------------------------------------------------
+    line=subs[sel[1]]
+    text=line.text
+	text=text:gsub("\\clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c,d) 
+		a=math.floor(a) b=math.floor(b) c=math.ceil(c) d=math.ceil(d) 
+		return string.format("\\clip(m %d %d l %d %d %d %d %d %d)",a,b,c,b,c,d,a,d) end)
+	-- draw clip when no clip present
+	if not text:match("\\clip") then
+	    styleref=stylechk(subs,line.style)
+	    vis=text:gsub("{[^}]-}","")
+	    width,height,descent,ext_lead=aegisub.text_extents(styleref,vis)
+	    bord=text:match("\\bord([%d%.]+)")	if bord==nil then bord=styleref.outline end
+	    bord=math.ceil(bord)
+	    scx=text:match("\\fscx([%d%.]+)")	if scx==nil then scx=styleref.scale_x end	scx=scx/100
+	    scy=text:match("\\fscy([%d%.]+)")	if scy==nil then scy=styleref.scale_y end	scy=scy/100
+	    wi=round(width)
+	    he=round(height)
+	    text2=getpos(subs,text)
+	    if not text:match("\\pos") then text=text2 end
+	    xx,yy=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)")
+	    if h_al=="left" then	cx1=xx			cx2=xx+wi*scx end
+	    if h_al=="right" then	cx1=xx-wi*scx		cx2=xx end
+	    if h_al=="mid" then	cx1=xx-wi/2*scx		cx2=xx+wi/2*scx end
+	    if v_al=="top" then	cy1=yy			cy2=yy+he*scy end
+	    if v_al=="bottom" then	cy1=yy-he*scy		cy2=yy end
+	    if v_al=="mid" then	cy1=yy-he/2*scy		cy2=yy+he/2*scy end
+	    cx1=math.floor(cx1-bord)   cx2=math.ceil(cx2+bord)
+	    cy1=math.floor(cy1-bord)   cy2=math.ceil(cy2+bord)
+	    text=addtag("\\clip(m "..cx1.." "..cy1.." l "..cx2.." "..cy1.." "..cx2.." "..cy2.." "..cx1.." "..cy2..")",text)
+	end
+	-- get outermost clip points even if it's irregular (though it should be fucking regular)
+	exes={} wais={}
+	klip=text:match("\\clip%(m [%d%-]+ [%d%-]+ l [%d%-]+ [%d%-]+ [%d%-]+ [%d%-]+ [%d%-]+ [%d%-]+")
+	for ex,wai in klip:gmatch("([%d%-]+) ([%d%-]+)") do
+		table.insert(exes,tonumber(ex))
+		table.insert(wais,tonumber(wai))
+	end
+	table.sort(exes)	  table.sort(wais)
+	x1=exes[1]-2	  x2=exes[4]+2	  y1=wais[1]-2	  y2=wais[4]+2
+	width=x2-x1	height=y2-y1
+	h_dist=2*v_dist
+	if shape=="hexagon" then h_dist=math.floor(h_dist*2) end
+	rows=math.ceil(height/v_dist)
+	rows2=math.ceil(height/v_dist/2)
+	points=math.ceil(width/h_dist)+1
+	if shape=="horizontal lines" then vert=2*v_dist rows=math.ceil(rows/2)+1 else vert=v_dist end
+	if shape:match("triangle") or shape=="wave/hexagram" then rows=rows+1 end
+	  
+	xpoints={}
+	for w=1,points do point=x1+h_dist*(w-1) table.insert(xpoints,point) end
+	ypoints={}
+	for w=1,rows do point=y1+vert*(w-1) table.insert(ypoints,point) end
+	ypoints2={}
+	for w=1,rows2 do point=y1+2*v_dist*(w-1) table.insert(ypoints2,point) end
+	  
+	-- this is all centers of individual iclip shapes
+	allpoints1={}
+	for w=1,#ypoints do
+	    for z=1,#xpoints do
+		u=0
+		if alternate and w%2==0 then u=h_dist/2 else u=0 end	-- every even row is shifted by half of h_dist from odd rows
+		rnum=math.random(2000,6000)
+		if dir==5 then rindex=rnum end
+		if dir==8 then rindex=rnum*ypoints[w]^2 end
+		if dir==4 then rindex=rnum*xpoints[z]^2 end
+		if dir==2 then rindex=0-rnum*ypoints[w]^2 end
+		if dir==6 then rindex=0-rnum*xpoints[z]^2 end
+		point={xpoints[z]+u,ypoints[w],rindex}
+		table.insert(allpoints1,point)
+	    end
+	end
+	  
+	allpoints2={}
+	for w=1,#ypoints2 do
+	    for z=1,#xpoints do
+		u=0
+		if alternate and w%2==0 then u=h_dist/2 else u=0 end	-- every even row is shifted by half of h_dist from odd rows
+		rnum=math.random(2000,6000)
+		if dir==5 then rindex=rnum end
+		if dir==8 then rindex=rnum*ypoints2[w]^2 end
+		if dir==4 then rindex=rnum*xpoints[z]^2 end
+		if dir==2 then rindex=0-rnum*ypoints2[w]^2 end
+		if dir==6 then rindex=0-rnum*xpoints[z]^2 end
+		point={xpoints[z]+u,ypoints2[w],rindex}
+		table.insert(allpoints2,point)
+	    end
+	end
+	
+	if dis2 and shape=="square" or shape=="square 2" or shape=="hexagon" then allpoints=allpoints2 else allpoints=allpoints1 end
+	if dis2 and shape=="vertical lines" then allpoints={}
+	    for w=1,#xpoints do
+		rnum=math.random(2000,6000)
+		if dir==4 then rindex=rnum*xpoints[w]^2
+		elseif dir==6 then rindex=0-rnum*xpoints[w]^2
+		else rindex=rnum end
+		table.insert(allpoints,{xpoints[w],0,rindex})
+	    end
+	end
+	if dis2 then table.sort(allpoints,function(a,b) return a[3]<b[3] end) end
+	
+	-- DISSOLVE v2 Calculations ------------------------------------------
+	if dis2 then d2c=0 fullclip="" dis2tab={} rnd=1 ppl=#allpoints/linez
+	    for w=1,#allpoints do
+	      pt=allpoints[w]
+	      vd=v_dist
+	      
+	      if shape=="square" then
+	      krip="m "..pt[1]-vd.." "..pt[2]-vd.." l "..pt[1]+vd.." "..pt[2]-vd.." "..pt[1]+vd.." "..pt[2]+vd.." "..pt[1]-vd.." "..pt[2]+vd.." "
+	      end
+	      
+	      if shape=="diamond" then
+		krip="m "..pt[1].." "..pt[2]-vd.." l "..pt[1]+vd.." "..pt[2].." "..pt[1].." "..pt[2]+vd.." "..pt[1]-vd.." "..pt[2].." "
+	      end
+	      
+	      if shape=="vertical lines" then
+		krip="m "..pt[1]-v_dist.." "..y1.." l "..pt[1]+v_dist.." "..y1.." "..pt[1]+v_dist.." "..y2.." "..pt[1]-v_dist.." "..y2.." "
+	      end
+	      
+	      fullclip=fullclip..krip
+	      d2c=d2c+1
+	      if d2c>=math.floor(ppl) and w>=ppl*rnd then d2c=0 rnd=rnd+1 table.insert(dis2tab,fullclip) end
+	  end
+	end
+    -- DISSOLVE END --------------------------------------------------------------------
+    end
+    
+    if res.stuff:match("replacer") then table.sort(sel,function(a,b) return a>b end) end
+    
     for i=#sel,1,-1 do
         line=subs[sel[i]]
         text=line.text
+	style=line.style
 	
 	if res.stuff=="save/load" and i==1 then
 	    if savedata==nil then savedata="" end
@@ -512,31 +735,44 @@ function stuff(subs, sel)
 	if res.stuff=="lua replacer" then
 	    lim=sub3:match("^%d+")
 	    if lim==nil then limit=1 else limit=tonumber(lim) end
-	    replicant1=sub1:gsub("\\","\\")
-	    replicant2=sub2:gsub("\\","\\")
-	    replicant1=sub1:gsub("\\\\","\\")
-	    replicant2=sub2:gsub("\\\\","\\")
+	    replicant1=sub1:gsub("\\","\\"):gsub("\\\\","\\")
+	    replicant2=sub2:gsub("\\","\\"):gsub("\\\\","\\")
 	    tk=text
 	    count=0
 	    repeat 
 	    text=text:gsub(replicant1,replicant2) count=count+1
 	    until count==limit
-	    if text~=tk then repl=repl+1 end
+	    if text~=tk then repl=repl+1
+	      if res.log then 
+		r1=replicant1:gsub("%%%(","_L_"):gsub("%%%)","_R_"):gsub("%(",""):gsub("%)",""):gsub("_L_","%%%("):gsub("_R_","%%%)")
+		for l1 in tk:gmatch(r1) do
+		  aegisub.log("\nOrig: "..l1)
+		  l2=l1:gsub(replicant1,replicant2)
+		  aegisub.log("\nMod: "..l2)
+		end
+	      end
+	    end
 	end
 	
 	if res.stuff=="perl replacer" then
 	    lim=sub3:match("^%d+")
 	    if lim==nil then limit=1 else limit=tonumber(lim) end
-	    replicant1=sub1:gsub("\\","\\")
-	    replicant2=sub2:gsub("\\","\\")
-	    replicant1=sub1:gsub("\\\\","\\")
-	    replicant2=sub2:gsub("\\\\","\\")
+	    replicant1=sub1:gsub("\\","\\"):gsub("\\\\","\\")
+	    replicant2=sub2:gsub("\\","\\"):gsub("\\\\","\\")
 	    tk=text
 	    count=0
 	    repeat
 	    text=re.sub(text,replicant1,replicant2) count=count+1
 	    until count==limit
-	    if text~=tk then repl=repl+1 end
+	    if text~=tk then repl=repl+1 
+	      if res.log then 
+		for r1 in re.gfind(tk,replicant1) do
+		  aegisub.log("\nOrig: "..r1)
+		  r2=re.sub(r1,replicant1,replicant2)
+		  aegisub.log("\nMod: "..r2)
+		end
+	      end
+	    end
 	end
 	
 	if res.stuff=="lua calc" then
@@ -685,7 +921,81 @@ function stuff(subs, sel)
 	    end
 	end
 	
-
+	-- DISSOLVE Individual Lines --------------------------------------------------------------------------------------
+	if res.stuff=="dissolve text" then
+	  
+	  fullklip=""
+	  -- radius of clips based on # of sel. lines and shapes
+	  r=math.ceil(i*linez/#sel-1) 
+	  if shape=="diamond" and not alternate then r=math.floor(r*1.5) end
+	  if shape:match("triangle") and alternate then r=math.floor(r*1.4) end
+	  if shape:match("triangle") and not alternate then r=math.floor(r*1.5) end
+	  if shape=="wave/hexagram" then r=math.floor(r*1.55) end
+	  xpt=0		sw=0	osq=0
+	  
+	  if not dis2 and not shape:match("lines") and r>0 then
+	    for w=1,#allpoints do
+	      pt=allpoints[w]
+	      
+	      if shape=="square" or shape=="square 2" then
+		krip="m "..pt[1]-r.." "..pt[2]-r.." l "..pt[1]+r.." "..pt[2]-r.." "..pt[1]+r.." "..pt[2]+r.." "..pt[1]-r.." "..pt[2]+r.." "
+	      end
+	      
+	      if shape=="diamond" then
+		krip="m "..pt[1].." "..pt[2]-r.." l "..pt[1]+r.." "..pt[2].." "..pt[1].." "..pt[2]+r.." "..pt[1]-r.." "..pt[2].." "
+	      end
+	      
+	      if shape=="triangle 1" then
+		krip="m "..pt[1].." "..pt[2]-r.." l "..pt[1]+r.." "..pt[2]+r.." "..pt[1]-r.." "..pt[2]+r.." "
+	      end
+	      
+	      if shape=="triangle 2" then
+		krip="m "..pt[1]-r.." "..pt[2]-r.." l "..pt[1]+r.." "..pt[2]-r.." "..pt[1].." "..pt[2]+r.." "
+	      end
+	      
+	      if shape=="hexagon" then
+		krip="m "..pt[1].." "..pt[2]-2*r.." l "..pt[1]+2*r.." "..pt[2]-r.." "..pt[1]+2*r.." "..pt[2]+r.." "..pt[1].." "..pt[2]+2*r.." "..pt[1]-2*r.." "..pt[2]+r.." "..pt[1]-2*r.." "..pt[2]-r.." "
+	      end
+	      
+	      if shape=="wave/hexagram" then
+		if sw==0 then
+		krip="m "..pt[1].." "..pt[2]-r+1 .." l "..pt[1]+r.." "..pt[2]+r+1 .." "..pt[1]-r.." "..pt[2]+r+1 .." "
+		else
+		krip="m "..pt[1]-r.." "..pt[2]-r.." l "..pt[1]+r.." "..pt[2]-r.." "..pt[1].." "..pt[2]+r.." "
+		end
+		xpt=xpt+1
+		if xpt==#xpoints then xpt=0 sw=1-sw end
+	      end
+	      
+	      fullklip=fullklip..krip
+	    end
+	  end
+	  
+	  if not dis2 and shape=="vertical lines" and r>0 then
+	    for w=1,#xpoints do
+	      pt=xpoints[w]
+		krip="m "..pt-r.." "..y1.." l "..pt+r.." "..y1.." "..pt+r.." "..y2.." "..pt-r.." "..y2.." "
+	      fullklip=fullklip..krip
+	    end
+	  end
+	  
+	  if not dis2 and shape=="horizontal lines" and r>0 then
+	    for w=1,#ypoints do
+	      pt=ypoints[w]
+		krip="m "..x1-vert.." "..pt-r.." l "..x2+vert.." "..pt-r.." "..x2+vert.." "..pt+r.." "..x1-vert.." "..pt+r.." "
+	      fullklip=fullklip..krip
+	    end
+	  end
+	  
+	  if dis2 and r>0 then fullklip=dis2tab[r] end
+	  
+	  fullklip=fullklip:gsub(" $","")
+	  
+	  text=text:gsub("\\clip%(.-%)","")
+	  if r>0 then text=addtag("\\iclip("..fullklip..")",text) end
+	end
+	-- DISSOLVE END 2 ----------------------------------------------
+	
 	line.text=text
 	subs[sel[i]]=line
     end
@@ -919,6 +1229,52 @@ function duplikill(tagz)
 	return tagz
 end
 
+function stylechk(subs,stylename)
+  for i=1, #subs do
+    if subs[i].class=="style" then
+      local st=subs[i]
+      if stylename==st.name then styleref=st break end
+    end
+  end
+  return styleref
+end
+
+function getpos(subs,text)
+    for i=1, #subs do
+        if subs[i].class=="info" then
+	    local k=subs[i].key
+	    local v=subs[i].value
+	    if k=="PlayResX" then resx=v end
+	    if k=="PlayResY" then resy=v end
+        end
+	if resx==nil then resx=0 end
+	if resy==nil then resy=0 end
+        if subs[i].class=="style" then
+            local st=subs[i]
+	    if st.name==line.style then
+		acleft=st.margin_l	if line.margin_l>0 then acleft=line.margin_l end
+		acright=st.margin_r	if line.margin_r>0 then acright=line.margin_r end
+		acvert=st.margin_t	if line.margin_t>0 then acvert=line.margin_t end
+		acalign=st.align	if text:match("\\an%d") then acalign=text:match("\\an(%d)") end
+		aligntop="789" alignbot="123" aligncent="456"
+		alignleft="147" alignright="369" alignmid="258"
+		if alignleft:match(acalign) then horz=acleft h_al="left"
+		elseif alignright:match(acalign) then horz=resx-acright h_al="right"
+		elseif alignmid:match(acalign) then horz=resx/2 h_al="mid" end
+		if aligntop:match(acalign) then vert=acvert v_al="top"
+		elseif alignbot:match(acalign) then vert=resy-acvert v_al="bottom"
+		elseif aligncent:match(acalign) then vert=resy/2 v_al="mid" end
+	    break
+	    end
+        end
+    end
+    if horz>0 and vert>0 then 
+	if not text:match("^{\\") then text="{\\rel}"..text end
+	text=text:gsub("^({\\[^}]-)}","%1\\pos("..horz..","..vert..")}") :gsub("\\rel","")
+    end
+    return text
+end
+
 function analyze(l)
     text=l.text
     dur=l.end_time-l.start_time
@@ -1011,9 +1367,9 @@ help_u="UPDATE LYRICS\n\nThis is probably the most complicated part, but if your
 
 help_c="- CHAPTERS -\n\nThis will generate chapters from the .ass file\n\nMARKER: For a line to be used for chapters, it has to be marked with \"chapter\"/\"chptr\"/\"chap\" in actor/effect field (depending on settings) or the same 3 options as a separate comment, ie. {chapter} etc.\n\nCHAPTER NAME: What will be used as chapter name. It's either the content of the effect field, or the line's FIRST comment. If the comment is {OP first frame} or {ED start}, the script will remove \" first frame\" or \" start\", so you can keep those.\n\nIf you use default settings, just put \"chapter\" in actor field and make comments like {OP} or {Part A}.\n\nSubchapters: You can make subchapters like this {Part A::Scene 5}. This will be a subchapter of \"Part A\" called \"Scene 5\".\n\nIf you want a different LANGUAGE than 'eng', set it in the textbox below \"chapter mark\"\n\nCHAPTER MARK: Sets the selected chapter for selected line(s). Uses marker and name. (Doesn't create xml.)\nIf you want a custom chapter name, type it in the textbox below this."
 
-help_n="- NUMBERS -\n\nThis is a tool to number lines and add various markers to actor/effect fields.\nThe dropdown with \"01\" lets you choose how many leading zeros you want.\nThe Left and Right fields will add stuff to the numbers. If Left is \"x\" and Right is \"yz\", the first marker will be \"x01yz\".\nWhat makes this function much more versatile is the \"Mod\" field.\nIf you put in one number, then that's the number from which the numbering will start, so \"5\" -> 5, 6, 7, etc.\nYou can, however, use a comma or slash to modify the numbering some more.\n\"8,3\" or \"8/3\" will start numbering from 8, repeating each number 3 times, so 8, 8, 8, 9, 9, 9, 10, 10, 10, etc.\nThis allows you to easily number lines that are typeset in layers etc.\nAdditionally, you can set a limit in [], for example 1/3[2], which will start from 1, use each number 3 times,\nand only go up to 2 and then start again, so: 1 1 1 2 2 2 1 1 1 2 2 2\n2/3[4] would give you 2 2 2 3 3 3 4 4 4 1 1 1 2 2 2 3 3 3 4 4 4 1 1 1...\nIf the first number is higher than the limit, like 5/3[4], it will subtract the limit from the starting number.\n\n\"add to marker\" uses the Left and Right fields to add stuff to the current content of actor/effect/text.\nIf you number lines for the OP, you can set \"OP-\" in Left and \"-eng\" in Right to get \"OP-01-eng\".\n(Mod does nothing when adding markers.)"
+help_n="- NUMBERS -\n\nThis is a tool to number lines and add various markers to actor/effect fields.\nThe dropdown with \"01\" lets you choose how many leading zeros you want.\nThe Left and Right fields will add stuff to the numbers. If Left is \"x\" and Right is \"yz\", the first marker will be \"x01yz\".\nWhat makes this function much more versatile is the \"Mod\" field.\nIf you put in one number, then that's the number from which the numbering will start, so \"5\" -> 5, 6, 7, etc.\nYou can, however, use a comma or slash to modify the numbering some more.\n\"8,3\" or \"8/3\" will start numbering from 8, repeating each number 3 times, so 8, 8, 8, 9, 9, 9, 10, 10, 10, etc.\nThis allows you to easily number lines that are typeset in layers etc.\nAdditionally, you can set a limit in [], for example 1/3[2], which will start from 1, use each number 3 times,\nand only go up to 2 and then start again, so: 1 1 1 2 2 2 1 1 1 2 2 2\n2/3[4] would give you 2 2 2 3 3 3 4 4 4 2 2 2 3 3 3 4 4 4 ...\n\n\"add to marker\" uses the Left and Right fields to add stuff to the current content of actor/effect/text.\nIf you number lines for the OP, you can set \"OP-\" in Left and \"-eng\" in Right to get \"OP-01-eng\".\n(Mod does nothing when adding markers.)"
 
-help_d="- DO STUFF -\n\n- Save/Load -\nYou can use this to save for example bits of text you need to paste frequently (like a multi-clipboard).\nPaste text in the data area to save it. If the data area is empty, the function will load your saved texts.\n\n- Lua Replacer -\nUse \"Left\" and \"Right\" for a lua regexp replace function.\n\n- Perl Replacer -\nUse \"Left\" and \"Right\" for a perl regexp replace function.\n\n- Lua Calc -\nUse \"Left\" and \"Right\" with lua regexp to perform calculations on captured numbers.\nCaptures will be named a, b, c... up to p (16 captures max).\nFunctions are +, -, *, /, and round(a), which rounds the number captured in a.\n> Example: (%d)(%d)(%d) -> a+1b*2c-3\nThis will match 3-digit patterns, add 1 to first digit, multiply the second by 2, and subtract 3 from the 3rd.\nIf you want to leave one of the captures as is, use .. to separate it from other letters: a+1b..c-3 \n> Example: pos%(([%d%.]+),([%d%.]+) -> pos(a+50,b-100\nThis will shift position right by 50 and up by 100. \n\n- Jump to Next -\nThis is meant to get you to the \"next sign\" in the subtitle grid.\nWhen mocha-tracking 1000+ lines, it can be a pain in the ass to find where one sign ends and another begins.\nSelect lines that belong to the current \"sign\", ie. different layers/masks/texts.\nThe script will search for the first line in the grid that doesn't match any of the selected ones, based on the \"Marker\".\n\n- Alpha Shift -\nShifts {\\alpha&HFF&} by one letter for each line. Text thus appears letter by letter.\nIt's an alternative to the script that spawns \\ko, but this works with shadow too.\nDuplicate a line with {\\alpha&HFF&} however many times you need and run the script on the whole selection.\n\n- Merge Inline Tags -\nSelect lines with the same text but different tags, and they will be merged into one line with tags from all of them. For example:\n{\\bord2}AB{\\shad3}C\nA{\\fs55}BC\n-> {\\bord2}A{\\fs55}B{\\shad3}C\n\n- Add Comment -\nText that you type here in this box will be added as a {comment} at the end of selected lines.\n\n- Make Comments Visible -\nNukes { } from comments, thus making them part of the text visible on screen.\n\n- Switch Commented/Visible -\nComments out what's visible and makes visible what's commented. Allows switching between two texts.\n\n- Reverse text -\nReverses text (character by character). Nukes comments and inline tags.\n\n- Reverse Words -\nReverses text (word by word). Nukes comments and inline tags.\n\n- Honorificslaughterhouse -\nComments out honorifics.\n\n- Convert Framerate -\nConverts framerate from a to b where a is the input from \"Left\" and b is input from \"Right\".\n"
+help_d="- DO STUFF -\n\n- Save/Load -\nYou can use this to save for example bits of text you need to paste frequently (like a multi-clipboard).\nPaste text in the data area to save it. If the data area is empty, the function will load your saved texts.\n\n- Lua Replacer -\nUse \"Left\" and \"Right\" for a lua regexp replace function.\n\n- Perl Replacer -\nUse \"Left\" and \"Right\" for a perl regexp replace function.\n\n- Lua Calc -\nUse \"Left\" and \"Right\" with lua regexp to perform calculations on captured numbers.\nCaptures will be named a, b, c... up to p (16 captures max).\nFunctions are +, -, *, /, and round(a), which rounds the number captured in a.\n> Example: (%d)(%d)(%d) -> a+1b*2c-3\nThis will match 3-digit patterns, add 1 to first digit, multiply the second by 2, and subtract 3 from the 3rd.\nIf you want to leave one of the captures as is, use .. to separate it from other letters: a+1b..c-3 \n> Example: pos%(([%d%.]+),([%d%.]+) -> pos(a+50,b-100\nThis will shift position right by 50 and up by 100. \n\n- Jump to Next -\nThis is meant to get you to the \"next sign\" in the subtitle grid.\nWhen mocha-tracking 1000+ lines, it can be a pain in the ass to find where one sign ends and another begins.\nSelect lines that belong to the current \"sign\", ie. different layers/masks/texts.\nThe script will search for the first line in the grid that doesn't match any of the selected ones, based on the \"Marker\".\n\n- Alpha Shift -\nShifts {\\alpha&HFF&} by one letter for each line. Text thus appears letter by letter.\nIt's an alternative to the script that spawns \\ko, but this works with shadow too.\nDuplicate a line with {\\alpha&HFF&} however many times you need and run the script on the whole selection.\n\n- Merge Inline Tags -\nSelect lines with the same text but different tags, and they will be merged into one line with tags from all of them. For example:\n{\\bord2}AB{\\shad3}C\nA{\\fs55}BC\n-> {\\bord2}A{\\fs55}B{\\shad3}C\n\n- Add Comment -\nText that you type here in this box will be added as a {comment} at the end of selected lines.\n\n- Make Comments Visible -\nNukes { } from comments, thus making them part of the text visible on screen.\n\n- Switch Commented/Visible -\nComments out what's visible and makes visible what's commented. Allows switching between two texts.\n\n- Reverse text -\nReverses text (character by character). Nukes comments and inline tags.\n\n- Reverse Words -\nReverses text (word by word). Nukes comments and inline tags.\n\n- Fake Capitals -\nCreates fake capitals by increasing font size for first letters.\nWith all caps, for first letters of words. With mixed text, for uppercase letters.\nSet the \\fs for the capitals in the Left field.\nLooks like this: {\\fs60}F{\\fs}AKE {\\fs60}C{\\fs}APITALS\n\n- Format Dates -\nFormats dates to one of 4 options. Has its own GUI. Only converts from the other 3 options in the GUI.\n\n- Dissolve Text -\nVarious modes of dissolving text. Has its own Help.\n\n- Honorificslaughterhouse -\nComments out honorifics.\n\n- Convert Framerate -\nConverts framerate from a to b where a is the input from \"Left\" and b is input from \"Right\".\n"
 
 
 function unimportant(subs, sel, act)
@@ -1031,6 +1387,7 @@ if sub3==nil then sub3=1 end
 msg={"If it breaks, it's your fault.","This should be doing something...","Breaking your computer. Please wait.","Unspecified operations in progress.","This may or may not work.","Trying to avoid bugs...","Zero one one zero one zero...","10110101001101101010110101101100001","I'm surprised anyone's using this","If you're seeing this for too long, it's a bad sign."}
 rm=math.random(1,#msg)	msge=msg[rm]
 dmark=deafault_chapter_mark
+if lastimp then dropstuff=lastuff logg=lastlog else dropstuff=default_stuff logg=false end
 unconfig={
 	-- Sub --
 	{x=0,y=16,width=3,height=1,class="label",label="Left                                                    "},
@@ -1069,7 +1426,8 @@ unconfig={
 	
 	-- stuff
 	{x=0,y=15,width=1,height=1,class="label",label="Stuff  "},
-	{x=1,y=15,width=2,height=1,class="dropdown",name="stuff",items={"save/load","lua replacer","perl replacer","lua calc","jump to next","alpha shift","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","reverse text","reverse words","fake capitals","format dates","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"},value=default_stuff},
+	{x=1,y=15,width=2,height=1,class="dropdown",name="stuff",items={"save/load","lua replacer","perl replacer","lua calc","jump to next","alpha shift","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","reverse text","reverse words","fake capitals","format dates","dissolve text","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"},value=dropstuff},
+	{x=3,y=15,width=1,height=1,class="checkbox",name="log",label="log",value=logg,hint="replacers"},
 	{x=8,y=15,width=1,height=1,class="label",label="Marker:"},
 	
 	-- textboxes
@@ -1104,6 +1462,9 @@ unconfig={
 	if pressed=="Cancel" then    aegisub.cancel() end
 	cancelled=aegisub.progress.is_cancelled()
 	if cancelled then aegisub.cancel() end
+	lastimp=true lastuff=res.stuff lastlog=res.log
+	ms2fr=aegisub.frame_from_ms
+	fr2ms=aegisub.ms_from_frame
 	aegisub.progress.title("Doing Stuff") aegisub.progress.task(msge)
 	    sub1=res.rep1
 	    sub2=res.rep2
