@@ -1,7 +1,7 @@
 ﻿script_name="MultiCopy"
 script_description="Copy tags or text from multiple lines and paste to others"
 script_author="unanimated"
-script_version="2.1"
+script_version="2.2"
 
 -- Use the Help button for info
 
@@ -279,8 +279,10 @@ raw=res.dat	raw=raw:gsub("\n","")
         line=subs[i]
 	text=line.text
 	if not text:match("^{\\") then text="{\\mc}"..text end
-	if PM=="clip" and text:match("^{[^}]-\\clip") then text=text:gsub("^({[^}]-\\i?clip%()[^%)]+(%))","%1"..raw.."%2") end
-	if PM=="clip" and not text:match("^{[^}]-\\clip") then text=text:gsub("^({\\[^}]*)}","%1\\clip%("..raw.."%)}") end
+	if PM=="clip" and text:match("^{[^}]-\\i?clip") then text=text:gsub("^({[^}]-\\i?clip%()[^%)]+(%))","%1"..raw.."%2") end
+	if PM=="clip" and not text:match("^{[^}]-\\i?clip") then text=text:gsub("^({\\[^}]*)}","%1\\clip%("..raw.."%)}") end
+	if PM=="iclip" and text:match("^{[^}]-\\i?clip") then text=text:gsub("^({[^}]-\\i?clip%()[^%)]+(%))","%1"..raw.."%2") end
+	if PM=="iclip" and not text:match("^{[^}]-\\i?clip") then text=text:gsub("^({\\[^}]*)}","%1\\iclip%("..raw.."%)}") end
 	if PM=="position" and text:match("\\pos") then text=text:gsub("(\\pos%()[^%)]+(%))","%1"..raw.."%2") end
 	if PM=="position" and not text:match("\\pos") then text=text:gsub("^({\\[^}]*)}","%1\\pos%("..raw.."%)}") end
 	if PM=="blur" then text=addtag("\\blur"..raw,text) end
@@ -487,8 +489,10 @@ raw=res.dat	raw=raw:gsub("\n","")
 	text=line.text
 	text2=data[x]
 	if not text:match("^{\\") then text="{\\mc}"..text end
-	if PM=="clip" and text:match("^{[^}]-\\clip") then text=text:gsub("^({[^}]-\\i?clip%()[^%)]+(%))","%1"..text2.."%2") end
-	if PM=="clip" and not text:match("^{[^}]-\\clip") then text=text:gsub("^({\\[^}]*)}","%1\\clip%("..text2.."%)}") end
+	if PM=="clip" and text:match("^{[^}]-\\i?clip") then text=text:gsub("^({[^}]-\\i?clip%()[^%)]+(%))","%1"..text2.."%2") end
+	if PM=="clip" and not text:match("^{[^}]-\\i?clip") then text=text:gsub("^({\\[^}]*)}","%1\\clip%("..text2.."%)}") end
+	if PM=="iclip" and text:match("^{[^}]-\\i?clip") then text=text:gsub("^({[^}]-\\i?clip%()[^%)]+(%))","%1"..text2.."%2") end
+	if PM=="iclip" and not text:match("^{[^}]-\\i?clip") then text=text:gsub("^({\\[^}]*)}","%1\\iclip%("..text2.."%)}") end
 	if PM=="position" and text:match("\\pos") then text=text:gsub("(\\pos%()[^%)]+(%))","%1"..text2.."%2") end
 	if PM=="position" and not text:match("\\pos") then text=text:gsub("^({\\[^}]*)}","%1\\pos%("..text2.."%)}") end
 	if PM=="blur" then text=addtag("\\blur"..text2,text) end
@@ -678,7 +682,7 @@ function multicopy(subs, sel)
 	{x=0,y=18,width=1,height=1,class="label",label="Copy:"},
 	{x=4,y=18,width=1,height=1,class="label",label="Paste extra: "},
 	{x=5,y=18,width=1,height=1,class="dropdown",name="pastemode",value="all",
-	items={"all","text mod.","super pasta","gbc text","de-irc","clip","position","blur","border","\\1c","\\3c","\\4c","alpha","\\fscx","\\fscy","\\fscx\\fscy","any tag","------","layer","duration","actor","effect","comments"}},
+	items={"all","text mod.","super pasta","gbc text","de-irc","clip","iclip","position","blur","border","\\1c","\\3c","\\4c","alpha","\\fscx","\\fscy","\\fscx\\fscy","any tag","------","layer","duration","actor","effect","comments"}},
 	{x=6,y=18,width=5,height=1,class="checkbox",name="oneline",label="Paste one line to all selected lines",value=false},
 	}
 	buttons={"Copy","Paste tags","Paste text","Paste spec.","Paste from clipboard","Help","Cancel"}
