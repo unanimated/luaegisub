@@ -4,11 +4,11 @@
 script_name="Hyperdimensional Relocator"
 script_description="Makes things appear different from before"
 script_author="reanimated"
-script_version="2.72"
+script_version="2.75"
 
 --	SETTINGS	--
 
-default_pos="Align X"
+default_pos="clip to frz"
 default_move="transmove"
 default_morph="round numbers"
 
@@ -119,7 +119,7 @@ function positron(subs,sel)
 	    ang2=ang1-rota
 	    tangf=math.tan(math.rad(ang2))
 	    
-	    faks=round1(tangf*100)/100
+	    faks=round(tangf*100)/100
 	    text=addtag("\\fax"..faks,text)
 	    text=text:gsub("\\org%([^%)]+%)","")
 	    text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
@@ -140,7 +140,7 @@ function positron(subs,sel)
 	    ang2=ang1-rota
 	    tangf=math.tan(math.rad(ang2))
 	    
-	    faks=round1(tangf*100)/100
+	    faks=round(tangf*100)/100
 	    text=addtag("\\fax"..faks,text)
 	    text=text:gsub("\\clip%([^%)]+%)","")
 	    text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
@@ -157,7 +157,7 @@ function positron(subs,sel)
 	    tang=(op/ad)
 	    ang1=math.deg(math.atan(tang))
 	    
-	    rota=round1(ang1*100)/100
+	    rota=round(ang1*100)/100
 	    if ad<0 then rota=rota-180 end
 	    text=addtag("\\frz"..rota,text)
 	    text=text:gsub("\\clip%([^%)]+%)","")
@@ -198,7 +198,7 @@ function positron(subs,sel)
 		if not text:match("^{[^}]-\\fscx") then text=addtag("\\fscx".. 100*shsx,text) end
 		if not text:match("^{[^}]-\\fscy") then text=addtag("\\fscy".. 100*shsy,text) end
 	    end
-	    text=text:gsub("([%d%.%-]+)([\\}%),])",function(a,b) return round1(a*100)/100 ..b end)
+	    text=text:gsub("([%d%.%-]+)([\\}%),])",function(a,b) return round(a*100)/100 ..b end)
 	
 	-- shake rotation
 	elseif res.posi=="shake rotation" then
@@ -398,7 +398,7 @@ function multimove(subs, sel)
 	poscheck=0 
 end
 
-function round(a,b,c,d)
+function round4(a,b,c,d)
 	a=math.floor(a+0.5)
 	b=math.floor(b+0.5)
 	c=math.floor(c+0.5)
@@ -406,7 +406,7 @@ function round(a,b,c,d)
 	return a,b,c,d
 end
 
-function round1(a)
+function round(a)
 	a=math.floor(a+0.5)
 	return a
 end
@@ -434,29 +434,29 @@ function modifier(subs, sel)
 	    if res.mod=="round numbers" then
 		if text:match("\\pos") and res.rnd=="all" or text:match("\\pos") and res.rnd=="pos" then
 		px,py=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)")
-		px,py=round(px,py,0,0)
+		px,py=round4(px,py,0,0)
 		text=text:gsub("\\pos%([%d%.%-]+,[%d%.%-]+%)","\\pos("..px..","..py..")")
 		end
 		if text:match("\\org") and res.rnd=="all" or text:match("\\org") and res.rnd=="org" then
 		ox,oy=text:match("\\org%(([%d%.%-]+),([%d%.%-]+)%)")
-		ox,oy=round(ox,oy,0,0)
+		ox,oy=round4(ox,oy,0,0)
 		text=text:gsub("\\org%([%d%.%-]+,[%d%.%-]+%)","\\org("..ox..","..oy..")")
 		end
 		if text:match("\\move") and res.rnd=="all" or text:match("\\move") and res.rnd=="move" then
 		mo1,mo2,mo3,mo4=text:match("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)")
-		mo1,mo2,mo3,mo4=round(mo1,mo2,mo3,mo4)
+		mo1,mo2,mo3,mo4=round4(mo1,mo2,mo3,mo4)
 		text=text:gsub("\\move%([%d%.%-]+,[%d%.%-]+,[%d%.%-]+,[%d%.%-]+","\\move("..mo1..","..mo2..","..mo3..","..mo4)
 		end
 		if text:match("\\i?clip") and res.rnd=="all" or text:match("\\i?clip") and res.rnd=="clip" then
 		 for klip in text:gmatch("\\i?clip%([^%)]+%)") do
-		 klip2=klip:gsub("([%d%.%-]+)",function(c) return round1(c) end)
+		 klip2=klip:gsub("([%d%.%-]+)",function(c) return round(c) end)
 		 klip=esc(klip)
 		 text=text:gsub(klip,klip2)
 		 end
 		end
 		if text:match("\\p1") and res.rnd=="all" or text:match("\\p1") and res.rnd=="mask" then
 		tags=text:match("^{\\[^}]-}")
-		text=text:gsub("^{\\[^}]-}","") :gsub("([%d%.%-]+)",function(m) return round1(m) end)
+		text=text:gsub("^{\\[^}]-}","") :gsub("([%d%.%-]+)",function(m) return round(m) end)
 		text=tags..text
 		end
 	    end
@@ -532,19 +532,19 @@ function modifier(subs, sel)
 		
 		-- determine if y is going up or down
 		cy=1
-		  if c[2].y>c[1].y then cx1=round1(xx1-(yy1-cy)/fx1) else cx1=round1(xx1+(yy1-cy)/fx1) end
-		  if c[4].y>c[3].y then cx2=round1(xx2-(yy2-cy)/fx2) else cx2=round1(xx2+(yy2-cy)/fx2) end	
+		  if c[2].y>c[1].y then cx1=round(xx1-(yy1-cy)/fx1) else cx1=round(xx1+(yy1-cy)/fx1) end
+		  if c[4].y>c[3].y then cx2=round(xx2-(yy2-cy)/fx2) else cx2=round(xx2+(yy2-cy)/fx2) end	
 		  top=cx2-cx1
 		cy=500
-		  if c[2].y>c[1].y then cx1=round1(xx1-(yy1-cy)/fx1) else cx1=round1(xx1+(yy1-cy)/fx1) end
-		  if c[4].y>c[3].y then cx2=round1(xx2-(yy2-cy)/fx2) else cx2=round1(xx2+(yy2-cy)/fx2) end	
+		  if c[2].y>c[1].y then cx1=round(xx1-(yy1-cy)/fx1) else cx1=round(xx1+(yy1-cy)/fx1) end
+		  if c[4].y>c[3].y then cx2=round(xx2-(yy2-cy)/fx2) else cx2=round(xx2+(yy2-cy)/fx2) end	
 		  bot=cx2-cx1
 		if top>bot then cy=c2[4].y ycalc=1 else cy=c2[1].y ycalc=-1 end
 		
 		-- LOOK FOR ORG X
 		repeat
-		  if c[2].y>c[1].y then cx1=round1(xx1-(yy1-cy)/fx1) else cx1=round1(xx1+(yy1-cy)/fx1) end
-		  if c[4].y>c[3].y then cx2=round1(xx2-(yy2-cy)/fx2) else cx2=round1(xx2+(yy2-cy)/fx2) end
+		  if c[2].y>c[1].y then cx1=round(xx1-(yy1-cy)/fx1) else cx1=round(xx1+(yy1-cy)/fx1) end
+		  if c[4].y>c[3].y then cx2=round(xx2-(yy2-cy)/fx2) else cx2=round(xx2+(yy2-cy)/fx2) end
 		  cy=cy+ycalc
 		  -- aegisub.log("\n cx1: "..cx1.."   cx2: "..cx2.."   cy: "..cy)
 		until cx1>=cx2 or math.abs(cy)==50000
@@ -552,19 +552,19 @@ function modifier(subs, sel)
 		
 		-- determine if x is going left or right
 		cx=1
-		  if c2[2].x>c2[1].x then cy1=round1(yy3-(xx3-cx)/fx3) else cy1=round1(yy3+(xx3-cx)/fx3) end
-		  if c2[4].x>c2[3].x then cy2=round1(yy4-(xx4-cx)/fx4) else cy2=round1(yy4+(xx4-cx)/fx4) end
+		  if c2[2].x>c2[1].x then cy1=round(yy3-(xx3-cx)/fx3) else cy1=round(yy3+(xx3-cx)/fx3) end
+		  if c2[4].x>c2[3].x then cy2=round(yy4-(xx4-cx)/fx4) else cy2=round(yy4+(xx4-cx)/fx4) end
 		  left=cy2-cy1
 		cx=500
-		  if c2[2].x>c2[1].x then cy1=round1(yy3-(xx3-cx)/fx3) else cy1=round1(yy3+(xx3-cx)/fx3) end
-		  if c2[4].x>c2[3].x then cy2=round1(yy4-(xx4-cx)/fx4) else cy2=round1(yy4+(xx4-cx)/fx4) end
+		  if c2[2].x>c2[1].x then cy1=round(yy3-(xx3-cx)/fx3) else cy1=round(yy3+(xx3-cx)/fx3) end
+		  if c2[4].x>c2[3].x then cy2=round(yy4-(xx4-cx)/fx4) else cy2=round(yy4+(xx4-cx)/fx4) end
 		  rite=cy2-cy1
 		if left>rite then cx=c[4].x xcalc=1 else cx=c[1].x xcalc=-1 end
 		
 		-- LOOK FOR ORG Y
 		repeat
-		  if c2[2].x>c2[1].x then cy1=round1(yy3-(xx3-cx)/fx3) else cy1=round1(yy3+(xx3-cx)/fx3) end
-		  if c2[4].x>c2[3].x then cy2=round1(yy4-(xx4-cx)/fx4) else cy2=round1(yy4+(xx4-cx)/fx4) end
+		  if c2[2].x>c2[1].x then cy1=round(yy3-(xx3-cx)/fx3) else cy1=round(yy3+(xx3-cx)/fx3) end
+		  if c2[4].x>c2[3].x then cy2=round(yy4-(xx4-cx)/fx4) else cy2=round(yy4+(xx4-cx)/fx4) end
 		  cx=cx+xcalc
 		  -- aegisub.log("\n cy1: "..cy1.."   cy2: "..cy2)
 		until cy1>=cy2 or math.abs(cx)==50000
@@ -605,18 +605,18 @@ function modifier(subs, sel)
 	    end
 
 	    if res.mod=="vector2rect." then
-		text=text:gsub("\\clip%(m%s(%d-)%s(%d-)%sl%s(%d-)%s(%d-)%s(%d-)%s(%d-)%s(%d-)%s(%d-)%)","\\clip(%1,%2,%5,%6)") 
+		text=text:gsub("\\(i?)clip%(m%s(%d-)%s(%d-)%sl%s(%d-)%s(%d-)%s(%d-)%s(%d-)%s(%d-)%s(%d-)%)","\\%1clip(%2,%3,%6,%7)") 
 	    end
 
 	    if res.mod=="rect.2vector" then
-		text=text:gsub("\\clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c,d) 
-		a,b,c,d=round(a,b,c,d) return string.format("\\clip(m %d %d l %d %d %d %d %d %d)",a,b,c,b,c,d,a,d) end)
+		text=text:gsub("\\(i?)clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(ii,a,b,c,d) 
+		a,b,c,d=round4(a,b,c,d) return string.format("\\"..ii.."clip(m %d %d l %d %d %d %d %d %d)",a,b,c,b,c,d,a,d) end)
 	    end
 	    
 	    if res.mod=="find centre" then
 		text=text:gsub("\\pos%([^%)]+%)","") t2=text
 		text=text:gsub("\\clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c,d) 
-		x=round1(a/2+c/2) y=round1(b/2+d/2) return "\\pos("..x..","..y..")" end)
+		x=round(a/2+c/2) y=round(b/2+d/2) return "\\pos("..x..","..y..")" end)
 		if t2==text then 
 		aegisub.dialog.display({{class="label",label="Requires rectangular clip"}},{"OK"},{close='OK'})  aegisub.cancel() end
 	    end
@@ -637,7 +637,7 @@ function modifier(subs, sel)
 		if xx==0 then xx=1 end
 		if yy==0 then yy=1 end
 		draw=text:match("}m ([^{]+)")
-		draw2=draw:gsub("([%d%.%-]+) ([%d%.%-]+)",function(a,b) return round1(a*xx).." "..round1(b*yy) end)
+		draw2=draw:gsub("([%d%.%-]+) ([%d%.%-]+)",function(a,b) return round(a*xx).." "..round(b*yy) end)
 		draw=esc(draw)
 		text=text:gsub("(}m )"..draw,"%1"..draw2)
 	    end
@@ -652,15 +652,15 @@ function modifier(subs, sel)
 	    if res.mod=="adjust drawing" then
 		if not text:match("\\p%d") then aegisub.cancel() end
 		-- drawing 2 clip
-		if not text:match("\\clip") then
+		if not text:match("\\i?clip") then
 		  klip="\\clip("..text:match("\\p1[^}]-}(m [^{]*)")..")"
 		  scx=text:match("\\fscx([%d%.]+)")	if scx==nil then scx=100 end
 		  scy=text:match("\\fscy([%d%.]+)")	if scy==nil then scy=100 end
 		  if text:match("\\pos") then
 		    local xx,yy=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)")
-		    xx=round1(xx) yy=round1(yy)
+		    xx=round(xx) yy=round(yy)
 		    coord=klip:match("\\clip%(m ([^%)]+)%)")
-		    coord2=coord:gsub("([%d%-]+)%s([%d%-]+)",function(a,b) return round1(a*scx/100+xx).." "..round1(b*scy/100+yy) end)
+		    coord2=coord:gsub("([%d%-]+)%s([%d%-]+)",function(a,b) return round(a*scx/100+xx).." "..round(b*scy/100+yy) end)
 		    coord=coord:gsub("%-","%%-")
 		    klip=klip:gsub(coord,coord2)
 		  end
@@ -668,12 +668,12 @@ function modifier(subs, sel)
 		  text=addtag(klip,text)
 		-- clip 2 drawing
 		else
-		  text=text:gsub("\\clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c,d) 
-		    a,b,c,d=round(a,b,c,d) return string.format("\\clip(m %d %d l %d %d %d %d %d %d)",a,b,c,b,c,d,a,d) end)
-		  klip=text:match("\\clip%((m.-)%)")
+		  text=text:gsub("\\i?clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c,d) 
+		    a,b,c,d=round4(a,b,c,d) return string.format("\\clip(m %d %d l %d %d %d %d %d %d)",a,b,c,b,c,d,a,d) end)
+		  klip=text:match("\\i?clip%((m.-)%)")
 		  if text:match("\\pos") then
 		  local xx,yy=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)")
-		    xx=round1(xx) yy=round1(yy)
+		    xx=round(xx) yy=round(yy)
 		    coord=klip:match("m ([%d%a%s%-]+)")
 		    coord2=coord:gsub("([%d%-]+)%s([%d%-]+)",function(a,b) return a-xx.." "..b-yy end)
 		    coord=coord:gsub("%-","%%-")
@@ -684,7 +684,7 @@ function modifier(subs, sel)
 		  if text:match("\\an") then text=text:gsub("\\an%d","\\an7") else text=text:gsub("^{","{\\an7") end
 		  if text:match("\\fscx") then text=text:gsub("\\fscx[%d%.]+","\\fscx100") else text=text:gsub("\\p1","\\fscx100\\p1") end
 		  if text:match("\\fscy") then text=text:gsub("\\fscy[%d%.]+","\\fscy100") else text=text:gsub("\\p1","\\fscy100\\p1") end
-		  text=text:gsub("\\clip%(.-%)","")
+		  text=text:gsub("\\i?clip%(.-%)","")
 		end
 	    end
 	    
@@ -721,7 +721,7 @@ function modifier(subs, sel)
 		  tagval,mark=tag:match("([%d%.%-]+)[\\}](.)")
 		  tagval1=esc(tagval)
 		  rndm=math.random(-100,100)/100*rnd
-		    text=text:gsub("\\"..rt..tagval1.."([\\}])"..mark,"\\"..rt..round1((tagval+rndm)*deci)/deci.."%1"..mark)
+		    text=text:gsub("\\"..rt..tagval1.."([\\}])"..mark,"\\"..rt..round((tagval+rndm)*deci)/deci.."%1"..mark)
 		 end
 		end
 		
@@ -730,15 +730,15 @@ function modifier(subs, sel)
 		  rndm=math.random(-100,100)/100*rnd
 		  if rez.ptag1 then
 		    text=text:gsub("\\"..rtx.."%(([%d%.%-]+),([%d%.%-]+)",
-			function(x,y) return "\\"..rtx.."("..round1((x+rndm)*deci)/deci..","..y end)
+			function(x,y) return "\\"..rtx.."("..round((x+rndm)*deci)/deci..","..y end)
 		    :gsub("\\"..rtx.."%(([%d%.%-]+,[%d%.%-]+,)([%d%.%-]+),([%d%.%-]+)",
-			function(a,x,y) return "\\"..rtx.."("..a..round1((x+rndm)*deci)/deci..","..y end)
+			function(a,x,y) return "\\"..rtx.."("..a..round((x+rndm)*deci)/deci..","..y end)
 		  end
 		  if rez.ptag2 then
 		    text=text:gsub("\\"..rty.."%(([%d%.%-]+),([%d%.%-]+)",
-			function(x,y) return "\\"..rty.."("..x..","..round1((y+rndm)*deci)/deci end)
+			function(x,y) return "\\"..rty.."("..x..","..round((y+rndm)*deci)/deci end)
 		    :gsub("\\"..rty.."%(([%d%.%-]+,[%d%.%-]+,)([%d%.%-]+),([%d%.%-]+)",
-			function(a,x,y) return "\\"..rty.."("..a..x..","..round1((y+rndm)*deci)/deci end)
+			function(a,x,y) return "\\"..rty.."("..a..x..","..round((y+rndm)*deci)/deci end)
 		  end
 		end
 	    end
@@ -782,7 +782,7 @@ function flip(rot,text)
     for rotation in text:gmatch("\\"..rot.."([%d%.%-]+)") do
 	rotation=tonumber(rotation)
 	if rotation<180 then newrot=rotation+180 end
-	if rotation>180 then newrot=rotation-180 end
+	if rotation>=180 then newrot=rotation-180 end
 	text=text:gsub(rot..rotation,rot..newrot)
     end
     return text
@@ -1018,7 +1018,7 @@ function joinfbflines(subs, sel)
     -- dialog
 	joindialog={
 	    {x=0,y=0,width=1,height=1,class="label",label="How many lines?",},
-	    {x=0,y=1,width=1,height=1,class="intedit",name="join",value=2,step=1,min=2,max=50 },
+	    {x=0,y=1,width=1,height=1,class="intedit",name="join",value=2,step=1,min=2 },
 	}
 	pressed, res=aegisub.dialog.display(joindialog,{"OK"},{ok='OK'})
     -- number
@@ -1284,7 +1284,7 @@ function teleport(subs, sel)
 	
 	if res.tpmask then
 		draw=text:match("}m ([^{]+)")
-		draw2=draw:gsub("([%d%.%-]+) ([%d%.%-]+)",function(a,b) return round1(a+xx+fx).." "..round1(b+yy+fy) end)
+		draw2=draw:gsub("([%d%.%-]+) ([%d%.%-]+)",function(a,b) return round(a+xx+fx).." "..round(b+yy+fy) end)
 		draw=esc(draw)
 		text=text:gsub("(}m )"..draw,"%1"..draw2)
 	end
@@ -1307,11 +1307,10 @@ function getpos(subs, text)
         if subs[i].class=="style" then
             local st=subs[i]
 	    if st.name==style then
-		acleft=st.margin_l
-		acright=st.margin_r
-		acvert=st.margin_t
-		acalign=st.align
-		if text:match("\\an%d") then acalign=text:match("\\an(%d)") end
+		acleft=st.margin_l	if line.margin_l>0 then acleft=line.margin_l end
+		acright=st.margin_r	if line.margin_r>0 then acright=line.margin_r end
+		acvert=st.margin_t	if line.margin_t>0 then acvert=line.margin_t end
+		acalign=st.align	if text:match("\\an%d") then acalign=text:match("\\an(%d)") end
 		aligntop="789" alignbot="123" aligncent="456"
 		alignleft="147" alignright="369" alignmid="258"
 		if alignleft:match(acalign) then horz=acleft
@@ -1386,7 +1385,7 @@ morphorg="Calculate Origin:\n\nThis calculates \\org from a tetragonal vectorial
 
 morphclip="Transform Clip:\n\nGo from \\clip(x1,y1,x2,y2) to \\clip(x1,y1,x2,y2)\\t(\\clip(x3,y3,x4,y4)).\nCoordinates are read from the line.\nYou can set by how much x and y should change, and new coordinates will be calculated.\n\n'use next line's clip' allows you to use clip from the next line.\n   Create a line after your current one (or just duplicate), set the clip you want to transform to on it,\n   and check \"use next line's clip\".\n   The clip from the next line will be used for the transform, and the line will be deleted."
 
-morphmasks="Extend Mask: Use Teleporter X and Y fields to extend a mask in either or both directions.\n   This is mainly intended to easily convert something like a rounded square to another rounded rectangle.\n   Works optimally with 0,0 coordinate in the centre. May do weird things with curves.\n   When all coordinates are to one side from 0,0, then this works like shifting.\n\nExpand Mask: This works like Recalculator's 'Multiply', except 1 is the basic value (equals to 100%).\n   Not good for extending rounded squares, but good for turning a circle into an ellipsis.\n\nFlip mask: Flips a mask so that when used with its non-flipped counterpart, they create hollow space.\n   For example you have a rounded square. Duplicate it, extend one by 10 pixels in each direction, flip it,\n   and then merge them. You'll get a 10 px outline.\n\nAdjust Drawing: (You must not have an unrelated clip in the line.)\n   1. Creates a clip that copies the drawing.\n   2. You adjust points with clip tool.\n   3. Applies new coordinates to the drawing.	\n\nRandomask: Moves points in a drawing, each in a random direction, by a factor taken from the positioning field."
+morphmasks="Extend Mask: Use Teleporter X and Y fields to extend a mask in either or both directions.\n   This is mainly intended to easily convert something like a rounded square to another rounded rectangle.\n   Works optimally with 0,0 coordinate in the centre. May do weird things with curves.\n   When all coordinates are to one side from 0,0, then this works like shifting.\n\nExpand Mask: This works like Recalculator's 'Multiply', except 1 is the basic value (equals to 100%).\n   Not good for extending rounded squares, but good for turning a circle into an ellipsis.\n\nFlip mask: Flips a mask so that when used with its non-flipped counterpart, they create hollow space.\n   For example you have a rounded square. Duplicate it, extend one by 10 pixels in each direction, flip it,\n   and then merge them. You'll get a 10 px outline.\n\nAdjust Drawing: (You must not have an unrelated clip in the line.)\n   1. Creates a clip that copies the drawing.\n   2. You adjust points with clip tool.\n   3. Applies new coordinates to the drawing.\n\nRandomask: Moves points in a drawing, each in a random direction, by a factor taken from the positioning field."
 
 cloan="This copies specified tags from first line to the others.\nOptions are position, move, origin point, clip, and rotations.\n\nreplicate missing tags: creates tags if they're not present\n\nstack clips: allows stacking of 1 normal and 1 vector clip in one line\n\nmatch type: if current clip/iclip doesn't match the first line, it will be switched to match\n\ncv (combine vectors): if the first line has a vector clip, then for all other lines with vector clips \n   the vectors will be combined into 1 clip\n\ncopyrot: copies all rotations"
 
