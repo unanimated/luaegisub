@@ -4,7 +4,7 @@
 script_name="Hyperdimensional Relocator"
 script_description="Makes things appear different from before"
 script_author="reanimated"
-script_version="2.75"
+script_version="2.8"
 
 --	SETTINGS	--
 
@@ -39,9 +39,12 @@ auto_teleport_pos=true
 
 delete_orig_line=true
 
+autogradient_clip2fax=true
+
 --  --	--  --	--  --	--
 
 include("utils.lua")
+re=require'aegisub.re'
 
 function positron(subs,sel)
     ps=res.post
@@ -130,7 +133,8 @@ function positron(subs,sel)
 		aegisub.dialog.display({{class="label",label="Missing \\clip.",width=1,height=2}},{"OK"},{close='OK'})
 		aegisub.cancel()
 	    end
-	    cx1,cy1,cx2,cy2=text:match("\\clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+)")
+	    cx1,cy1,cx2,cy2,cx3,cy3,cx4,cy4=text:match("\\clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+)")
+	    if cx1==nil then cx1,cy1,cx2,cy2=text:match("\\clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+)") end
 	    rota=text:match("\\frz([%d%.%-]+)")
 	    if rota==nil then rota=0 end
 	    ad=cx1-cx2
@@ -142,8 +146,41 @@ function positron(subs,sel)
 	    
 	    faks=round(tangf*100)/100
 	    text=addtag("\\fax"..faks,text)
+	    if cy4~=nil then
+		tang2=((cx3-cx4)/(cy3-cy4))
+		ang3=math.deg(math.atan(tang2))
+		ang4=ang3-rota
+		tangf2=math.tan(math.rad(ang4))
+		faks2=round(tangf2*100)/100
+		endcom=""
+		repeat
+			text=text:gsub("({[^}]-})%s*$",function(ec) endcom=ec..endcom return "" end)
+		until not text:match("}$")
+		text=text:gsub("(.)$","{\\fax"..faks2.."}%1")
+		
+		if autogradient_clip2fax then
+			vis=text:gsub("{[^}]-}","")
+			orig=text:gsub("^{\\[^}]*}","")
+			tg=text:match("^{\\[^}]-}")
+			chars={}
+			for char in vis:gmatch(".") do table.insert(chars,char) end
+			faxdiff=(faks2-faks)/(#chars-1)
+			tt=chars[1]
+			for c=2,#chars do
+			    if c==#chars then ast="" else ast="*" end
+			    if chars[c]==" " then tt=tt.." " else
+			    tt=tt.."{"..ast.."\\fax"..round((faks+faxdiff*(c-1))*100)/100 .."}"..chars[c]
+			    end
+			end
+			text=tg..tt
+			if orig:match("{%*?\\") then text=textmod(orig,text) end
+		end
+		    
+		text=text..endcom
+	    end
 	    text=text:gsub("\\clip%([^%)]+%)","")
-	    text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
+	    :gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
+	    :gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	
 	-- clip to frz
 	elseif res.posi=="clip to frz" then
@@ -151,15 +188,26 @@ function positron(subs,sel)
 		aegisub.dialog.display({{class="label",label="Missing \\clip.",width=1,height=2}},{"OK"},{close='OK'})
 		aegisub.cancel()
 	    end
-	    cx1,cy1,cx2,cy2=text:match("\\clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+)")
+	    cx1,cy1,cx2,cy2,cx3,cy3,cx4,cy4=text:match("\\clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+)")
+	    if cx1==nil then cx1,cy1,cx2,cy2=text:match("\\clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+)") end
 	    ad=cx2-cx1
 	    op=cy1-cy2
 	    tang=(op/ad)
 	    ang1=math.deg(math.atan(tang))
-	    
 	    rota=round(ang1*100)/100
 	    if ad<0 then rota=rota-180 end
-	    text=addtag("\\frz"..rota,text)
+	    
+	    if cy4~=nil then
+		ad2=cx4-cx3
+		op2=cy3-cy4
+		tang2=(op2/ad2)
+		ang2=math.deg(math.atan(tang2))
+		rota2=round(ang2*100)/100
+		if ad2<0 then rota2=rota2-180 end
+	    end
+	    rota3=(rota+rota2)/2
+	    
+	    text=addtag("\\frz"..rota3,text)
 	    text=text:gsub("\\clip%([^%)]+%)","")
 	    text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	
@@ -1330,6 +1378,50 @@ function getpos(subs, text)
     return text
 end
 
+function textmod(orig,text)
+    tk={}
+    tg={}
+	text=text:gsub("{\\\\k0}","")
+	repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
+	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
+	vis=text:gsub("{[^}]-}","")
+	ltrmatches=re.find(vis,".")
+	  for l=1,#ltrmatches do
+	    table.insert(tk,ltrmatches[l].str)
+	  end
+	stags=text:match("^{(\\[^}]-)}")
+	if stags==nil then stags="" end
+	text=text:gsub("^{\\[^}]-}","") :gsub("{[^\\}]-}","")
+	count=0
+	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
+	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
+	    pos=chars:len()+count
+	    tgl={p=pos,t=tak,a=as}
+	    table.insert(tg,tgl)
+	    count=pos
+	end
+	count=0
+	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
+	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
+	    pos=chars:len()+count
+	    tgl={p=pos,t=tak,a=as}
+	    table.insert(tg,tgl)
+	    count=pos
+	end
+    newline=""
+    for i=1,#tk do
+	newline=newline..tk[i]
+	newt=""
+	for n, t in ipairs(tg) do
+	    if t.p==i then newt=newt..t.a..t.t end
+	end
+	if newt~="" then newline=newline.."{"..as..newt.."}" end
+    end
+    newtext="{"..stags.."}"..newline
+    text=newtext
+    return text
+end
+
 function esc(str)
 str=str
 :gsub("%%","%%%%")
@@ -1373,7 +1465,7 @@ function addtag(tag,text) text=text:gsub("^({\\[^}]-)}","%1"..tag.."}") return t
 function guide()
 intro="Introduction\n\nHyperdimensional Relocator offers a plethora of functions, \nfocusing primarily on \\pos, \\move, \\org, \\clip, and rotations.\nAnything related to positioning, movement, changing shape, etc., \nRelocator aims to make it happen."
 
-cannon="'Align X' means all selected \\pos tags will have the same given X coordinate. Same with 'Align Y' for Y.\n   Useful for multiple signs on screen that need to be aligned horizontally/vertically\n   or mocha signs that should move horizontally/vertically.\n\n'align with first' uses X or Y from the first line.\n\nHorizontal Mirror: Duplicates the line and places it horizontally across the screen, mirrored around the middle.\n   If you input a number, it will mirror around that coordinate instead,\n   so if you have \\pos(300,200) and input is 400, the mirrored result will be \\pos(500,200).\nVertical Mirror is the logical vertical counetrpart. 'delete orig. line' will delete the original line.\n\nOrg to Fax: calculates \\fax from the line between \\pos and \\org coordinates.\nClip to Fax: calculates \\fax from the line between the first 2 points of a vectorial clip.\n   Both of these work with \\frz but not with \\frx and \\fry. Also, \\fscx must be the same as \\fscy.\n   See blog post for more info - http://unanimated.xtreemhost.com/itw/tsblok.htm#fax \n\nClip to Frz: calculates \\frz from the first 2 points of a vectorial clip. First point is start of text.\n\nShake: Apply to fbf lines with \\pos tags to create a shaking effect.\n   Input radius for how many pixels the sign may deflect from the original position.\n\nShake rotation: Adds shaking effect to rotations. Degrees for frz from Repositioning Field, x and y from Teleporter.\n\n'rotate' will flip the text accordingly for the mirror functions. It also adds \\frz to 'shake'.\n'scaling' randomizes fscx/y with 'shake'. Value of 6 gives 0.625 to 1.6 times current value. (Teleporter input.)\n'layers' will keep position/rotations the same for all layers with 'shake'. (Same value for same start time.)\n'smooth' will make shaking smoother."
+cannon="'Align X' means all selected \\pos tags will have the same given X coordinate. Same with 'Align Y' for Y.\n   Useful for multiple signs on screen that need to be aligned horizontally/vertically\n   or mocha signs that should move horizontally/vertically.\n\n'align with first' uses X or Y from the first line.\n\nHorizontal Mirror: Duplicates the line and places it horizontally across the screen, mirrored around the middle.\n   If you input a number, it will mirror around that coordinate instead,\n   so if you have \\pos(300,200) and input is 400, the mirrored result will be \\pos(500,200).\nVertical Mirror is the logical vertical counetrpart. 'delete orig. line' will delete the original line.\n\nOrg to Fax: calculates \\fax from the line between \\pos and \\org coordinates.\nClip to Fax: calculates \\fax from the line between the first 2 points of a vectorial clip.\n   Both of these work with \\frz but not with \\frx and \\fry. Also, \\fscx must be the same as \\fscy.\n   If the clip has 4 points, points 3-4 are used to calculate fax for the last character (for grad-by-char).\n   See blog post for more info - http://unanimated.xtreemhost.com/itw/tsblok.htm#fax \n\nClip to Frz: calculates \\frz from the first 2 points of a vectorial clip. First point is start of text.\n   If the clip has 4 points, the frz is average from 1-2 and 3-4. (Both lines must be in the same direction.)\n\nShake: Apply to fbf lines with \\pos tags to create a shaking effect.\n   Input radius for how many pixels the sign may deflect from the original position.\n\nShake rotation: Adds shaking effect to rotations. Degrees for frz from Repositioning Field, x and y from Teleporter.\n\n'rotate' will flip the text accordingly for the mirror functions. It also adds \\frz to 'shake'.\n'scaling' randomizes fscx/y with 'shake'. Value of 6 gives 0.625 to 1.6 times current value. (Teleporter input.)\n'layers' will keep position/rotations the same for all layers with 'shake'. (Same value for same start time.)\n'smooth' will make shaking smoother."
 
 travel="'Horizontal' move means y2 will be the same as y1 so that the sign moves in a straight horizontal manner. \nSame principle for 'vertical.'\n\nTransmove: Main function: create \\move from two lines with \\pos.\n   Duplicate your line and position the second one where you want the \\move the end. \n   Script will create \\move from the two positions.\n   Second line will be deleted by default; it's there just so you can comfortably set the final position.\n   Extra function: to make this a lot more awesome, this can create transforms.\n   Not only is the second line used for \\move coordinates, but also for transforms.\n   Any tag on line 2 that's different from line 1 will be used to create a transform on line 1.\n   So for a \\move with transforms you can set the initial sign and then the final sign while everything is static.\n   You can time line 2 to just the last frame. The script only uses timecodes from line 1.\n   Text from line 2 is also ignored (assumed to be same as line 1).\n   You can time line 2 to start after line 1 and check 'keep both.'\n   That way line 1 transforms into line 2 and the sign stays like that for the duration of line 2.\n   'Rotation acceleration' - like with fbf-transform, this ensures that transforms of rotations will go the shortest way,\n   thus going only 4 degrees from 358 to 2 and not 356 degrees around.\n   If the \\pos is the same on both lines, only transforms will be applied.\n   Logically, you must NOT select 2 consecutive lines when you want to run this, \n   though you can select every other line.\n\nMultimove: when first line has \\move and the other lines have \\pos, \\move is calculated from the first line for the others.\n\nShiftmove: like teleporter, but only for the 2nd set of coordinates, ie x2, y2. Uses input from the Teleporter section.\n\nShiftstart: similarly, this only shifts the initial \\move coordinates.\n\nReverse Move: switches the coordinates, reversing the movement direction.\n\nMove Clip: moves regular clip along with \\move using \\t\\clip."
 
@@ -1402,7 +1494,7 @@ stg_topseq={x=1,y=0,width=1,height=1,class="label",label="   Cloning Laboratory"
 stg_toport={x=1,y=0,width=1,height=1,class="label",label="           Teleportation"}
 
 stg_intro={x=0,y=1,width=2,height=8,class="textbox",name="gd",value=intro}
-stg_cannon={x=0,y=1,width=2,height=16,class="textbox",name="gd",value=cannon}
+stg_cannon={x=0,y=1,width=2,height=17,class="textbox",name="gd",value=cannon}
 stg_travel={x=0,y=1,width=2,height=19,class="textbox",name="gd",value=travel}
 stg_morph={x=0,y=1,width=2,height=17,class="textbox",name="gd",value=morph}
 stg_morph2fbf={x=0,y=1,width=2,height=8,class="textbox",name="gd",value=morph2fbf}
