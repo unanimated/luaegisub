@@ -4,7 +4,7 @@
 script_name="Hyperdimensional Relocator"
 script_description="Makes things appear different from before"
 script_author="reanimated"
-script_version="2.8"
+script_version="2.81"
 
 --	SETTINGS	--
 
@@ -175,7 +175,7 @@ function positron(subs,sel)
 			text=tg..tt
 			if orig:match("{%*?\\") then text=textmod(orig,text) end
 		end
-		    
+		
 		text=text..endcom
 	    end
 	    text=text:gsub("\\clip%([^%)]+%)","")
@@ -1395,18 +1395,20 @@ function textmod(orig,text)
 	count=0
 	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
 	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
-	    pos=chars:len()+count
-	    tgl={p=pos,t=tak,a=as}
+	    pos=re.find(chars,".")
+	    if pos==nil then ps=0+count else ps=#pos+count end
+	    tgl={p=ps,t=tak,a=as}
 	    table.insert(tg,tgl)
-	    count=pos
+	    count=ps
 	end
 	count=0
 	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
 	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
-	    pos=chars:len()+count
-	    tgl={p=pos,t=tak,a=as}
+	    pos=re.find(chars,".")
+	    if pos==nil then ps=0+count else ps=#pos+count end
+	    tgl={p=ps,t=tak,a=as}
 	    table.insert(tg,tgl)
-	    count=pos
+	    count=ps
 	end
     newline=""
     for i=1,#tk do
