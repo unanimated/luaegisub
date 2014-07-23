@@ -1,7 +1,9 @@
 ﻿script_name="HYDRA"
 script_description="A multi-headed typesetting tool"
 script_author="unanimated"
-script_version="3.61"
+script_url1="http://unanimated.xtreemhost.com/ts/hydra.lua"
+script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/hydra.lua"
+script_version="3.7"
 
 -- SETTINGS - feel free to change these
 
@@ -14,10 +16,33 @@ default_spacing=1
 default_fax=0.05
 default_fay=0.05
 
+-- ^ this block (with '=' replaced with ':') can be saved as 'hydra.conf' in your Application Data with values that will override these
+-- it must contain all 8 lines. you can use that if you don't want to overwrite these every time you update
+-- you can also get the default here: http://unanimated.xtreemhost.com/ts/hydra.conf
+
 -- this is the order "sort tags in set order" will use:
 order="\\r\\fad\\fade\\an\\q\\blur\\be\\bord\\shad\\fn\\fs\\fsp\\fscx\\fscy\\frx\\fry\\frz\\c\\2c\\3c\\4c\\alpha\\1a\\2a\\3a\\4a\\xbord\\ybord\\xshad\\yshad\\pos\\move\\org\\clip\\iclip\\b\\i\\u\\s\\p"
 
 -- END of SETTINGS
+
+function checkonfig()
+hconfig=aegisub.decode_path("?user").."//hydra.conf"
+file=io.open(hconfig)
+    if file~=nil then
+	konf=file:read("*all")
+	startup_mode=tonumber(konf:match("startup_mode:(%d)"))
+	default_blur=tonumber(konf:match("default_blur:([%d%.]+)"))
+	default_border=tonumber(konf:match("default_border:([%d%.]+)"))
+	default_shadow=tonumber(konf:match("default_shadow:([%d%.]+)"))
+	default_fontsize=tonumber(konf:match("default_fontsize:([%d%.]+)"))
+	default_spacing=tonumber(konf:match("default_spacing:([%d%-%.]+)"))
+	default_fax=tonumber(konf:match("default_fax:([%d%-%.]+)"))
+	default_fay=tonumber(konf:match("default_fay:([%d%-%.]+)"))
+	io.close(file)
+    end
+end
+    
+re=require'aegisub.re'
 
 function hh9(subs, sel)
 	-- get colours from input
@@ -67,7 +92,6 @@ function hh9(subs, sel)
 	if tmode==3 then
 	    text=text:gsub("(\\t%([^%)]+)%)","%1alltagsgohere)")
 	end
-	
 	if tmode==1 then
 	  if text:match("^{[^}]-\\t%(\\") and tin==0 and tout==0 and res.accel==1 then
 	    text=text:gsub("^({[^}]*\\t%()\\","%1\\alltagsgohere\\")
@@ -604,8 +628,9 @@ function textmod(orig,text)
 	repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
 	vis=text:gsub("{[^}]-}","")
-	  for c in vis:gmatch(".") do
-	    table.insert(tk,c)
+	ltrmatches=re.find(vis,".")
+	  for l=1,#ltrmatches do
+	    table.insert(tk,ltrmatches[l].str)
 	  end
 	stags=text:match("^{(\\[^}]-)}")
 	if stags==nil then stags="" end
@@ -613,18 +638,20 @@ function textmod(orig,text)
 	count=0
 	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
 	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
-	    pos=chars:len()+count
-	    tgl={p=pos,t=tak,a=as,typ="old"}
+	    pos=re.find(chars,".")
+	    if pos==nil then ps=0+count else ps=#pos+count end
+	    tgl={p=ps,t=tak,a=as}
 	    table.insert(tg,tgl)
-	    count=pos
+	    count=ps
 	end
 	count=0
 	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
 	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
-	    pos=chars:len()+count
-	    tgl={p=pos,t=tak,a=as,typ="new"}
+	    pos=re.find(chars,".")
+	    if pos==nil then ps=0+count else ps=#pos+count end
+	    tgl={p=ps,t=tak,a=as}
 	    table.insert(tg,tgl)
-	    count=pos
+	    count=ps
 	end
     newline=""
     for i=1,#tk do
@@ -912,6 +939,7 @@ hh3={
 end
 
 function hydra(subs, sel)
+    checkonfig()
     sel=konfig(subs, sel)
     aegisub.set_undo_point(script_name)
     return sel
