@@ -1,7 +1,7 @@
 ﻿script_name="Quality Check"
 script_description="Quality Check"
 script_author="unanimated"
-script_version="2.65"
+script_version="2.7"
 
 require "clipboard"
 
@@ -11,8 +11,9 @@ sorted=0	mblur=0		layer=0		malf=0		inside=0	comment=0	dialog=0	bloped=0	contr=0
 dis=0		over=0		gap=0		dspace=0	dword=0		outside=0	op=0		ed=0		sign=0
 italics=0	lbreak=0	hororifix=0	zeroes=0	badita=0	dotdot=0	comfail=0	oneframe=0	trf=0
 zerot=0		halfsek=0	readableh=0	unreadable=0	saurosis=0	dupli=0		negadur=0	empty=0		orgline=0
-tdura=0		tlength=0	tcps=0		trilin=0	par=0		apo=0
+tdura=0		tlength=0	tcps=0		trilin=0	par=0		apo=0		dash=0		endash=0
 report=""	styles=", "	misstyles=", "	fontlist=""	fontable={}
+det_2sp=""	det_2p=""	det_2w=""	det_apo=""	det_dash=""	det_ita=""	det_quot=""
 longtext=nil	longline=nil	highcps=nil
 
 tugs1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
@@ -41,6 +42,7 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
 		:gsub("%s?%[doublespace%]","")
 		:gsub("%s?%[double word%]","")
 		:gsub("%s?%[missing apostrophe%]","")
+		:gsub("%s?%[notanemdash%]","")
 		:gsub("%s?%[italics fail%]","")
 		:gsub(" {\\Stupid","")
 		:gsub("%s?%[stupid contractions%]","")
@@ -105,6 +107,7 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
 	
 	visible=text:gsub("{\\alpha&HFF&}[^{}]-({[^}]-\\alpha&H)","%1")	:gsub("{\\alpha&HFF&}[^{}]*$","")	:gsub("{[^{}]-}","")
 			:gsub("\\[Nn]","*")	:gsub("%s?%*+%s?"," ")	:gsub("^%s+","")	:gsub("%s+$","")
+	vis=visible
 	if text:match("{\\alpha&HFF&}") then alfatime=1 else alfatime=0 end
 	nocomment=text:gsub("{[^\\}]-}","")
 	cleantxt=text:gsub("{[^}]-}","")
@@ -180,6 +183,7 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
 	  for i=1,#tugs3 do tag=tugs3[i]
 	    if text:match("\\"..tag) then
 		for tak in text:gmatch("\\"..tag.."([^\\}]-)[\\}]") do
+		if tag=="fad" then tak=tak:gsub("^e%(","(") end
 		if not tak:match("^%([%d%.,%-]-%)$") or not tak:match(",") then 
 		 eff(" [malformed tags3]") malf=malf+1 mlf=mlf.." \\"..tag..tak end
 		end
@@ -260,8 +264,8 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
 
 	-- check for double spaces/periods in dialogue		[Dialogue]
 	if res["doublespace"] and def==1 then
-		if visible:match("%s%s") then eff(" [doublespace]") dspace=dspace+1 end
-		if visible:match("[^%.]%.%.[^%.]") or visible:match("[^%.]%.%.$") then eff(" [..]") dotdot=dotdot+1 end
+	    if visible:match("%s%s") then eff(" [doublespace]") dspace=dspace+1 det_2sp=det_2sp..vis.."\n" end
+	    if visible:match("[^%.]%.%.[^%.]") or visible:match("[^%.]%.%.$") then eff(" [..]") dotdot=dotdot+1 det_2p=det_2p..vis.."\n" end
 	end
 
 	-- check for double words			[Dialogue]
@@ -270,10 +274,10 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
 	    for derp in visible2w:gmatch("%s?([%w%s\']+)[%p]") do
 	    derp2=derp:gsub("^[%a\']+","")
 		for a,b in derp:gmatch("([%a\']+)%s([%a\']+)") do
-		if a==b and not a:match("^%u") then eff(" [double word]") dword=dword+1 end
+		if a==b and not a:match("^%u") then eff(" [double word]") dword=dword+1 det_2w=det_2w..vis.."\n" end
 		end
 		for a,b in derp2:gmatch("([%a\']+)%s([%a\']+)") do
-		if a==b and not a:match("^%u") then eff(" [double word]") dword=dword+1 end
+		if a==b and not a:match("^%u") then eff(" [double word]") dword=dword+1 det_2w=det_2w..vis.."\n" end
 		end
 	    end
 	end
@@ -288,7 +292,10 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
 	    end
 	  itl=itl..it end
 	  if itl:match("11") or itl:match("00") then itafail=1 end
-	  if itafail==1 then eff(" [italics fail]") badita=badita+1 end
+	  if itafail==1 then eff(" [italics fail]")
+	    itatxt=text:gsub("\\[^i][^\\}]+","") :gsub("\\iclip%([^%)]+%)","") :gsub("{%*?}","")
+	    badita=badita+1 det_ita=det_ita..itatxt.."\n"
+	  end
 	end
 
 	-- check readability	(some sentences are much harder to read than others, so don't take this too seriously, but over 25 is probably bad.)
@@ -318,9 +325,15 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
 	if ra==2 then unreadable=unreadable+1 end
 
 	-- check for periods/commas inside/outside quotation marks	[All lines]
-	if not visible:match("^\"[^\"]+\"$") and not visible:match("^[^\"]+[%.%?!]%s\"%u[^\"]+\"$") then
-	if visible:match("[^%.][%.,]\"") then inside=inside+1 if res.quot then eff(" [\"]") end end
-	if visible:match("\"[%.,][^%.]") or visible:match("\"[%.,]$") then outside=outside+1 if res.quot then eff(" [\"]") end end
+	if res.quo or res.quot then
+	  if not visible:match("^\"[^\"]+\"$") and not visible:match("^[^\"]+[%.%?!]%s\"%u[^\"]+\"$") then
+	    if visible:match("[^%.][%.,]\"") then
+	      inside=inside+1 det_quot=det_quot..vis.."\n"	if res.quot then eff(" [\"]") end
+	    end
+	    if visible:match("\"[%.,][^%.]") or visible:match("\"[%.,]$") then
+	      outside=outside+1 det_quot=det_quot..vis.."\n"	if res.quot then eff(" [\"]") end
+	    end
+	  end
 	end
 
 	-- check for redundant tags		[All lines]
@@ -359,8 +372,14 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
 	  context=" "..visible:lower().." "
 	  context=context:gsub("[%.,%?!\"]","")
 	  for c=1,#cont do local word=cont[c]
-	    if context:match(" "..word.." ") then eff(" [missing apostrophe]") apo=apo+1 end
+	    if context:match(" "..word.." ") then eff(" [missing apostrophe]") apo=apo+1 det_apo=det_apo..vis.."\n" end
 	  end
+	end
+	
+	-- messed up em dashes
+	if res.mdash and def==1 then
+	  if visible:match("%-$") then eff(" [notanemdash]") dash=dash+1 det_dash=det_dash..vis.."\n" end
+	  if visible:match("%–$") then eff(" [notanemdash]") endash=endash+1 det_dash=det_dash..vis.."\n" end
 	end
 
 	-- count OP lines
@@ -415,7 +434,7 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
 	if dura<=50 and dura>0 then oneframe=oneframe+1 end
 	
 	-- longest dialogue line: characters
-	if def==1 and linelen>tlength then tlength=linelen longtext=visible end
+	if def==1 and linelen>tlength and not text:match("^{[^}]-\\p[1-9]") then tlength=linelen longtext=visible end
 	if longtext==nil then longtext="[No dialogue lines with text]" tlength=0 end
 	
 	-- longest dialogue line: duration
@@ -423,7 +442,9 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
 	if longline==nil then longline="[No dialogue lines with text]" ldura=0 end
 	
 	-- dialogue line with highest CPS
-	if def==1 and dura>50 and alfatime==0 and prevcleantxt~=cleantxt and rawcps>tcps then tcps=cps highcps=visible cpstime=dura/1000 end
+	if def==1 and dura>50 and alfatime==0 and prevcleantxt~=cleantxt and rawcps>tcps and not text:match("^{[^}]-\\p[1-9]")
+	  then tcps=cps highcps=visible cpstime=dura/1000
+	end
 	if highcps==nil then highcps="[No dialogue lines with text]" tcps=0 cpstime=0 end
 	
 	-- lines with transforms
@@ -484,7 +505,7 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
     report=report.."\n\n----------------  PROBLEMS FOUND ----------------\n\n"
     if sorted==1 then report=report.."NOT SORTED BY TIME.\n" end
     if colorspace=="TV.601" then report=report.."COLORSPACE IS TV.601. Use TV.709 or Daiz will haunt you!\n" end
-    if misstyles~=", " then misstyles=misstyles:gsub(", $","") report=report.."MISSING STYLES: "..misstyles.."\n" end
+    if misstyles~=", " then misstyles=misstyles:gsub("^, ",""):gsub(", $","") report=report.."MISSING STYLES: "..misstyles.."\n" end
     if mblur~=0 then report=report.."Non-dialogue lines with missing blur... "..mblur.."\n" end
     if bloped~=0 then report=report.."Out of those OP/ED... "..bloped.."\n" end
     if malf~=0 then report=report.."Malformed tags found... "..malf.."    "..mlf.."\n" end
@@ -501,6 +522,8 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
     if dword~=0 then report=report.."Dialogue lines with a double word... "..dword.."\n" end
     if dotdot~=0 then report=report.."Dialogue lines with double periods... "..dotdot.."\n" end
     if apo~=0 then report=report.."Missing apostrophes... "..apo.."\n" end
+    if dash~=0 then report=report.."Regular dashes at the end of line... "..dash.."\n" end
+    if endash~=0 then report=report.."En-dashes at the end of line... "..endash.."\n" end
     if halfsek~=0 then report=report.."Dialogue lines under 0.5s... "..halfsek.."\n" end
     if readableh~=0 then report=report.."Lines that may be hard to read... "..readableh.."\n" end
     if unreadable>9 then unrdbl="  --  Editor a shit" else unrdbl="" end
@@ -526,9 +549,27 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
         reportdialog=
 	{{x=0,y=0,width=50,height=1,class="label",label="Text to export:"},
 	{x=0,y=1,width=50,height=brcount/2+6,class="textbox",name="copytext",value=report},}
-    pressd,rez=aegisub.dialog.display(reportdialog,{"OK","Copy to clipboard","Cancel"},{ok='OK',close='Cancel'})
+    pressd,rez=aegisub.dialog.display(reportdialog,{"OK","Copy to clipboard","More Details","Cancel"},{ok='OK',close='Cancel'})
     if pressd=="Copy to clipboard" then clipboard.set(report) end	if pressd=="Cancel" then aegisub.cancel() end
+    if pressd=="More Details" then dlist=details()
+	detailog={{x=0,y=0,width=50,height=18,class="textbox",name="detlog",value=dlist}}
+	pres=aegisub.dialog.display(detailog,{"OK","Cancel"},{ok='OK',close='Cancel'})
+	if pres=="Cancel" then aegisub.cancel() end
+    end
   end
+end
+
+function details()
+    detailist=""
+    if det_2sp~="" then detailist=detailist.."+ Double Spaces +\n\n"..det_2sp.."\n\n" end
+    if det_2p~="" then detailist=detailist.."+ Double Periods +\n\n"..det_2p.."\n\n" end
+    if det_2w~="" then detailist=detailist.."+ Double Words +\n\n"..det_2w.."\n\n" end
+    if det_apo~="" then detailist=detailist.."+ Missing Apostrophes +\n\n"..det_apo.."\n\n" end
+    if det_dash~="" then detailist=detailist.."+ Messed up em-dashes +\n\n"..det_dash.."\n\n" end
+    if det_ita~="" then detailist=detailist.."+ Bad Italics +\n\n"..det_ita.."\n\n" end
+    if det_quot~="" then detailist=detailist.."+ Commas/periods around quotation marks:\n\n"..det_quot.."\n\n" end
+    if detailist=="" then detailist="Nothing to report." end
+    return detailist
 end
 
 function dial5(subs)
@@ -579,7 +620,7 @@ qcgui={
 	{x=2,y=0,width=1,height=1,class="edit",name="distill",},
 	{x=3,y=0,width=1,height=1,class="label",label=" QC Version:"..script_version},
 	{x=1,y=1,width=1,height=1,class="label",label="Analysis [applies to SELECTED lines]:"   },
-        {x=1,y=2,width=1,height=1,class="checkbox",name="sorted",label="Check if sorted by time",value=true},
+        {x=1,y=2,width=1,height=1,class="checkbox",name="sorted",label="Check if sorted by time",value=false},
 	{x=1,y=3,width=1,height=1,class="checkbox",name="blur",label="Check for missing blur in signs",value=true},
 	{x=1,y=4,width=1,height=1,class="checkbox",name="bloped",label="Check for missing blur in OP/ED",value=true},
 	
@@ -589,14 +630,16 @@ qcgui={
 	{x=1,y=8,width=1,height=1,class="checkbox",name="doublespace",label="Check for double spaces/periods in dialogue",value=true},
 	{x=1,y=9,width=1,height=1,class="checkbox",name="doubleword",label="Check for double words in dialogue",value=true},
 	{x=1,y=10,width=1,height=1,class="checkbox",name="apo",label="Check for missing apostrophes",value=true},
-	{x=1,y=11,width=1,height=1,class="checkbox",name="tril",label="Check for three-liners (slowish, needs video res)",value=true},
-	{x=1,y=12,width=1,height=1,class="checkbox",name="read",label="Check for hard-to-read lines",value=true},
-	{x=1,y=13,width=1,height=1,class="checkbox",name="noread",label="Check for unreadable lines",value=true},
-	{x=1,y=14,width=1,height=1,class="checkbox",name="redundant",label="Check for redundant tags",value=true},
-	{x=1,y=15,width=1,height=1,class="checkbox",name="failita",label="Check for bad italics",value=true},
-	{x=1,y=16,width=1,height=1,class="checkbox",name="mistyle",label="Check for missing styles",value=true},
-	{x=1,y=17,width=1,height=1,class="checkbox",name="dlayer",label="Check dialogue layer",value=true},
-	{x=1,y=18,width=1,height=1,class="checkbox",name="halfsec",label="Check for dialogue lines under 0.5s",value=true,hint="bur over 1 frame and over 8 characters"},
+	{x=1,y=11,width=1,height=1,class="checkbox",name="mdash",label="Check for messed up em-dashes",value=true},
+	{x=1,y=12,width=1,height=1,class="checkbox",name="tril",label="Check for three-liners (slowish, needs video res)",value=true},
+	{x=1,y=13,width=1,height=1,class="checkbox",name="read",label="Check for hard-to-read lines",value=true},
+	{x=1,y=14,width=1,height=1,class="checkbox",name="noread",label="Check for unreadable lines",value=true},
+	{x=1,y=15,width=1,height=1,class="checkbox",name="halfsec",label="Check for dialogue lines under 0.5s",value=true,hint="but over 1 frame and over 8 characters"},
+	{x=1,y=16,width=1,height=1,class="checkbox",name="redundant",label="Check for redundant tags",value=true},
+	{x=1,y=17,width=1,height=1,class="checkbox",name="failita",label="Check for bad italics",value=true},
+	{x=1,y=18,width=1,height=1,class="checkbox",name="mistyle",label="Check for missing styles",value=true},
+	{x=1,y=19,width=1,height=1,class="checkbox",name="dlayer",label="Check dialogue layer",value=true},
+	{x=1,y=20,width=1,height=1,class="checkbox",name="quo",label="Check commas/periods around quotation marks",value=true},
 	
 	{x=2,y=1,width=2,height=1,class="label",label="More useless statistics..."},
 	{x=2,y=2,width=2,height=1,class="checkbox",name="italix",label="Count dialogue lines with italics tag",value=false},
@@ -616,8 +659,8 @@ qcgui={
 	{x=2,y=16,width=2,height=1,class="checkbox",name="uselesstyle",label="List unused styles",value=false},
 	{x=2,y=17,width=2,height=1,class="checkbox",name="sauro",label="Count lines with faggosaurosis",value=true},
 	
-	{x=1,y=19,width=2,height=1,class="label",label=""},
-	{x=1,y=20,width=3,height=1,class="label",label="This is to help you spot mistakes. If you're using this INSTEAD of QC, you're dumb."},
+	{x=1,y=21,width=2,height=1,class="label",label=""},
+	{x=1,y=22,width=3,height=1,class="label",label="This is to help you spot mistakes. If you're using this INSTEAD of QC, you're dumb."},
 }
 	buttons={">QC","Clear QC","Dial 5","Check all","Uncheck",qderp[qr]}
 	
