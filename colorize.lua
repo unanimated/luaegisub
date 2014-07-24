@@ -1,7 +1,7 @@
 ﻿script_name="Colorize"
 script_description="Does things with colours"
 script_author="unanimated"
-script_version="3.6"
+script_version="3.7"
 
 --[[
 
@@ -32,8 +32,8 @@ script_version="3.6"
 	Match/switch/invert \c, \3c, 4c:
  This should be obvious from the names and should apply to all new colour tags in the line.
  
-	Adjust RGB / Brightness
- Simple and lame way of increasing/decreasing brightness for one (RGB) or all (Brightness) colours.
+	Adjust RGB / HSB
+ Adjusting Red/Green/Blue or Hue/Saturation/Brightness
  This works for lines with multiple same-type colour tags, including gradient by character.
  You can select from -255 to 255.
  Check types of colours you want it to apply to.
@@ -139,27 +139,30 @@ function textmod(orig)
 	repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
 	vis=text:gsub("{[^}]-}","")
-	  for c in vis:gmatch(".") do
-	    table.insert(tk,c)
+	ltrmatches=re.find(vis,".")
+	  for l=1,#ltrmatches do
+	    table.insert(tk,ltrmatches[l].str)
 	  end
 	stags=text:match("^{(\\[^}]-)}")
 	if stags==nil then stags="" end
 	text=text:gsub("^{\\[^}]-}","") :gsub("{[^\\}]-}","")
 	count=0
-	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
-	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
-	    pos=chars:len()+count
-	    tgl={p=pos,t=tak,a=as}
-	    table.insert(tg,tgl)
-	    count=pos
-	end
-	count=0
 	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
 	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
-	    pos=chars:len()+count
-	    tgl={p=pos,t=tak,a=as}
+	    pos=re.find(chars,".")
+	    if pos==nil then ps=0+count else ps=#pos+count end
+	    tgl={p=ps,t=tak,a=as}
 	    table.insert(tg,tgl)
-	    count=pos
+	    count=ps
+	end
+	count=0
+	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
+	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
+	    pos=re.find(chars,".")
+	    if pos==nil then ps=0+count else ps=#pos+count end
+	    tgl={p=ps,t=tak,a=as}
+	    table.insert(tg,tgl)
+	    count=ps
 	end
     newline=""
     for i=1,#tk do
@@ -449,7 +452,7 @@ function matchcolors(subs,sel)
 		    for kol in color:gmatch("(%x%x)") do
 			dkol=tonumber(kol,16)
 			idkol=255-dkol
-			ikol=to_hex(idkol)
+			ikol=tohex(idkol)
 			icolor=icolor..ikol
 		    end
 		    text=text:gsub("&H"..color.."&","&H"..icolor.."&")
@@ -458,8 +461,10 @@ function matchcolors(subs,sel)
 	end
 
 	-- RGB Colour / BRIGHTNESS
-	if pressed=="RGB" or pressed=="Brightness" then
+	if pressed=="RGB" or pressed=="HSB" then
 	    lvlr=res.R lvlg=res.G lvlb=res.B
+	    hue=res.huehue
+	    sat=res.satur
 	    brite=res.bright
 	    corols={}
 	    if res.k1 then table.insert(corols,"1") end
@@ -487,11 +492,22 @@ function matchcolors(subs,sel)
 		  end
 		end
 		
-		if pressed=="Brightness" then
+		if pressed=="HSB" then
 		  for kol1,kol2,kol3 in text:gmatch(kl.."&H(%x%x)(%x%x)(%x%x)&") do
-		    kol1n=brightness(kol1,brite)
-		    kol2n=brightness(kol2,brite)
-		    kol3n=brightness(kol3,brite)
+		  H,S,L=RGB_to_HSL(kol3,kol2,kol1)
+		  H=H+hue/255
+		  S=S+sat/255
+		  L=L+brite/255
+		  if H>1 then H=H-1 end
+		  if H<0 then H=H+1 end
+		  if S>1 then S=1 end
+		  if S<0 then S=0 end
+		  if L>1 then L=1 end
+		  if L<0 then L=0 end
+		  kol3n,kol2n,kol1n=HSL_to_RGB(H,S,L)
+		  kol3n=tohex(round(kol3n))
+		  kol2n=tohex(round(kol2n))
+		  kol1n=tohex(round(kol1n))
 		  text=text:gsub(kol1..kol2..kol3,kol1n..kol2n..kol3n)
 		  end
 		end
@@ -504,22 +520,80 @@ function matchcolors(subs,sel)
     end
 end
 
+function RGB_to_HSL(Red,Green,Blue)
+    R=(tonumber(Red,16)/255)
+    G=(tonumber(Green,16)/255)
+    B=(tonumber(Blue,16)/255)
+    
+    Min=math.min(R,G,B)
+    Max=math.max(R,G,B)
+    del_Max=Max-Min
+    
+    L=(Max+Min)/2
+    
+    if del_Max==0 then H=0 S=0
+    else
+      if L<0.5 then S=del_Max/(Max+Min)
+      else S=del_Max/(2-Max-Min)
+      end
+      
+      del_R=(((Max-R)/6)+(del_Max/2))/del_Max
+      del_G=(((Max-G)/6)+(del_Max/2))/del_Max
+      del_B=(((Max-B)/6)+(del_Max/2))/del_Max
+		
+      if R==Max then H=del_B-del_G
+      elseif G==Max then H=(1/3)+del_R-del_B
+      elseif B==Max then H=(2/3)+del_G-del_R
+      end
+
+      if H<0 then H=H+1 end
+      if H>1 then H=H-1 end
+    end
+    return H,S,L
+end
+
+function HSL_to_RGB(H,S,L)
+    if S==0 then
+	R=L*255
+	G=L*255
+	B=L*255
+    else
+	if L<0.5 then var_2=L*(1+S)
+	else var_2=(L+S)-(S*L)
+	end
+	var_1=2*L-var_2
+	R=255*Hue_to_RGB(var_1,var_2,H+(1/3))
+	G=255*Hue_to_RGB(var_1,var_2,H)
+	B=255*Hue_to_RGB(var_1,var_2,H-(1/3))
+    end
+    return R,G,B
+end
+
+function Hue_to_RGB(v1,v2,vH)
+    if vH<0 then vH=vH+1 end
+    if vH>1 then vH=vH-1 end
+    if (6*vH)<1 then return(v1+(v2-v1)*6*vH) end
+    if (2*vH)<1 then return(v2) end
+    if (3*vH)<2 then return(v1+(v2-v1)*((2/3)-vH)*6) end
+    return(v1)
+end
+
 function brightness(klr,lvl)
     klr=tonumber(klr,16)
     klr=klr+lvl
     if klr<0 then klr=0 end
-    if klr<10 then klr="0"..klr else klr=to_hex(klr) end
+    if klr<10 then klr="0"..klr else klr=tohex(klr) end
 return klr
 end
 
-function to_hex(num)
+function tohex(num)
     n1=math.floor(num/16)
     n2=num%16
-    num=tohex(n1)..tohex(n2)
+    num=tohex1(n1)..tohex1(n2)
 return num
 end
 
-function tohex(num)
+function tohex1(num)
     if num<1 then num="0"
     elseif num>14 then num="F"
     elseif num==10 then num="A"
@@ -565,6 +639,8 @@ str=str
 :gsub("%?","%%%?")
 return str
 end
+
+function round(num) num=math.floor(num+0.5) return num end
 
 function repetition()
 	if res.rept then
@@ -638,10 +714,17 @@ function colorize(subs,sel)
 	{x=8,y=1,width=3,height=1,class="intedit",name="G",value=0,min=-255,max=255},
 	{x=7,y=2,width=1,height=1,class="label",label="Blue: "},
 	{x=8,y=2,width=3,height=1,class="intedit",name="B",value=0,min=-255,max=255},
-	{x=7,y=4,width=1,height=1,class="label",label="Brightness:"},
-	{x=8,y=4,width=3,height=1,class="intedit",name="bright",value=0,min=-255,max=255},
-	{x=7,y=3,width=5,height=1,class="label",label="You can use values from -255 to 255."},
-	{x=7,y=5,width=5,height=1,class="label",label="1 step for brightness equals 1 step for R+G+B."},
+	
+	{x=7,y=3,width=1,height=1,class="label",label="Hue:"},
+	{x=8,y=3,width=3,height=1,class="intedit",name="huehue",value=0,min=-255,max=255},
+	{x=7,y=4,width=1,height=1,class="label",label="Saturation:"},
+	{x=8,y=4,width=3,height=1,class="intedit",name="satur",value=0,min=-255,max=255},
+	{x=7,y=5,width=1,height=1,class="label",label="Brightness:"},
+	{x=8,y=5,width=3,height=1,class="intedit",name="bright",value=0,min=-255,max=255},
+	
+	
+	--{x=7,y=3,width=5,height=1,class="label",label="You can use values from -255 to 255."},
+	--{x=7,y=5,width=5,height=1,class="label",label="1 step for brightness equals 1 step for R+G+B."},
 
 	{x=7,y=6,width=1,height=1,class="checkbox",name="k1",label="\\c       ",value=true  },
 	{x=8,y=6,width=1,height=1,class="checkbox",name="k3",label="\\3c      ",value=false },
@@ -660,13 +743,13 @@ function colorize(subs,sel)
 	{x=10,y=8,width=2,height=1,class="label",label="[ver. "..script_version.."]"},
 	
 	}
-	pressed,res=aegisub.dialog.display(dialog_config,{"Colorize","Shift","Match Colours","RGB","Brightness","Cancel"},{ok='Colorize',close='Cancel'})
+	pressed,res=aegisub.dialog.display(dialog_config,{"Colorize","Shift","Match Colours","RGB","HSB","Cancel"},{ok='Colorize',close='Cancel'})
 	if pressed=="Cancel" then aegisub.cancel() end
 	if pressed=="Colorize" then repetition() 
 	    if res.gcl then gcolors(subs,sel) else colors(subs,sel) end
 	end
 	if pressed=="Shift" then repetition() shift(subs,sel) end
-	if pressed=="Match Colours" or pressed=="RGB" or pressed=="Brightness" then repetition() styleget(subs) matchcolors(subs,sel) end
+	if pressed=="Match Colours" or pressed=="RGB" or pressed=="HSB" then repetition() styleget(subs) matchcolors(subs,sel) end
 	
 	lastclrs=res.clrs		lastshit=res.shit
 	lastkol=res.kol			lastc1=res.c1
