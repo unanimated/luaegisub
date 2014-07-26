@@ -1,7 +1,7 @@
 ﻿script_name="Colorize"
 script_description="Does things with colours"
 script_author="unanimated"
-script_version="3.7"
+script_version="3.8"
 
 --[[
 
@@ -29,6 +29,18 @@ script_version="3.7"
  For 3 colours, it will place one at the start, one in the middle, and one before the last character.
  Works for 2-10 colours and sets them evenly across the line. (Then you can run grad-by-char.)
  
+	Gradient:
+ Creates a gradient by character. (Uses Colorize button.)
+ There are two modes: RGB and HSB. RGB is the standard, like lyger's GBC; HSB interpolates Hue, Saturation, and Brightness separately.
+ Use the \c, \3c, \4c, \2c checkboxes on the right to choose which colour to gradient.
+ "Shortest hue" makes sure that hue is interpolated in the shorter direction. Unchecking it will give you a different gradient in 50% cases.
+ "Double HSB gradient" will make an extra round through Hue. Note that neither of these 2 options applies to RGB.
+ "Use asterisks" places asterisks like GBC so that you can ungradient the line with lyger's script.
+ There are several differences from lyger's GBC:
+	- RGB / HSB option
+	- You can choose which types of colour you want to gradient
+	- Other tags don't interfere with the colour gradients
+ 
 	Match/switch/invert \c, \3c, 4c:
  This should be obvious from the names and should apply to all new colour tags in the line.
  
@@ -38,11 +50,18 @@ script_version="3.7"
  You can select from -255 to 255.
  Check types of colours you want it to apply to.
  "Apply even to colours without tags in line" means it will be applied to the colour set in style.
+ 
+   "Remember last"
+ Remembers last settings of checkboxes and dropdowns.
+ 
+   "Save config"
+ Saves a config file in your Application Data folder with current settings.
 
 --]]
 
 re=require'aegisub.re'
 
+--	Colorize	--
 function colors(subs,sel)
     for x, i in ipairs(sel) do
         aegisub.progress.title(string.format("Colorizing line %d/%d",x,#sel))
@@ -178,6 +197,8 @@ function textmod(orig)
     return text
 end
 
+
+--	Colours across line	--
 function gcolors(subs,sel)
 cn=tonumber(res.gclrs)
 fn=cn-1
@@ -237,6 +258,8 @@ end
     end
 end
 
+
+--	Shift colours	--
 function shift(subs,sel)
 	klrs=tonumber(res.clrs)	-- how many colours we're dealing with
 	count=1				-- start line counter
@@ -323,6 +346,21 @@ function shift(subs,sel)
     end
 end
 
+function stylecolours()
+	stylecol={}
+	primary=styleref.color1:gsub("H%x%x","H")	sc1=primary	table.insert(stylecol,sc1)
+	pri=text:match("^{[^}]-\\c(&H%x+&)")		if pri~=nil then primary=pri end
+	secondary=styleref.color2:gsub("H%x%x","H")	sc2=secondary	table.insert(stylecol,sc2)
+	sec=text:match("^{[^}]-\\3c(&H%x+&)")		if sec~=nil then secondary=sec end
+	outline=styleref.color3:gsub("H%x%x","H")	sc3=outline	table.insert(stylecol,sc3)
+	out=text:match("^{[^}]-\\3c(&H%x+&)")		if out~=nil then outline=out end
+	shadow=styleref.color4:gsub("H%x%x","H")	sc4=shadow	table.insert(stylecol,sc4)
+	sha=text:match("^{[^}]-\\c(&H%x+&)")		if sha~=nil then shadow=sha end
+	return stylecol
+end
+
+
+--	Match colours	--
 function matchcolors(subs,sel)
     for x, i in ipairs(sel) do
         aegisub.progress.title(string.format("Colorizing line %d/%d",x,#sel))
@@ -333,20 +371,8 @@ function matchcolors(subs,sel)
 	else styleref=stylechk(line.style) end
 	lastref=styleref	laststyle=line.style
 	
-		stylecol={}
-		
-		primary=styleref.color1:gsub("H%x%x","H")	sc1=primary	table.insert(stylecol,sc1)
-		pri=text:match("^{[^}]-\\c(&H%x+&)")		if pri~=nil then primary=pri end
-		
-		secondary=styleref.color2:gsub("H%x%x","H")	sc2=secondary	table.insert(stylecol,sc2)
-		sec=text:match("^{[^}]-\\3c(&H%x+&)")		if sec~=nil then secondary=sec end
-		
-		outline=styleref.color3:gsub("H%x%x","H")	sc3=outline	table.insert(stylecol,sc3)
-		out=text:match("^{[^}]-\\3c(&H%x+&)")		if out~=nil then outline=out end
-		
-		shadow=styleref.color4:gsub("H%x%x","H")	sc4=shadow	table.insert(stylecol,sc4)
-		sha=text:match("^{[^}]-\\c(&H%x+&)")		if sha~=nil then shadow=sha end
-		
+	stylecol=stylecolours()
+	
 	    if res.kol=="primary" then k="\\c" end
 	    if res.kol=="border" then k="\\3c" end
 	    if res.kol=="shadow" then k="\\4c" end
@@ -604,6 +630,138 @@ function tohex1(num)
 return num
 end
 
+
+--	GRADIENT	--
+function gradient(subs,sel)
+    styleget(subs)
+    if res.grtype=="RGB" then GRGB=true else GRGB=false end
+    if res.ast then ast="*" else ast="" end
+    for x, i in ipairs(sel) do
+        aegisub.progress.title(string.format("Colorizing line %d/%d",x,#sel))
+	line=subs[i]
+	text=line.text
+	text=text:gsub("\\c&","\\1c&")
+	after=text:gsub("^{\\[^}]-}","")
+	if text:match("{\\[^}]-}$") then text=text.."wtfwhywouldyoudothis" end
+	
+	-- colours from style
+	styleref=stylechk(line.style)
+	stylecol=stylecolours()
+	-- which types will be used
+	applycol={}
+	if res.k1 and after:match("\\1c") then table.insert(applycol,1) end
+	if res.k2 and after:match("\\2c") then table.insert(applycol,2) end
+	if res.k3 and after:match("\\3c") then table.insert(applycol,3) end
+	if res.k4 and after:match("\\4c") then table.insert(applycol,4) end
+	
+	for g=1,#applycol do
+	  ac=applycol[g]
+	  sc=stylecol[ac]
+	  -- backup original text + save tags
+	  orig=text
+	  tags=text:match("^{\\[^}]-}") if tags==nil then tags="" end
+	  -- leave only releavant colour tags, nuke all other ones, add colour from style if missing at the start
+	  ctext=text:gsub("\\[^1234][^c][^\\}]+","") :gsub("{%*?}","") :gsub("\\[^"..ac.."]c[^\\}]+","") :gsub("{%*?}","")
+	  if not ctext:match("^{\\") then ctext="{\\kolor}"..ctext end
+	  if not ctext:match("^{[^}]-\\"..ac.."c") then 
+		ctext=ctext:gsub("^({\\[^}]-)}","%1\\"..ac.."c"..sc.."}") end
+	  -- make tables of colour tags and text after them
+	  linecol={}
+	  posi={}
+	  coltext={}
+	  pos=0
+	  for k,t in ctext:gmatch("{[^}]-\\"..ac.."c&H(%x+)&[^}]-}([^{]+)") do
+	    table.insert(posi,pos)
+	    table.insert(linecol,k)
+	    table.insert(coltext,t)
+	    ps=re.find(t,".")
+	    pos=#ps
+	  end
+	
+	  -- text for each colour
+	  gradtext=""
+	
+	  -- sequence for each colour tag / text
+	  for c=1,#linecol-1 do
+	    -- get RBG and HSL if needed
+	    B1,G1,R1=linecol[c]:match("(%x%x)(%x%x)(%x%x)")
+	    B2,G2,R2=linecol[c+1]:match("(%x%x)(%x%x)(%x%x)")
+	    if not GRGB then
+	      H1,S1,L1=RGB_to_HSL(R1,G1,B1)
+	      H2,S2,L2=RGB_to_HSL(R2,G2,B2)
+	      if res.hueshort then
+	        if H2>H1 and H2-H1>0.5 then H1=H1+1 end
+	        if H2<H1 and H1-H2>0.5 then H2=H2+1 end
+	      end
+	      if res.double then
+	        if H2>H1 then H2=H2+1 else H1=H1+1 end
+	        if H1>2 or H2>2 then H2=H2-1 H1=H1-1 end
+	      end
+	    end
+	    -- letters of this sequence
+	    textseq={}
+	    ltrmatches=re.find(coltext[c],".")
+		for l=1,#ltrmatches do
+		    table.insert(textseq,ltrmatches[l].str)
+		end
+	    -- new text starting with original colour tag and first letter
+	    ntxt="{\\"..ac.."c&H"..linecol[c].."&}"..textseq[1]
+	    -- calculate colours for the other letters in sequence
+	    for l=2,posi[c+1] do
+	      if textseq[l]~=" " then
+		if GRGB then	-- RGB
+		  nR1=(tonumber(R1,16))  nR2=(tonumber(R2,16))
+		  nG1=(tonumber(G1,16))  nG2=(tonumber(G2,16))
+		  nB1=(tonumber(B1,16))  nB2=(tonumber(B2,16))
+		  Rdiff=(nR2-nR1)/posi[c+1]	R=nR1+Rdiff*l
+		  Gdiff=(nG2-nG1)/posi[c+1]	G=nG1+Gdiff*l
+		  Bdiff=(nB2-nB1)/posi[c+1]	B=nB1+Bdiff*l
+		else		-- HSL
+		  Hdiff=(H2-H1)/posi[c+1]	H=H1+Hdiff*l
+		  Sdiff=(S2-S1)/posi[c+1]	S=S1+Sdiff*l
+		  Ldiff=(L2-L1)/posi[c+1]	L=L1+Ldiff*l
+		  R,G,B=HSL_to_RGB(H,S,L)
+		end
+		R=tohex(round(R))
+		G=tohex(round(G))
+		B=tohex(round(B))
+		-- colour + letter
+		ncol="{"..ast.."\\"..ac.."c&H"..B..G..R.."&}"
+		ntxt=ntxt..ncol..textseq[l]
+	      else
+	        -- spaces (no tags)
+		ntxt=ntxt..textseq[l]
+	      end
+	    end
+	    gradtext=gradtext..ntxt
+	  end
+	  -- add final tag + text
+	  gradtext=gradtext.."{\\"..ac.."c&H"..linecol[#linecol].."&}"..coltext[#coltext]
+	  text=tags..gradtext
+	  -- merge with original
+	  text=textmod(orig)
+	end
+	
+	text=text:gsub("({%*?\\[^}]-})",function(tg) return colkill(tg) end)
+	:gsub("wtfwhywouldyoudothis","")
+	:gsub("([^{])%*\\","%1\\")
+	
+	line.text=text
+        subs[i]=line
+    end
+end
+
+function colkill(tagz)
+	tagz=tagz:gsub("\\1c&","\\c&")
+	tags2={"c","2c","3c","4c"}
+	for i=1,#tags2 do
+	    tag=tags2[i]
+	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1")
+	end
+	return tagz
+end
+
+
 function styleget(subs)
     styles={}
     for i=1, #subs do
@@ -672,11 +830,76 @@ function repetition()
 	res.match34=lastmatch34
 	res.match131=lastmatch131
 	res.invert=lastinvert
+	res.grad=lastgrad
+	res.grtype=lastgrtype
+	res.hueshort=lasthueshort
+	res.double=lastdouble
 	end
 end
 
+function tf(val)
+    if val==true then ret="true" else ret="false" end
+    return ret
+end
+
+function detf(txt)
+    if txt=="true" then ret=true
+    elseif txt=="false" then ret=false
+    else ret=txt end
+    return ret
+end
+
+function saveconfig()
+colconf=
+"Colorize Configutation\n"..
+"\nclrs:"..res.clrs..
+"\nshit:"..res.shit..
+"\nkol:"..res.kol..
+"\njoin:"..tf(res.join)..
+"\ncont:"..tf(res.cont)..
+"\nword:"..tf(res.word)..
+"\ngcl:"..tf(res.gcl)..
+"\ngclrs:"..res.gclrs..
+"\ngrad:"..tf(res.grad)..
+"\nhueshort:"..tf(res.hueshort)..
+"\ngrtype:"..res.grtype..
+"\ndouble:"..tf(res.double)..
+"\nast:"..tf(res.ast)..
+"\nk1:"..tf(res.k1)..
+"\nk2:"..tf(res.k2)..
+"\nk3:"..tf(res.k3)..
+"\nk4:"..tf(res.k4)..
+"\nmatch13:"..tf(res.match13)..
+"\nmatch31:"..tf(res.match31)..
+"\nmatch14:"..tf(res.match14)..
+"\nmatch34:"..tf(res.match34)..
+"\nmatch131:"..tf(res.match131)..
+"\nmktag:"..tf(res.mktag)..
+"\ninvert:"..tf(res.invert)..
+"\nrem:"..tf(res.rem)
+colorconfig=aegisub.decode_path("?user").."\\colorize.conf"
+file=io.open(colorconfig,"w")
+file:write(colconf)
+file:close()
+aegisub.dialog.display({{class="label",label="Config Saved to:\n"..colorconfig}},{"OK"},{close='OK'})
+end
+
+function loadconfig()
+colorconfig=aegisub.decode_path("?user").."\\colorize.conf"
+file=io.open(colorconfig)
+    if file~=nil then
+	konf=file:read("*all")
+	io.close(file)
+	  for key,val in ipairs(colorfiguration) do
+	    if val.class=="checkbox" or val.class=="dropdown" then
+	      if konf:match(val.name) then val.value=detf(konf:match(val.name..":(.-)\n")) end
+	    end
+	  end
+    end
+end
+
 function colorize(subs,sel)
-	dialog_config=
+	colorfiguration=
 	{
 	{x=0,y=0,width=1,height=1,class="label",label="Colours"},
 	{x=1,y=0,width=2,height=1,class="dropdown",name="clrs",items={"2","3","4","5"},value="2"},
@@ -701,52 +924,67 @@ function colorize(subs,sel)
 	
 	{x=0,y=3,width=3,height=1,class="checkbox",name="join",label="Don't join with other tags",value=false },
 	{x=0,y=4,width=4,height=1,class="checkbox",name="cont",label="Continuous shift line by line",value=false },
-	{x=0,y=5,width=4,height=1,class="checkbox",name="word",label="Colorize by word",value=false },
-	{x=0,y=6,width=5,height=1,class="checkbox",name="gcl",label="Set colours across whole line:",value=false },
-	{x=5,y=6,width=1,height=1,class="dropdown",name="gclrs",items={"2","3","4","5","6","7","8","9","10"},value="3"},
-	{x=0,y=7,width=6,height=1,class="checkbox",name="rept",label="repeat with last settings (any function)",value=false },
+	{x=0,y=5,width=5,height=1,class="checkbox",name="gcl",label="Set colours across whole line:",value=false },
+	{x=5,y=5,width=1,height=1,class="dropdown",name="gclrs",items={"2","3","4","5","6","7","8","9","10"},value="3"},
+	{x=0,y=6,width=3,height=1,class="checkbox",name="word",label="Colorize by word",value=false },
+	{x=0,y=7,width=3,height=1,class="checkbox",name="rept",label="Repeat with last settings",value=false },
 		
 	{x=6,y=0,width=1,height=1,class="label",label=" "},
 		
-	{x=7,y=0,width=1,height=1,class="label",label="Red: "},
-	{x=8,y=0,width=3,height=1,class="intedit",name="R",value=0,min=-255,max=255},
-	{x=7,y=1,width=1,height=1,class="label",label="Green: "},
-	{x=8,y=1,width=3,height=1,class="intedit",name="G",value=0,min=-255,max=255},
-	{x=7,y=2,width=1,height=1,class="label",label="Blue: "},
-	{x=8,y=2,width=3,height=1,class="intedit",name="B",value=0,min=-255,max=255},
+	{x=7,y=2,width=1,height=1,class="label",label="Red: "},
+	{x=8,y=2,width=3,height=1,class="intedit",name="R",value=0,min=-255,max=255},
+	{x=7,y=3,width=1,height=1,class="label",label="Green: "},
+	{x=8,y=3,width=3,height=1,class="intedit",name="G",value=0,min=-255,max=255},
+	{x=7,y=4,width=1,height=1,class="label",label="Blue: "},
+	{x=8,y=4,width=3,height=1,class="intedit",name="B",value=0,min=-255,max=255},
 	
-	{x=7,y=3,width=1,height=1,class="label",label="Hue:"},
-	{x=8,y=3,width=3,height=1,class="intedit",name="huehue",value=0,min=-255,max=255},
-	{x=7,y=4,width=1,height=1,class="label",label="Saturation:"},
-	{x=8,y=4,width=3,height=1,class="intedit",name="satur",value=0,min=-255,max=255},
-	{x=7,y=5,width=1,height=1,class="label",label="Brightness:"},
-	{x=8,y=5,width=3,height=1,class="intedit",name="bright",value=0,min=-255,max=255},
+	{x=7,y=5,width=1,height=1,class="label",label="Hue:"},
+	{x=8,y=5,width=3,height=1,class="intedit",name="huehue",value=0,min=-255,max=255},
+	{x=7,y=6,width=1,height=1,class="label",label="Saturation:"},
+	{x=8,y=6,width=3,height=1,class="intedit",name="satur",value=0,min=-255,max=255},
+	{x=7,y=7,width=1,height=1,class="label",label="Brightness:"},
+	{x=8,y=7,width=3,height=1,class="intedit",name="bright",value=0,min=-255,max=255},
 	
+	{x=7,y=8,width=1,height=1,class="checkbox",name="k1",label="\\c       ",value=true  },
+	{x=8,y=8,width=1,height=1,class="checkbox",name="k3",label="\\3c      ",value=false },
+	{x=9,y=8,width=1,height=1,class="checkbox",name="k4",label="\\4c      ",value=false },
+	{x=10,y=8,width=1,height=1,class="checkbox",name="k2",label="\\2c",value=false },
+	{x=7,y=9,width=5,height=1,class="checkbox",name="mktag",label="Apply even to colours without tags in line",value=false },
 	
-	--{x=7,y=3,width=5,height=1,class="label",label="You can use values from -255 to 255."},
-	--{x=7,y=5,width=5,height=1,class="label",label="1 step for brightness equals 1 step for R+G+B."},
-
-	{x=7,y=6,width=1,height=1,class="checkbox",name="k1",label="\\c       ",value=true  },
-	{x=8,y=6,width=1,height=1,class="checkbox",name="k3",label="\\3c      ",value=false },
-	{x=9,y=6,width=1,height=1,class="checkbox",name="k4",label="\\4c      ",value=false },
-	{x=10,y=6,width=1,height=1,class="checkbox",name="k2",label="\\2c",value=false },
-	{x=7,y=7,width=5,height=1,class="checkbox",name="mktag",label="apply even to colours without tags in line",value=false },
+	{x=7,y=0,width=1,height=1,class="label",label="Match col.:"},
+	{x=8,y=0,width=1,height=1,class="checkbox",name="match13",label="c->3c  ",value=false,hint="copy primary to outline"},
+	{x=9,y=0,width=1,height=1,class="checkbox",name="match31",label="3c->c",value=false,hint="copy outline to primary"},
+	{x=7,y=1,width=1,height=1,class="checkbox",name="match14",label="c->4c",value=false,hint="copy primary to shadow"},
+	{x=8,y=1,width=1,height=1,class="checkbox",name="match34",label="3c->4c",value=false,hint="copy outline to shadow"},
+	{x=9,y=1,width=1,height=1,class="checkbox",name="match131",label="c<->3c",value=false,hint="switch primary and outline"},
+	{x=10,y=1,width=1,height=1,class="checkbox",name="invert",label="Invert",value=false,hint="invert colours"},
 	
-	{x=0,y=8,width=1,height=1,class="label",label="Match col.:"},
-	{x=1,y=8,width=1,height=1,class="checkbox",name="match13",label="c->3c  ",value=false,hint="copy primary to outline"},
-	{x=2,y=8,width=3,height=1,class="checkbox",name="match31",label="3c->c",value=false,hint="copy outline to primary"},
-	{x=5,y=8,width=1,height=1,class="checkbox",name="match14",label="c->4c",value=false,hint="copy primary to shadow"},
-	{x=7,y=8,width=1,height=1,class="checkbox",name="match34",label="3c->4c",value=false,hint="copy outline to shadow"},
-	{x=8,y=8,width=1,height=1,class="checkbox",name="match131",label="c<->3c",value=false,hint="switch primary and outline"},
-	{x=9,y=8,width=1,height=1,class="checkbox",name="invert",label="invert",value=false,hint="invert colours"},
+	{x=10,y=0,width=1,height=1,class="label",label="[ver. "..script_version.."]"},
 	
-	{x=10,y=8,width=2,height=1,class="label",label="[ver. "..script_version.."]"},
+	{x=0,y=8,width=2,height=1,class="checkbox",name="grad",label="Gradient  ",value=false},
+	{x=2,y=8,width=3,height=1,class="checkbox",name="hueshort",label="Shortest hue",value=true},
+	{x=5,y=8,width=1,height=1,class="dropdown",name="grtype",items={"RGB","HSB"},value="HSB"},
+	{x=0,y=9,width=3,height=1,class="checkbox",name="double",label="Double HSB gradient",value=false},
+	{x=3,y=9,width=3,height=1,class="checkbox",name="ast",label="Use asterisks",value=false},
+	
+	{x=3,y=6,width=3,height=1,class="checkbox",name="conf",label="Save config",value=false,hint="Saves current configuration\n(for most things)"},
+	{x=3,y=7,width=3,height=1,class="checkbox",name="rem",label="Remember last",value=false,hint="remember last settings"},
 	
 	}
-	pressed,res=aegisub.dialog.display(dialog_config,{"Colorize","Shift","Match Colours","RGB","HSB","Cancel"},{ok='Colorize',close='Cancel'})
+	loadconfig()
+	if colourblind and res.rem then
+	  for key,val in ipairs(colorfiguration) do
+	    if val.class=="checkbox" or val.class=="dropdown" then val.value=res[val.name] end
+	    if val.name=="conf" then val.value=false end
+	  end
+	end
+	pressed,res=aegisub.dialog.display(colorfiguration,{"Colorize","Shift","Match Colours","RGB","HSB","Cancel"},{ok='Colorize',close='Cancel'})
 	if pressed=="Cancel" then aegisub.cancel() end
 	if pressed=="Colorize" then repetition() 
-	    if res.gcl then gcolors(subs,sel) else colors(subs,sel) end
+	    if res.conf then saveconfig()
+	    elseif res.gcl then gcolors(subs,sel)
+	    elseif res.grad then gradient(subs,sel)
+	    else colors(subs,sel) end
 	end
 	if pressed=="Shift" then repetition() shift(subs,sel) end
 	if pressed=="Match Colours" or pressed=="RGB" or pressed=="HSB" then repetition() styleget(subs) matchcolors(subs,sel) end
@@ -765,7 +1003,10 @@ function colorize(subs,sel)
 	lastmatch13=res.match13		lastmatch31=res.match31
 	lastmatch14=res.match14		lastmatch34=res.match34
 	lastmatch131=res.match131	lastinvert=res.invert
+	lastgrad=res.grad		lastgrtype=res.grtype
+	lasthueshort=res.hueshort	lastdouble=res.double
     
+	colourblind=true
 	aegisub.set_undo_point(script_name)
 	return sel
 end
