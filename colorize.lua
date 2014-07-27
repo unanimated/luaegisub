@@ -1,7 +1,7 @@
 ﻿script_name="Colorize"
 script_description="Does things with colours"
 script_author="unanimated"
-script_version="3.8"
+script_version="3.81"
 
 --[[
 
@@ -266,8 +266,8 @@ function shift(subs,sel)
 	if res.shit=="line" then sline=true else sline=false end
     for x, i in ipairs(sel) do
         aegisub.progress.title(string.format("Colorizing line %d/%d",x,#sel))
-	local line=subs[i]
-	local text=line.text
+	line=subs[i]
+	text=line.text
 
 	    -- check if line looks colorized
 	    if not text:match("{(\\[1234]?c)&H%x+&}[%w%p]") then aegisub.dialog.display({{class="label",
@@ -364,8 +364,8 @@ end
 function matchcolors(subs,sel)
     for x, i in ipairs(sel) do
         aegisub.progress.title(string.format("Colorizing line %d/%d",x,#sel))
-	local line=subs[i]
-	local text=line.text
+	line=subs[i]
+	text=line.text
 	if defaref~=nil and line.style=="Default" then styleref=defaref
 	elseif lastref~=nil and laststyle==line.style then styleref=lastref
 	else styleref=stylechk(line.style) end
@@ -876,7 +876,7 @@ colconf=
 "\nmatch131:"..tf(res.match131)..
 "\nmktag:"..tf(res.mktag)..
 "\ninvert:"..tf(res.invert)..
-"\nrem:"..tf(res.rem)
+"\nrem:"..tf(res.rem).."\n"
 colorconfig=aegisub.decode_path("?user").."\\colorize.conf"
 file=io.open(colorconfig,"w")
 file:write(colconf)
