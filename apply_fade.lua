@@ -14,31 +14,18 @@ Fade across multiple lines will create a set of alpha transforms across lines.
   "Global time" will use times relative to video, rather than of each individual line.
 Fade in to current frame - sets fade in to current video frame
 Fade out from current frame - sets fade out to current video frame
+Extra functions:
 Fade between 0 and 1 gives you that fraction of the line's duration, so fade in 0.2 with 1 second is \fad(200,0).
 Negative fade gives you the inverse with respect to duration, so if dur=3000 and fade in is -500, you get \fad(2500,0), or to 500 from end. ]]
 
 script_name="Apply fade"
 script_description="Applies fade to selected lines"
 script_author="unanimated"
-script_version="3.6"
-
---	SETTINGS	--
-
-default_in=0
-default_out=0
-default_lbl="120"
-default_accel_in=1
-default_accel_out=1
-default_blur_in=3
-default_blur_out=3
-default_rtl=false
-remember_last_settings=false	-- [true/false] if set to "true", settings will be remembered from last session
-
---	--	--	--
+script_version="3.7"
 
 re=require'aegisub.re'
 
-function fade(subs, sel)
+function fade(subs,sel)
     for z, i in ipairs(sel) do
 	line=subs[i]
 	text=line.text
@@ -63,7 +50,7 @@ function fade(subs, sel)
 
 	    -- letter by letter
 	    if pressed=="Letter by Letter" then
-		
+
 	    -- delete old letter-by-letter if present
 		if text:match("\\t%([%d,]+\\alpha[^%(%)]+%)}[%w%p]$") then
 		    text=text:gsub("\\t%([^%(%)]-%)","")
@@ -72,7 +59,7 @@ function fade(subs, sel)
 		end
 
 	    if not res.del then
-		
+
 		-- fail if letter fade is larger than total fade
 		lf=tonumber(res.letterfade)
 		if fadein>0 and fadein<=lf or fadeout>0 and fadeout<=lf then aegisub.dialog.display({{class="label",
@@ -94,8 +81,6 @@ function fade(subs, sel)
 
 		-- define variables
 		outfade=dur-fadeout
-
-		--aegisub.log("fadein: "..fadein.."   lf: "..lf.."   length: "..length.."   ftime1: "..ftime1)
 
 		    -- letter-by-letter fade happens here
 		    count=0
@@ -121,7 +106,6 @@ function fade(subs, sel)
 		    text3=text3..text2m
 		    count=count+1
 		    end
-		    
 
 		-- join saved tags + new text with transforms
 		text=tags..text3
@@ -145,8 +129,9 @@ function textmod(orig)
 	repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
 	vis=text:gsub("{[^}]-}","")
-	  for c in vis:gmatch(".") do
-	    table.insert(tk,c)
+	ltrmatches=re.find(vis,".")
+	  for l=1,#ltrmatches do
+	    table.insert(tk,ltrmatches[l].str)
 	  end
 	stags=text:match("^{(\\[^}]-)}")
 	if stags==nil then stags="" end
@@ -154,25 +139,27 @@ function textmod(orig)
 	count=0
 	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
 	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
-	    pos=chars:len()+count
-	    tgl={p=pos,t=tak,a=as}
+	    pos=re.find(chars,".")
+	    if pos==nil then ps=0+count else ps=#pos+count end
+	    tgl={p=ps,t=tak,a=as}
 	    table.insert(tg,tgl)
-	    count=pos
+	    count=ps
 	end
 	count=0
 	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
 	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
-	    pos=chars:len()+count
-	    tgl={p=pos,t=tak,a=as}
+	    pos=re.find(chars,".")
+	    if pos==nil then ps=0+count else ps=#pos+count end
+	    tgl={p=ps,t=tak,a=as}
 	    table.insert(tg,tgl)
-	    count=pos
+	    count=ps
 	end
     newline=""
     for i=1,#tk do
 	newline=newline..tk[i]
 	newt=""
 	for n, t in ipairs(tg) do
-	    if t.p==i then newt=newt..t.t as=t.a end
+	    if t.p==i then newt=newt..t.a..t.t end
 	end
 	if newt~="" then newline=newline.."{"..as..newt.."}" end
     end
@@ -181,26 +168,28 @@ function textmod(orig)
     return text
 end
 
-function fadalpha(subs, sel)
+function fadalpha(subs,sel)
 	if res.clr or res.crl then res.alf=true end
 	fadin=res.fadein	fadout=res.fadeout
-	if fadin<=1 and fadin>0 then fadin=round(dur*fadin) end
-	if fadout<=1 and fadout>0 then fadout=round(dur*fadout) end
-	if fadin<0 then fadin=dur+fadin end
-	if fadout<0 then fadout=dur+fadout end
-	if fadin<0 then fadin=0 end
-	if fadout<0 then fadout=0 end
 	blin="\\blur"..res.bli	blout="\\blur"..res.blu
 	if res.vin or res.vout then vfcheck() vt=math.floor((fr2ms(vframe+1)+fr2ms(vframe))/2) end
 	for z, i in ipairs(sel) do
 	    line=subs[i]
 	    text=subs[i].text
+	    ortext=text
 	    styleref=stylechk(subs,line.style)
 	    st=line.start_time
 	    et=line.end_time
 	    if res.vin then fadin=vt-st end
 	    if res.vout then fadout=et-vt end
 	    dur=et-st
+	    if fadin<=1 and fadin>0 then fadin=round(dur*fadin) end
+	    if fadout<=1 and fadout>0 then fadout=round(dur*fadout) end
+	    if fadin<0 then fadin=dur+fadin end
+	    if fadout<0 then fadout=dur+fadout end
+	    if fadin<0 then fadin=0 end
+	    if fadout<0 then fadout=0 end
+	    
 	    if not text:match("^{\\[^}]-}") then text="{\\arfa}"..text end
 
 	    col1=res.c1:gsub("#(%x%x)(%x%x)(%x%x)","&H%3%2%1&")
@@ -208,154 +197,131 @@ function fadalpha(subs, sel)
 
 		text=text:gsub("\\1c","\\c")
 		primary=styleref.color1:gsub("H%x%x","H")
-		pri=text:match("^{\\[^}]-\\c(&H%x+&)")		if pri~=nil then primary=pri end
+		pri=text:match("^{[^}]-\\c(&H%x+&)")		if pri~=nil then primary=pri end
 		outline=styleref.color3:gsub("H%x%x","H")
-		out=text:match("^{\\[^}]-\\3c(&H%x+&)")		if out~=nil then outline=out end
+		out=text:match("^{[^}]-\\3c(&H%x+&)")		if out~=nil then outline=out end
+		shadcol=styleref.color4:gsub("H%x%x","H")
+		sha=text:match("^{[^}]-\\4c(&H%x+&)")		if sha~=nil then shadcol=sha end
 		border=styleref.outline
 		bord=text:match("^{[^}]-\\bord([%d%.]+)")	if bord~=nil then border=tonumber(bord) end
+		shadow=styleref.shadow
+		shad=text:match("^{[^}]-\\shad([%d%.]+)")	if shad~=nil then shadow=tonumber(shad) end
 
-		kolora1="\\c"..col1	kolora3="\\3c"..col1	kolora="\\c"..col1.."\\3c"..col1
-		kolorb1="\\c"..col2	kolorb3="\\3c"..col2	kolorb="\\c"..col2.."\\3c"..col2
+		kolora1="\\c"..col1	kolora3="\\3c"..col1	kolora4="\\4c"..col1
+		kolorb1="\\c"..col2	kolorb3="\\3c"..col2	kolorb4="\\4c"..col2
+		kolora=kolora1..kolora3..kolora4	kolorb=kolorb1..kolorb3..kolorb4
 		a00="\\alpha&H00&"	aff="\\alpha&HFF&"	lb=""
 		
 		-- blur w/o alpha
 		if res.blur then lineblur=text:match("^{[^}]-(\\blur[%d%.]+)")
 		    if lineblur==nil then lineblur="\\blur0.6" end
 		    text=text:gsub("^({[^}]-)\\blur[%d%.]+","%1")
-		    text=text:gsub("^{}","{\\}")
+		    text=text:gsub("^{}","{\\arfa}")
 		    if not text:match("^{\\") then text="{\\notarealtag}"..text end
 		    if fadin==0 then lb=lineblur else lb="" end
 		    if not res.alf then 
 		    if fadin~=0 then text=text:gsub("^({\\[^}]-)}","%1"..blin.."\\t(0,"..fadin..","..res.inn..","..lineblur..")}") end
-		    if fadout~=0 then text=text:gsub("^({\\[^}]-)}","%1"..lb.."\\t("..dur-fadout..",0,"..res.ut..","..blout..")}") end
+		    if fadout~=0 then text=text:gsub("^({\\[^}]-)}","%1"..lb.."\\t("..dur-fadout..",0,"..res.utt..","..blout..")}") end
 		    text=text:gsub("\\notarealtag","")
 		    end
 		end
 		if not res.blur then lineblur="" blin="" blout="" end
 
-	-- with alpha in line
 	    if res.alf then
-		if text:match("\\alpha&H%x%x&") then
-
-		    if fadin~=0 then
+		if fadin~=0 then
 		-- fade from colour
-			    if res.crl then
-			text=text:gsub("^({\\[^}]-)\\c&H%x+&","%1")
-			text=text:gsub("^({\\[^}]-)\\3c&H%x+&","%1")
+		    if res.crl then
+			text=text:gsub("^{\\[^}]-}",function(a) return a:gsub("\\[34]?c&H%x+&","") end)
+			text=text:gsub("^{}","{\\arfa}")
 			text=text:gsub("^({\\[^}]-)}",
-			"%1"..kolora..blin.."\\t(0,"..fadin..","..res.inn..",\\c"..primary.."\\3c"..outline..lineblur..")}")
-		-- inline colour tags
-			for t in text:gmatch("({\\[^}]-})") do
-				if t~=text:match("^{\\[^}]-}") and t:match("\\[13]?c") then
-					col1="" col3=""
-					if t:match("\\c&") then col1=t:match("(\\c&H%x+&)") end
-					if t:match("\\3c") then col3=t:match("(\\3c&H%x+&)") end
-			t2=t:gsub("\\c&H%x+&",kolora1)	
-			t2=t2:gsub("\\3c&H%x+&",kolora3)	
-			t2=t2:gsub("({[^}]-)}","%1\\t(0,"..fadin..","..res.inn..","..col1..col3..")}")
-			t=esc(t)
-			text=text:gsub(t,t2)
-				end
-			end
-		-- fade from alpha
-			    else
-			if text:match("^{\\[^}]-\\alpha&H%x%x&") then
-			text=text:gsub("^{(\\[^}]-)(\\alpha&H%x%x&)([^}]-)}","{%1%3"..blin..aff.."\\t(0,"..fadin..","..res.inn..",%2"..lineblur..")}")
-			else 
-			text=text:gsub("^{(\\[^}]-)}","{%1"..blin..aff.."\\t(0,"..fadin..","..res.inn..","..lineblur..a00..")}")
-			end
-		-- inline alpha tags
-			for t in text:gmatch("({\\[^}]-})") do
-				if t~=text:match("^{\\[^}]-}") and t:match("\\alpha") then
-				arfa=t:match("(\\alpha&H%x+&)")
-			t2=t:gsub("\\alpha&H%x+&",aff)	
-			t2=t2:gsub("({[^}]-)}","%1\\t(0,"..fadin..","..res.inn..","..arfa..")}")
-			t=esc(t)
-			text=text:gsub(t,t2)
-				end
-			end
+			"%1"..kolora..blin.."\\t(0,"..fadin..","..res.inn..",\\c"..primary.."\\3c"..outline.."\\4c"..shadcol..lineblur..")}")
+			-- inline colour tags
+			for t in text:gmatch(".({\\[^}]-})") do
+			    if t:match("\\[13]?c") then
+			      col1="" col3="" col4=""
+			      if t:match("\\c&") then col1=t:match("(\\c&H%x+&)") end
+			      if t:match("\\3c") then col3=t:match("(\\3c&H%x+&)") end
+			      if t:match("\\4c") then col4=t:match("(\\4c&H%x+&)") end
+			      t2=t
+			      :gsub("\\c&H%x+&",kolora1)
+			      :gsub("\\3c&H%x+&",kolora3)
+			      :gsub("\\4c&H%x+&",kolora4)
+			      :gsub("({[^}]-)}","%1\\t(0,"..fadin..","..res.inn..","..col1..col3..col4..")}")
+			      t=esc(t)
+			      text=text:gsub(t,t2)
 			    end
+			end
+		    else
+		-- fade from alpha
+			subalf=false
+			st_alf=text:match("^{[^}]-(\\alpha&H%x%x&)")
+			st_a1=text:match("^{[^}]-(\\1a&H%x%x&)")
+			st_a3=text:match("^{[^}]-(\\3a&H%x%x&)")
+			st_a4=text:match("^{[^}]-(\\4a&H%x%x&)")
+			if st_alf==nil then toalf=a00 else toalf=st_alf end
+			tosub=toalf:match("&H%x%x&")
+			if st_a1==nil then toa1="\\1a"..tosub else subalf=true toa1=st_a1 end
+			if st_a3==nil then toa3="\\3a"..tosub else subalf=true toa3=st_a3 end
+			if st_a4==nil then toa4="\\4a"..tosub else subalf=true toa4=st_a4 end
+			if subalf then toalf=toa1..toa3..toa4 else toalf=toalf end
+			fromalf=toalf:gsub("&H%x%x&","&HFF&")
+			text=text:gsub("^({[^}]-)\\alpha&H%x%x&","%1")
+			:gsub("^{\\[^}]-}",function(a) return a:gsub("\\[134]a&H%x+&","") end)
+			:gsub("^{(\\[^}]-)}","{%1"..blin..fromalf.."\\t(0,"..fadin..","..res.inn..","..lineblur..toalf..")}")
+			-- inline alpha tags
+			for t in text:gmatch(".({\\[^}]-})") do
+			    arfa=t:match("(\\alpha&H%x+&)") if arfa==nil then arfa="" end
+			    arf1=t:match("(\\1a&H%x+&)") if arf1==nil then arf1="" end
+			    arf3=t:match("(\\3a&H%x+&)") if arf3==nil then arf3="" end
+			    arf4=t:match("(\\4a&H%x+&)") if arf4==nil then arf4="" end
+			    toarfa=arfa..arf1..arf3..arf4
+			    if toarfa~="" then
+			      fromarfa=toarfa:gsub("&H%x%x&","&HFF&")
+			      t2=t:gsub("\\alpha&H%x+&","") :gsub("\\[134]a&H%x+&","")
+			      t2=t2:gsub("({[^}]-)}","%1"..fromarfa.."\\t(0,"..fadin..","..res.inn..","..toarfa..")}")
+			      t=esc(t)
+			      text=text:gsub(t,t2)
+			    end
+			end
 		    end
+		end
 
-		    if fadout~=0 then
+		if fadout~=0 then
 		-- fade to colour
-			    if res.clr then
-			text=text:gsub("^({\\[^}]-)}","%1"..lb.."\\t("..dur-fadout..",0,"..res.ut..","..kolorb..blout..")}")
-		-- inline colour tags
-			for t in text:gmatch("({\\[^}]-})") do
-				if t~=text:match("^{\\[^}]-}") and t:match("\\[13]?c") 
-				or t~=text:match("^{\\[^}]-}") and t:match("\\alpha") then
-			t2=t:gsub("({\\[^}]-)}","%1\\t("..dur-fadout..",0,"..res.ut..","..kolorb..")}")
-			if not t:match("\\c&") and not t:match("\\alpha") then t2=t2:gsub("\\c&H%x+&","") end
-			if not t:match("\\3c") and not t:match("\\alpha") then t2=t2:gsub("\\3c&H%x+&","") end
-			t=esc(t)
-			text=text:gsub(t,t2)
-				end
+		    if res.clr then
+			text=text:gsub("^({\\[^}]-)}","%1"..lb.."\\t("..dur-fadout..",0,"..res.utt..","..kolorb..blout..")}")
+			-- inline colour tags
+			for t in text:gmatch(".({\\[^}]-})") do
+			    if t:match("\\[13]?c") or t:match("\\alpha") then
+			      t2=t:gsub("({\\[^}]-)}","%1\\t("..dur-fadout..",0,"..res.utt..","..kolorb..")}")
+			      if not t:match("\\c&") and not t:match("\\alpha") then t2=t2:gsub("\\c&H%x+&","") end
+			      if not t:match("\\3c") and not t:match("\\alpha") then t2=t2:gsub("\\3c&H%x+&","") end
+			      if not t:match("\\4c") and not t:match("\\alpha") then t2=t2:gsub("\\4c&H%x+&","") end
+			      t=esc(t)
+			      text=text:gsub(t,t2)
+			    end
 			end
 		-- fade to alpha
-			    else
-			text=text:gsub("^({\\[^}]-)}","%1"..lb.."\\t("..dur-fadout..",0,"..res.ut..","..blout..aff..")}")
-		-- inline alpha tags
-			for t in text:gmatch("({\\[^}]-})") do
-				if t~=text:match("^{\\[^}]-}") and t:match("\\alpha") then
-				
-			t2=t:gsub("({\\[^}]-)}","%1\\t("..dur-fadout..",0,"..res.ut..","..aff..")}")
-			t=esc(t)
-			text=text:gsub(t,t2)
-				end
-			end
+		    else
+			if text:match("^{[^}]-(\\[134]a&H%x%x&)") then toarf="\\1a&HFF&".."\\3a&HFF&".."\\4a&HFF&" else toarf=aff end
+			text=text:gsub("^({\\[^}]-)}","%1"..lb.."\\t("..dur-fadout..",0,"..res.utt..","..blout..toarf..")}")
+			-- inline alpha tags
+			for t in text:gmatch(".({\\[^}]-})") do
+			    toarf=""
+			    if t:match("\\alpha") then toarf=toarf..aff end
+			    if t:match("\\1a") then toarf=toarf.."\\1a&HFF&" end
+			    if t:match("\\3a") then toarf=toarf.."\\3a&HFF&" end
+			    if t:match("\\4a") then toarf=toarf.."\\4a&HFF&" end
+			    if toarf~="" then
+			      t2=t:gsub("({\\[^}]-)}","%1\\t("..dur-fadout..",0,"..res.utt..","..toarf..")}")
+			      t=esc(t)
+			      text=text:gsub(t,t2)
 			    end
-		    end
-	-- without alpha
-		else
-
-		    if fadin~=0 then
-		-- fade from colour
-			    if res.crl then
-			text=text:gsub("^({\\[^}]-)\\c&H%x+&","%1")
-			text=text:gsub("^({\\[^}]-)\\3c&H%x+&","%1")
-			text=text:gsub("^({\\[^}]-)}",
-			"%1"..kolora..blin.."\\t(0,"..fadin..","..res.inn..",\\c"..primary.."\\3c"..outline..lineblur..")}")
-		-- inline colour tags
-			for t in text:gmatch("({\\[^}]-})") do
-				if t~=text:match("^{\\[^}]-}") and t:match("\\[13]?c") then
-				col1="" col3=""
-				if t:match("\\c&") then col1=t:match("(\\c&H%x+&)") end
-				if t:match("\\3c") then col3=t:match("(\\3c&H%x+&)") end
-			t2=t:gsub("\\c&H%x+&",kolora1)	
-			t2=t2:gsub("\\3c&H%x+&",kolora3)
-			t2=t2:gsub("({[^}]-)}","%1\\t(0,"..fadin..","..res.inn..","..col1..col3..")}")
-			t=esc(t)
-			text=text:gsub(t,t2)
-				end
 			end
-		-- fade from alpha
-			    else
-			text=text:gsub("^({\\[^}]-)}","%1"..blin..aff.."\\t(0,"..fadin..","..res.inn..","..lineblur..a00..")}")
-			    end
-		    end
-
-		    if fadout~=0 then
-		-- fade to colour
-			    if res.clr then
-			text=text:gsub("^({\\[^}]-)}","%1"..lb.."\\t("..dur-fadout..",0,"..res.ut..","..kolorb..blout..")}") 
-		-- inline colour tags
-			for t in text:gmatch("({\\[^}]-})") do
-				if t~=text:match("^{\\[^}]-}") and t:match("\\[13]?c") then
-			t2=t:gsub("({\\[^}]-)}","%1\\t("..dur-fadout..",0,"..res.ut..","..kolorb..")}")
-			if not t:match("\\c&") then t2=t2:gsub("\\c&H%x+&","") end
-			if not t:match("\\3c") then t2=t2:gsub("\\3c&H%x+&","") end
-			t=esc(t)
-			text=text:gsub(t,t2)
-				end
-			end
-		-- fade to alpha
-			    else
-			text=text:gsub("^({\\[^}]-)}","%1"..lb.."\\t("..dur-fadout..",0,".. res.ut..","..blout..aff..")}")
-			    end
 		    end
 		end
 		if border==0 then  text=text:gsub("\\3c&H%x+&","") end
+		if shadow==0 then  text=text:gsub("\\4c&H%x+&","") end
 		if not text:match("\\fad%(0,0%)") then text=text:gsub("\\fad%(%d+,%d+%)","") end	-- nuke fade
 		text=text:gsub("\\\\","\\")
 	    end
@@ -374,12 +340,9 @@ function koko_da(subs,sel)
 	text=text:gsub("\\ko%d+","") :gsub("{}","")
 	
 	-- save initial tags; remove other tags/comments
-	tags=""
-	if text:match("^{\\[^}]*}") then tags=text:match("^({\\[^}]*})") end
+	tags=text:match("^{\\[^}]-}") if tags==nil then tags="" end
 	orig=text:gsub("^({\\[^}]*})","")
-	text=text:gsub("{[^}]*}","")
-	text=text:gsub("%s*$","")
-	text=text:gsub("\\N","*")
+	text=text:gsub("{[^}]*}","")	:gsub("%s*$","")	:gsub("\\N","*")
 	
 	--letter
 	if not res.word then
@@ -406,7 +369,7 @@ function koko_da(subs,sel)
     end
 end
 
-function fadeacross(subs, sel)
+function fadeacross(subs,sel)
 	fadin=res.fadein	fadout=res.fadeout
 	if fadin<0 then fadin=0 end
 	if fadout<0 then fadout=0 end
@@ -423,7 +386,7 @@ function fadeacross(subs, sel)
 	end
 	-- Error if fades too long
 	if res.time and fadin+fadout>E-S or not res.time and fadin+fadout>full then 
-	aegisub.dialog.display({{class="label",label="Error. Fades are longer than the duration of lines"}},{"OK"},{close='OK'})  
+	aegisub.dialog.display({{class="label",label="Error. Fades are longer than the duration of lines"}},{"OK"},{close='OK'})
 	aegisub.cancel() 
 	end
 	-- Warning if not sorted by time
@@ -439,6 +402,9 @@ function fadeacross(subs, sel)
 	    dur=line.end_time-line.start_time
 	    start=line.start_time
 	    endt=line.end_time
+	    startf=ms2fr(start)
+	    endf=ms2fr(endt)
+	    if endf-startf==1 then oneframe=true else oneframe=false end
 	    -- check shadow alpha
 	    sr=stylechk(subs,line.style)
 	    shad=sr.color4:match("H(%x%x)")
@@ -451,17 +417,24 @@ function fadeacross(subs, sel)
 		durs1=durs1+dur		durs2=endt-S
 		if res.time then durs=durs2 else durs=durs1 end
 		if durs>fadin then in_end=dur-(durs-fadin) tim="0,"..in_end.."," kill=0 else tim="" end
-		alfin_s=to_hex(255-(round((durs-dur)/fadin*255)))
-		alfin_e=to_hex(255-(round(durs/fadin*255)))
+		alfin_s=tohex(255-(round((durs-dur)/fadin*255)))
+		alfin_e=tohex(255-(round(durs/fadin*255)))
+		alfin_1=tohex(255-(round((durs-dur/2)/fadin*255)))
 		if shad~="00" then 
-		    shin_s=to_hex(255-round((255-tonumber(alfin_s,16))*shade))
-		    shin_e=to_hex(255-round((255-tonumber(alfin_e,16))*shade))
+		    shin_s=tohex(255-round((255-tonumber(alfin_s,16))*shade))
+		    shin_e=tohex(255-round((255-tonumber(alfin_e,16))*shade))
+		    shin_1=tohex(255-round((255-tonumber(alfin_1,16))*shade))
 		    instart="\\1a&H"..alfin_s.."&\\3a&H"..alfin_s.."&\\4a&H"..shin_s.."&"
 		    inend="\\1a&H"..alfin_e.."&\\3a&H"..alfin_e.."&\\4a&H"..shin_e.."&"
-		    else instart="\\alpha&H"..alfin_s.."&" inend="\\alpha&H"..alfin_e.."&"
+		    onefadein="\\1a&H"..alfin_1.."&\\3a&H"..alfin_1.."&\\4a&H"..shin_1.."&"
+		else
+		    instart="\\alpha&H"..alfin_s.."&" inend="\\alpha&H"..alfin_e.."&"
+		    onefadein="\\alpha&H"..alfin_1.."&"
 		end
 		if alfin_s~=alfin_e then
-		    text=text:gsub("^({\\[^}]-)}","%1"..instart.."\\t("..tim..inend..")}")
+		    if oneframe then text=text:gsub("^({\\[^}]-)}","%1"..onefadein.."}")
+		    else text=text:gsub("^({\\[^}]-)}","%1"..instart.."\\t("..tim..inend..")}")
+		    end
 		end
 	    elseif fadin>start-S and x>1 and start==subs[i-1].start_time then killpha()
 		text=text:gsub("^({\\[^}]-)}","%1\\alpha&H"..alfin_s.."&\\t("..tim.."\\alpha&H"..alfin_e.."&)}")
@@ -473,18 +446,25 @@ function fadeacross(subs, sel)
 	    if full<fadout then
 		if kill==1 then killpha() end
 		if dure>fadout then out_start=dure-fadout tim=out_start..","..dur.."," else tim="" end
-		alfout_s=to_hex(255-(round((dure/fadout*255))))
-		alfout_e=to_hex(255-(round(full/fadout*255)))
+		alfout_s=tohex(255-(round(dure/fadout*255)))
+		alfout_e=tohex(255-(round(full/fadout*255)))
+		alfout_1=tohex(255-(round((dure+full)/2/fadout*255)))
 		if shad~="00" then 
-		    shout_s=to_hex(255-round((255-tonumber(alfout_s,16))*shade))
-		    shout_e=to_hex(255-round((255-tonumber(alfout_e,16))*shade))
+		    shout_s=tohex(255-round((255-tonumber(alfout_s,16))*shade))
+		    shout_e=tohex(255-round((255-tonumber(alfout_e,16))*shade))
+		    shout_1=tohex(255-round((255-tonumber(alfout_1,16))*shade))
 		    outstart="\\1a&H"..alfout_s.."&\\3a&H"..alfout_s.."&\\4a&H"..shout_s.."&"
 		    outend="\\1a&H"..alfout_e.."&\\3a&H"..alfout_e.."&\\4a&H"..shout_e.."&"
-		    else outstart="\\alpha&H"..alfout_s.."&" outend="\\alpha&H"..alfout_e.."&"
+		    onefadeout="\\1a&H"..alfout_1.."&\\3a&H"..alfout_1.."&\\4a&H"..shout_1.."&"
+		else
+		    outstart="\\alpha&H"..alfout_s.."&" outend="\\alpha&H"..alfout_e.."&"
+		    onefadeout="\\alpha&H"..alfout_1.."&"
 		end
 		if kill==1 then autstart=outstart else autstart="" end
 		if alfout_s~=alfout_e then
-		    text=text:gsub("^({\\[^}]-)}","%1"..autstart.."\\t("..tim..outend..")}")
+		    if oneframe then text=text:gsub("^({\\[^}]-)}","%1"..onefadeout.."}")
+		    else text=text:gsub("^({\\[^}]-)}","%1"..autstart.."\\t("..tim..outend..")}")
+		    end
 		end
 	    end
 	    text=text:gsub("\\fake","") :gsub("{}","")
@@ -505,7 +485,7 @@ function vfcheck()
     end
 end
 
-function vfade(subs, sel)
+function vfade(subs,sel)
     vfcheck()
     for z, i in ipairs(sel) do
 	line=subs[i]
@@ -545,20 +525,17 @@ str=str
 return str
 end
 
-function round(num)
-	num=math.floor(num+0.5)
-	return num
-end
+function round(num) num=math.floor(num+0.5) return num end
 
-function to_hex(num)
+function tohex(num)
     n1=math.floor(num/16)
     n2=num%16
     if n1<0 then n2=0 end
-    num=tohex(n1)..tohex(n2)
+    num=tohex1(n1)..tohex1(n2)
 return num
 end
 
-function tohex(num)
+function tohex1(num)
     if num<1 then num="0"
     elseif num>14 then num="F"
     elseif num==10 then num="A"
@@ -579,84 +556,112 @@ function stylechk(subs,stylename)
   return styleref
 end
 
-function fadeconfig(subs, sel)
-    rls=remember_last_settings
-    if lastin==nil or rls==false then lastin=default_in end
-    if lastout==nil or rls==false then lastout=default_out end
-    if lastlbl==nil or rls==false then lastlbl=default_lbl end
-    if lastrtl==nil or rls==false then lastrtl=default_rtl end
-    if lastaccin==nil or rls==false then lastaccin=default_accel_in end
-    if lastaccout==nil or rls==false then lastaccout=default_accel_out end
-    if lastblin==nil or rls==false then lastblin=default_blur_in end
-    if lastblout==nil or rls==false then lastblout=default_blur_out end
-    if lastalf==nil or rls==false then lastalf=false end
-    if lastblur==nil or rls==false then lastblur=false end
-    if lastfrom==nil or rls==false then lastfrom=false end
-    if lastto==nil or rls==false then lastto=false end
-    if lastc1==nil or rls==false then lastc1=nil end
-    if lastc2==nil or rls==false then lastc2=nil end
-    if lastko==nil or rls==false then lastko=nil end
-    if lastword==nil or rls==false then lastword=nil end
-    if lastmult==nil or rls==false then lastmult=nil end
-    if lasttime==nil or rls==false then lasttime=nil end
-	dialog_config=
-	{
-	    {x=0,y=0,width=4,height=1,class="label",label="fade  /  alpha/c/blur transform", },
-	    {x=0,y=1,width=1,height=1,class="label",label="Fade in:"},
-	    {x=0,y=2,width=1,height=1,class="label",label="Fade out:"},
-	    {x=1,y=1,width=3,height=1,class="floatedit",name="fadein",value=lastin},
-	    {x=1,y=2,width=3,height=1,class="floatedit",name="fadeout",value=lastout},
-	    {x=4,y=0,width=1,height=1,class="checkbox",name="alf",label="alpha",value=lastalf},
-	    {x=5,y=0,width=1,height=1,class="checkbox",name="blur",label="blur",value=lastblur},
-	    {x=4,y=1,width=1,height=1,class="checkbox",name="crl",label="from:",value=lastfrom},
-	    {x=4,y=2,width=1,height=1,class="checkbox",name="clr",label="to:",value=lastto},
-	    {x=5,y=1,width=1,height=1,class="color",name="c1",value=lastc1},
-	    {x=5,y=2,width=1,height=1,class="color",name="c2",value=lastc2},
-	    {x=0,y=3,width=1,height=1,class="label",label="accel:",},
-	    {x=1,y=3,width=3,height=1,class="floatedit",name="inn",value=lastaccin,hint="accel in - <1 starts fast, >1 starts slow"},
-	    {x=4,y=3,width=2,height=1,class="floatedit",name="ut",value=lastaccout,hint="accel out - <1 starts fast, >1 starts slow"},
-	    {x=0,y=4,width=1,height=1,class="label",label="blur:",},
-	    {x=1,y=4,width=3,height=1,class="floatedit",name="bli",value=lastblin,min=0,hint="start blur"},
-	    {x=4,y=4,width=2,height=1,class="floatedit",name="blu",value=lastblout,min=0,hint="end blur"},
-	    
-	    {x=0,y=5,width=1,height=1,class="label",label="By letter:"},
-	    {x=1,y=5,width=1,height=1,class="dropdown",name="letterfade",
-		items={"40","80","120","160","200","250","300","350","400","450","500","1000"},value=lastlbl},
-	    {x=2,y=5,width=2,height=1,class="label",label="ms/letter", },
-	    {x=4,y=5,width=1,height=1,class="checkbox",name="rtl",label="rtl",value=false,hint="right to left"},
-	    {x=5,y=5,width=1,height=1,class="checkbox",name="del",label="Delete",value=false,hint="delete letter-by-letter"},
-	    
-	    {x=0,y=6,width=4,height=1,class="checkbox",name="ko",label="Letter by letter using \\ko",value=false},
-	    {x=4,y=6,width=2,height=1,class="checkbox",name="word",label="\\ko by word",value=false},
-	    
-	    {x=0,y=7,width=4,height=1,class="checkbox",name="mult",label="Fade across multiple lines",value=false},
-	    {x=4,y=7,width=2,height=1,class="checkbox",name="time",label="Global time",value=false},
-	    
-	    {x=0,y=8,width=3,height=1,class="checkbox",name="vin",label="Fade in to current frame",value=false},
-	    {x=3,y=8,width=3,height=1,class="checkbox",name="vout",label="out from current frame",value=false},
-	} 	
-	pressed, res=aegisub.dialog.display(dialog_config,{"Apply Fade", "Letter by Letter","Cancel"},{ok='Apply Fade',cancel='Cancel'})
-	fr2ms=aegisub.ms_from_frame
-	if pressed=="Apply Fade" then
-		if res.alf or res.blur or res.clr or res.crl then fadalpha(subs,sel)
-		elseif res.mult then fadeacross(subs,sel)
-		elseif res.vin or res.vout then vfade(subs,sel)
-		else fade(subs,sel) end
-	end
-	if pressed=="Letter by Letter" then if res.ko or res.word then koko_da(subs, sel) else fade(subs, sel) end end
-	lastin=res.fadein		lastout=res.fadeout
-	lastaccin=res.inn		lastaccout=res.ut
-	lastblin=res.bli		lastblout=res.blu
-	lastalf=res.alf			lastblur=res.blur
-	lastfrom=res.crl		lastto=res.clr
-	lastc1=res.c1			lastc2=res.c2
-	lastlbl=res.letterfade		lastrtl=res.rtl
-	lastko=res.ko			lastword=res.word
-	lastmult=res.mult		lasttime=res.time
+--	Config		--
+function saveconfig()
+fadconf="Fade config\n\n"
+  for key,val in ipairs(fade_config) do
+    if val.class=="floatedit" or val.class=="dropdown" then
+      fadconf=fadconf..val.name..":"..res[val.name].."\n"
+    end
+    if val.class=="checkbox" and val.name~="save" and val.name~="del" then
+      fadconf=fadconf..val.name..":"..tf(res[val.name]).."\n"
+    end
+  end
+fadconfig=aegisub.decode_path("?user").."\\apply_fade.conf"
+file=io.open(fadconfig,"w")
+file:write(fadconf)
+file:close()
+aegisub.dialog.display({{class="label",label="Config Saved to:\n"..fadconfig}},{"OK"},{close='OK'})
 end
 
-function apply_fade(subs, sel)
-    fadeconfig(subs, sel)
+function loadconfig()
+fconfig=aegisub.decode_path("?user").."\\apply_fade.conf"
+file=io.open(fconfig)
+    if file~=nil then
+	konf=file:read("*all")
+	io.close(file)
+	  for key,val in ipairs(fade_config) do
+	    if val.class=="floatedit" or val.class=="checkbox" or val.class=="dropdown" then
+	      if konf:match(val.name) then val.value=detf(konf:match(val.name..":(.-)\n")) end
+	    end
+	  end
+    end
+end
+
+function tf(val)
+    if val==true then ret="true" else ret="false" end
+    return ret
+end
+
+function detf(txt)
+    if txt=="true" then ret=true
+    elseif txt=="false" then ret=false
+    else ret=txt end
+    return ret
+end
+
+function fadeconfig(subs,sel)
+	fade_config=
+	{
+	  {x=0,y=0,width=4,height=1,class="label",label="fade  /  alpha/c/blur transform", },
+	  {x=0,y=1,width=1,height=1,class="label",label="Fade in:"},
+	  {x=0,y=2,width=1,height=1,class="label",label="Fade out:"},
+	  {x=1,y=1,width=3,height=1,class="floatedit",name="fadein",value=0},
+	  {x=1,y=2,width=3,height=1,class="floatedit",name="fadeout",value=0},
+	  {x=4,y=0,width=1,height=1,class="checkbox",name="alf",label="alpha",value=false},
+	  {x=5,y=0,width=1,height=1,class="checkbox",name="blur",label="blur",value=false},
+	  {x=4,y=1,width=1,height=1,class="checkbox",name="crl",label="from:",value=false},
+	  {x=4,y=2,width=1,height=1,class="checkbox",name="clr",label="to:",value=false},
+	  {x=5,y=1,width=1,height=1,class="color",name="c1"},
+	  {x=5,y=2,width=1,height=1,class="color",name="c2"},
+	  {x=0,y=3,width=1,height=1,class="label",label="accel:",},
+	  {x=1,y=3,width=3,height=1,class="floatedit",name="inn",value=1,min=0,hint="accel in - <1 starts fast, >1 starts slow"},
+	  {x=4,y=3,width=2,height=1,class="floatedit",name="utt",value=1,min=0,hint="accel out - <1 starts fast, >1 starts slow"},
+	  {x=0,y=4,width=1,height=1,class="label",label="blur:",},
+	  {x=1,y=4,width=3,height=1,class="floatedit",name="bli",value=3,min=0,hint="start blur"},
+	  {x=4,y=4,width=2,height=1,class="floatedit",name="blu",value=3,min=0,hint="end blur"},
+	  
+	  {x=0,y=5,width=1,height=1,class="label",label="By letter:"},
+	  {x=1,y=5,width=1,height=1,class="dropdown",name="letterfade",
+		items={"40","80","120","160","200","250","300","350","400","450","500","1000"},value="120"},
+	  {x=2,y=5,width=2,height=1,class="label",label="ms/letter", },
+	  {x=4,y=5,width=1,height=1,class="checkbox",name="rtl",label="rtl",value=false,hint="right to left"},
+	  {x=5,y=5,width=1,height=1,class="checkbox",name="del",label="Delete",value=false,hint="delete letter-by-letter"},
+	  
+	  {x=0,y=6,width=4,height=1,class="checkbox",name="ko",label="Letter by letter using \\ko",value=false},
+	  {x=4,y=6,width=2,height=1,class="checkbox",name="word",label="\\ko by word",value=false},
+	  
+	  {x=0,y=7,width=4,height=1,class="checkbox",name="mult",label="Fade across multiple lines",value=false},
+	  {x=4,y=7,width=2,height=1,class="checkbox",name="time",label="Global time",value=false},
+	  
+	  {x=0,y=9,width=3,height=1,class="checkbox",name="vin",label="Fade in to current frame",value=false},
+	  {x=3,y=9,width=3,height=1,class="checkbox",name="vout",label="out from current frame",value=false},
+	  
+	  {x=4,y=8,width=2,height=1,class="checkbox",name="save",label="[Save config]",value=false},
+	  {x=0,y=8,width=4,height=1,class="checkbox",name="rem",label="Remember last settings",value=false},
+	}
+	loadconfig()
+	if faded and res.rem then
+	  for key,val in ipairs(fade_config) do
+	    if val.class=="checkbox" or val.class=="dropdown" or val.class=="floatedit" then val.value=res[val.name] end
+	  end
+	end
+	pressed, res=aegisub.dialog.display(fade_config,{"Apply Fade", "Letter by Letter","Cancel"},{ok='Apply Fade',cancel='Cancel'})
+	fr2ms=aegisub.ms_from_frame
+	ms2fr=aegisub.frame_from_ms
+	faded=true
+	if pressed=="Apply Fade" then
+	    if res.save then saveconfig()
+	    elseif res.alf or res.blur or res.clr or res.crl then fadalpha(subs,sel)
+	    elseif res.mult then fadeacross(subs,sel)
+	    elseif res.vin or res.vout then vfade(subs,sel)
+	    else fade(subs,sel) end
+	end
+	if pressed=="Letter by Letter" then if res.ko or res.word then koko_da(subs,sel) else fade(subs,sel) end end
+end
+
+function apply_fade(subs,sel)
+    fadeconfig(subs,sel)
     aegisub.set_undo_point(script_name)
     return sel
 end
