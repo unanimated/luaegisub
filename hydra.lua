@@ -3,7 +3,7 @@ script_description="A multi-headed typesetting tool"
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/hydra.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/hydra.lua"
-script_version="3.7"
+script_version="3.8"
 
 -- SETTINGS - feel free to change these
 
@@ -26,7 +26,7 @@ order="\\r\\fad\\fade\\an\\q\\blur\\be\\bord\\shad\\fn\\fs\\fsp\\fscx\\fscy\\frx
 -- END of SETTINGS
 
 function checkonfig()
-hconfig=aegisub.decode_path("?user").."//hydra.conf"
+hconfig=aegisub.decode_path("?user").."\\hydra.conf"
 file=io.open(hconfig)
     if file~=nil then
 	konf=file:read("*all")
@@ -102,6 +102,16 @@ function hh9(subs, sel)
 	
 	transform=""
 	transform=gettags(transform)
+	if res.relative then
+	    stags=text:match("^{\\[^}]-}") if stags==nil then stags="" end
+	    for tag,val in transform:gmatch("(\\%a+)([%d%.%-]+)") do
+		if stags:match(tag) then oldval=stags:match(tag.."([%d%.%-]+)")
+		    newval=oldval+val
+		    eval=esc(val)
+		    transform=transform:gsub(tag..eval,tag..newval)
+		end
+	    end
+	end
 	text=text:gsub("\\alltagsgohere",transform)
 	text=text:gsub("\\t%(0,0,1,","\\t(")
 	for tranz in text:gmatch("\\t(%([^%(%)]+%))") do
@@ -229,7 +239,7 @@ function hh9(subs, sel)
     end
     -- the end
 	
-    text=text:gsub("\\hydra","")	:gsub("{}","")
+    text=text:gsub("\\hydra","")	:gsub("{}","")	:gsub("\\t%(%)","")
     line.text=text
     subs[i]=line
     end
@@ -296,9 +306,9 @@ function special(subs, sel)
         aegisub.progress.title(string.format(res.spec..": %d/%d",#sel-i,#sel))
 	prog=math.floor((#sel-i+0.5)/#sel*100)
  	aegisub.progress.set(prog)
-	local line=subs[sel[i]]
-        local text=subs[sel[i]].text
-	local layer=line.layer
+	line=subs[sel[i]]
+        text=subs[sel[i]].text
+	layer=line.layer
 	text=text:gsub("\\1c","\\c")
 	
 	if text:match("\\fscx") and text:match("\\fscy") then
@@ -566,10 +576,7 @@ function selover(subs,sel)
   return sel
 end
 
-function round(num)
-	if num-math.floor(num)>=0.5 then num=math.ceil(num) else num=math.floor(num) end
-	return num
-end
+function round(num) num=math.floor(num+0.5) return num end
 
 function trem(tags)
 	trnsfrm=""
@@ -828,6 +835,8 @@ hh3={
     {x=1,y=11,width=2,height=1,class="floatedit",name="accel",value=1 },
     {x=3,y=11,width=2,height=1,class="floatedit",name="int",value=500,hint="interval for 'back and forth transform'"},
     {x=4,y=12,width=1,height=1,class="label",label="^inetrval"},
+    {x=8,y=8,width=2,height=1,class="checkbox",name="relative",label="Relative transform",value=false,
+	hint="Example:\ntag: \\frz30\ninput: 60\nresult: \\t(\\frz90)"},
     
     {x=5,y=8,width=1,height=1,class="checkbox",name="frz1",label="\\frz",value=false },
     {x=5,y=9,width=1,height=1,class="checkbox",name="frx1",label="\\frx",value=false },
@@ -883,6 +892,8 @@ hh3={
 	"Transform mode normal: check tags, set values, set t1/t2/accel if needed, click 'Transform'.",
 	"Transform mode add2first: the transforms will be added to the first existing transform in the line.",
 	"Transform mode add2all: the transforms will be added to all existing transforms in the line.",
+	"Relative transform: If you have frz30 and set transform to frz60, you get \\t(\\frz90), or transform BY 60.",
+	"Relative transform: This allows you to keep layers with different frz in sync. (No effect on alpha/colours.)",
 	"Additional tags: type any extra tags you want to add.",
 	"Tag position: This shows the text of your first line. Type * where you want your tags to go.",
 	"Tag position presets: This places tags in specified positions, proportionally for each selected line.",
@@ -898,13 +909,8 @@ hh3={
 	if res.tmode=="normal" then tmode=1 end
 	if res.tmode=="add2first" then tmode=2 end
 	if res.tmode=="add2all" then tmode=3 end
-	if res.tagpres=="in the middle" then fak=0.5 end 
-	if res.tagpres=="1/4 of text" then fak=0.25 end
-	if res.tagpres=="3/4 of text" then fak=0.75 end
-	if res.tagpres=="1/8 of text" then fak=1/8 end
-	if res.tagpres=="3/8 of text" then fak=3/8 end
-	if res.tagpres=="5/8 of text" then fak=5/8 end
-	if res.tagpres=="7/8 of text" then fak=7/8 end
+	if res.tagpres=="in the middle" then fak=0.5 end
+	if res.tagpres:match("of text") then fa,fb=res.tagpres:match("(%d)/(%d)") fak=fa/fb end
 	if res.aonly then res.alfas=true end
 	
 	if pressed=="Apply" then trans=0 hh9(subs, sel) end
