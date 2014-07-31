@@ -1,41 +1,11 @@
--- The original purpose was to cut lead out for multiple lines, since TPP can't do that.
--- While I was at it, I added a few other logical options. It's like a custom mini-TPP.
--- Leads should never overlap with previous/next line after running this [aside from shifting].
+-- Basically an enhanced version of TPP + Shift Times.
+-- It can not only add, but also cut leads; prevent adding leads on keyframes; fix overlaps; etc.
 
 script_name="ShiftCut"
 script_description="Time Machine."
 script_author="unanimated"
-script_version="2.52"
+script_version="2.6"
 
--- SETTINGS	these are default settings with which the GUI loads. change them as you want, but check the comments for correct values.
-
-apply_to="Apply to selected"	-- Options: "Apply to selected","Apply to all lines"
-add_leadin=false		-- true for adding leadin, false for cuting leadin
-add_leadout=false		-- same for leadout
-shift_right=false		-- true for shift right [forward], false for shift left [backward]
-leadin_value=0			-- value for adding/cutting leadin. also accepts negative values as an alternative to the "add" checkbox
-leadout_value=0			-- same for leadout
-shift_value=0			-- same for shifting
-line_linking_gap=400		-- gap for line linking, like in TPP. any positive value, no quotation marks.
-linking_bias="0.8"		-- similar to TPP. 0.8 is 80% to the right. options: "0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1"
-fix_overlaps=false		-- [true/false] this is part of line linking. if you want only overlaps, set linking gap to 0.
-overlap_value=500		-- value for fixing overlaps - overlaps smaller than this value will be fixed. [must be consecutive lines in script]
-overlap_bias="0.5"		-- works same as linking bias. same options: "0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1"
-styles_to_apply_to="All Default"-- "All Default" are all styles that match 'Defa'. "Default+Alt" are any that match "Defa" or "Alt".
-starts_before=0			-- just like TPP. distance from a keyframe that will be snaped. values in frames. minimum=0, maximum=250. 
-ends_before=0			-- same
-starts_after=0			-- same
-ends_after=0			-- same
-use_preset=true			-- use preset for keyframes [true/false]
-kf_snap_preset="6,10,8,12"	-- options: "1,1,1,1","2,2,2,2","6,6,8,12","6,6,10,12","6,10,8,12","8,8,8,12","0,0,0,10","7,12,10,13"
-prevent_cut_overlaps=true	-- prevent overlaps from adding lead in/out [true/false]
-prevent_kf_overlaps=true	-- prevent overlaps from snapping [true/false] - useful for example when ends_before is higher than starts_before.
-dont_add_leads_on_kf=false	-- don't add lead in/out to times that match keyframes. works with linking too.
-
--- this is a table with all presets for kf snapping. you can add your own, as long as you don't fuck up the pattern.
-kf_snap_presets={"1,1,1,1","2,2,2,2","6,6,6,10","6,6,8,12","6,6,10,12","6,10,8,12","8,8,8,12","0,0,0,10","7,12,10,13"}
-
--- END OF SETTINGS
 
 function style(subs)
 styles={"All","All Default","Default+Alt","----------------"}
@@ -55,40 +25,11 @@ function runcheck()
 	if res.stail=="Default+Alt" and line.style:match("Defa") then run=1 end
 	if res.stail=="Default+Alt" and line.style:match("Alt") then run=1 end
 	if res.stail==line.style then run=1 end
+	if line.style==res.plustyle then run=1 end
 	return run
 end
-		
-function cutout(subs, sel)
-	for z, i in ipairs(sel) do
-	    line=subs[i]
-		ut=res.ut
-		start=line.start_time
-		endt=line.end_time
-		if i<#subs then nextline=subs[i+1]
-		nextart=nextline.start_time end
-		run=runcheck()
-		
-	    kfr=1
-	    if res.holdkf then
-		endf=ms2fr(endt)
-		for k,kf in ipairs(keyframes) do
-		    if kf==endf then kfr=0 break end
-		end
-	    end
-	    
-	    if run==1 and kfr==1 then
-		if not res.addout then	-- cut
-		  if (endt-ut)>start then endt=(endt-ut) else endt=start end
-		else
-		  endt=(endt+ut)	-- add
-		  if res.preventcut and i<#subs and endt>nextart and start<nextart then endt=nextart end
-		end
-	    line.end_time=endt
-	    subs[i]=line
-	    end
-	end
-end
 
+--	Lead in		--
 function cutin(subs, sel)
 	for z, i in ipairs(sel) do
 	    line=subs[i]
@@ -109,7 +50,7 @@ function cutin(subs, sel)
 	    end
 	    
 	    if run==1 and kfr==1 then
-		if not res.addin then	-- cut
+		if res.cutin then	-- cut
 		  if (start+inn)<endt then start=(start+inn) else start=endt end
 		else
 		  start=(start-inn)	-- add
@@ -121,6 +62,39 @@ function cutin(subs, sel)
 	end
 end
 
+--	Lead out	--
+function cutout(subs, sel)
+	for z, i in ipairs(sel) do
+	    line=subs[i]
+		ut=res.utt
+		start=line.start_time
+		endt=line.end_time
+		if i<#subs then nextline=subs[i+1]
+		nextart=nextline.start_time end
+		run=runcheck()
+		
+	    kfr=1
+	    if res.holdkf then
+		endf=ms2fr(endt)
+		for k,kf in ipairs(keyframes) do
+		    if kf==endf then kfr=0 break end
+		end
+	    end
+	    
+	    if run==1 and kfr==1 then
+		if res.cutout then	-- cut
+		  if (endt-ut)>start then endt=(endt-ut) else endt=start end
+		else
+		  endt=(endt+ut)	-- add
+		  if res.preventcut and i<#subs and endt>nextart and start<nextart then endt=nextart end
+		end
+	    line.end_time=endt
+	    subs[i]=line
+	    end
+	end
+end
+
+--	Shifting	--
 function shiift(subs, sel)
 	for z, i in ipairs(sel) do
 	    line=subs[i]
@@ -144,6 +118,7 @@ function shiift(subs, sel)
 	end
 end
 
+--	Linking		--
 function linklines(subs, sel)
 	marker=0	linx=0	overl=0
 	for z, i in ipairs(sel) do
@@ -168,7 +143,7 @@ function linklines(subs, sel)
 		
 	    if run==1 then
 		-- linking
-		if nextart>endt and nextart-endt<lnk and z~=#sel then
+		if lnk>0 and nextart>endt and nextart-endt<lnk and z~=#sel then
 		 gap=nextart-endt
 		 diff=gap*res.bias
 		 endt=endt+diff
@@ -185,7 +160,7 @@ function linklines(subs, sel)
 		end
 	    line.start_time=start
 	    line.end_time=endt
-	    if res.mark then if line.start_time~=s1 or line.end_time~=e1 then line.effect=line.effect.."t" end end
+	    if res.mark then if line.start_time~=s1 or line.end_time~=e1 then line.effect=line.effect.."[linked]" end end
 	    if res.info and marker==1 then linx=linx+1 end
 	    if res.info and markover==1 then overl=overl+1 end
 	    subs[i]=line
@@ -193,6 +168,7 @@ function linklines(subs, sel)
 	end
 end
 
+--	Snapping	--
 function keyframesnap(subs, sel)
 snapd=0
     if res.pres then kfsb,kfeb,kfsa,kfea=res.preset:match("(%d+),(%d+),(%d+),(%d+)") 
@@ -256,7 +232,7 @@ snapd=0
 	    line.start_time=start
 	    if endt-start>450 then line.end_time=endt end
 	    startf2=ms2fr(line.start_time)	    endf2=ms2fr(line.end_time)
-	    if res.mark then if startf2~=startf or endf2~=endf then line.effect=line.effect.."t" end end
+	    if res.mark then if startf2~=startf or endf2~=endf then line.effect=line.effect.."[snapped]" end end
 	    if res.info then if startf2~=startf or endf2~=endf then snapd=snapd+1 end end
 	    subs[i]=line
 	    end
@@ -271,87 +247,185 @@ sel={}
     return sel
 end
 
+--	Config Stuff	--
+function saveconfig()
+scconf="ShiftCut Config:\n\n"
+  for key,val in ipairs(gui) do
+    if val.class=="floatedit" or val.class=="dropdown" then
+      scconf=scconf..val.name..":"..res[val.name].."\n"
+    end
+    if val.class=="checkbox" and val.name~="save" then
+      scconf=scconf..val.name..":"..tf(res[val.name]).."\n"
+    end
+    if val.name=="preset" then
+	prsts="keyframe presets:"
+	for v=1,#val.items do
+	    prsts=prsts..val.items[v]..":"
+	end
+	scconf=scconf..prsts.."\n"
+    end
+  end
+shiftkonfig=aegisub.decode_path("?user").."\\shiftcut.conf"
+file=io.open(shiftkonfig,"w")
+file:write(scconf)
+file:close()
+press,rez=aegisub.dialog.display({{class="label",label="Config saved to:\n"..shiftkonfig}},{"OK","Add/Delete kf preset","Restore Defaults"},{close='OK'})
+    if press=="Add/Delete kf preset" then
+	ite=scconf:match("keyframe presets:(.-)\n")
+	pressets=""
+	for it in ite:gmatch("[^:]+") do
+	pressets=pressets..it.."\n"
+	end
+	repeat
+	if press=="Reset" then pressets="1,1,1,1\n2,2,2,2\n6,6,6,10\n6,6,8,12\n6,6,10,12\n6,10,8,12\n8,8,8,12\n0,0,0,10\n7,12,10,13" end
+	press,rez=aegisub.dialog.display({{class="textbox",x=0,y=0,width=12,height=12,name="addpres",value=pressets}},
+	{"Save","Reset"},{ok='Save'})
+	until press~="Reset"
+	newpres=rez.addpres.."\n"
+	newpres=newpres:gsub("\n",":") :gsub("::",":")
+	scconf=scconf:gsub(ite,newpres)
+	file=io.open(shiftkonfig,"w")
+	file:write(scconf)
+	file:close()
+	aegisub.dialog.display({{class="label",label="Saved"}},{"OK"},{close='OK'})
+    end
+    if press=="Restore Defaults" then
+	file=io.open(shiftkonfig,"w")
+	file:write("")
+	file:close()
+	aegisub.dialog.display({{class="label",label="Defaults restored"}},{"OK"},{close='OK'})
+    end
+end
+
+function loadconfig()
+sconfig=aegisub.decode_path("?user").."\\shiftcut.conf"
+file=io.open(sconfig)
+    if file~=nil then
+	konf=file:read("*all")
+	io.close(file)
+	  for key,val in ipairs(gui) do
+	    if val.class=="floatedit" or val.class=="checkbox" or val.class=="dropdown" then
+	      if konf:match(val.name) then val.value=detf(konf:match(val.name..":(.-)\n")) end
+	    end
+	    if val.name=="preset" then ite=konf:match("keyframe presets:(.-)\n")
+	      if ite~=nil then
+	        val.items={}
+	        for it in ite:gmatch("[^:]+") do
+		  table.insert(val.items,it)
+	        end
+	      end
+	    end
+	  end
+    end
+end
+
+function tf(val)
+    if val==true then ret="true" else ret="false" end
+    return ret
+end
+
+function detf(txt)
+    if txt=="true" then ret=true
+    elseif txt=="false" then ret=false
+    else ret=txt end
+    return ret
+end
+
 function konfig(subs, sel)
+BIAS={"0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1"}
+kf_snap_presets={"1,1,1,1","2,2,2,2","6,6,6,10","6,6,8,12","6,6,10,12","6,10,8,12","8,8,8,12","0,0,0,10","7,12,10,13"}
 	style(subs)
-	dialog_config=
+	gui=
 	{
 	    {x=0,y=0,width=2,height=1,class="label",label="ShiftCut v"..script_version },
-	    {x=2,y=0,width=2,height=1,class="dropdown",name="slct",items={"Apply to selected","Apply to all lines"},value=apply_to},
-	    {x=4,y=0,width=3,height=1,class="checkbox",name="mark",label="Mark changed",value=false },
+	    {x=2,y=0,width=2,height=1,class="dropdown",name="slct",items={"Apply to selected","Apply to all lines"},value="Apply to selected"},
 	    
 	    {x=0,y=1,width=2,height=1,class="label",label="Styles to aply to:" },
-	    {x=2,y=1,width=2,height=1,class="dropdown",name="stail",items=styles,value=styles_to_apply_to},
-	    {x=4,y=1,width=2,height=1,class="checkbox",name="info",label="Info",value=false },
+	    {x=2,y=1,width=2,height=1,class="dropdown",name="stail",items=styles,value="All Default"},
+	    {x=4,y=1,width=3,height=1,class="edit",name="plustyle",value="",hint="Additional style"},
+	    
+	    {x=4,y=0,width=4,height=1,class="checkbox",name="info",label="Info (link/snap)",value=false},
+	    {x=8,y=0,width=2,height=1,class="checkbox",name="mark",label="Mark changed lines",value=false,
+		hint="linking/snapping - marks changed lines in effect"},
 
-	    -- cut/shift
-	    {x=0,y=2,width=1,height=1,class="label",name="01",label="cut leadin [or" },
-	    {x=1,y=2,width=1,height=1,class="checkbox",name="addin",label="add]",value=add_leadin },
-	    {x=0,y=3,width=2,height=1,class="floatedit",name="inn",value=leadin_value,hint="ms" },
+	    -- shift
+	    {x=0,y=2,width=1,height=1,class="label",label="SHIFT backward"},
+	    {x=2,y=2,width=2,height=1,class="floatedit",name="shifft",value=0},
+	    {x=4,y=2,width=1,height=1,class="label",label="ms"},
+	    {x=5,y=2,width=2,height=1,class="checkbox",name="shit",label="Shift forward",value=false},
+
+	    -- add/cut
+	    {x=0,y=3,width=1,height=1,class="checkbox",name="IN",label="Add lead in"},
+	    {x=2,y=3,width=2,height=1,class="floatedit",name="inn",value=0},
+	    {x=4,y=3,width=1,height=1,class="label",label="ms"},
+	    {x=5,y=3,width=2,height=1,class="checkbox",name="cutin",label="Cut lead in",value=false},
 	    
-	    {x=2,y=2,width=1,height=1,class="label",name="02",label="cut leadout [or" },
-	    {x=3,y=2,width=1,height=1,class="checkbox",name="addout",label="add]",value=add_leadout },
-	    {x=2,y=3,width=2,height=1,class="floatedit",name="ut",value=leadout_value,hint="ms" },
+	    {x=0,y=4,width=1,height=1,class="checkbox",name="OUT",label="Add lead out"},
+	    {x=2,y=4,width=2,height=1,class="floatedit",name="utt",value=0},
+	    {x=4,y=4,width=1,height=1,class="label",label="ms"},
+	    {x=5,y=4,width=2,height=1,class="checkbox",name="cutout",label="Cut lead out",value=false},
 	    
-	    {x=4,y=2,width=1,height=1,class="label",name="03",label="shift left [or" },
-	    {x=5,y=2,width=1,height=1,class="checkbox",name="shit",label="right]",value=shift_right },
-	    {x=4,y=3,width=2,height=1,class="floatedit",name="shifft",value=shift_value,hint="ms" },
-	    
-	    {x=0,y=4,width=3,height=1,class="checkbox",name="preventcut",
-	    label="prevent overlaps from adding leads",value=prevent_cut_overlaps},
-	    {x=3,y=4,width=3,height=1,class="checkbox",name="holdkf",
-	    label="don't add leads on keyframes",value=dont_add_leads_on_kf},
-	    
+	    {x=0,y=5,width=3,height=1,class="checkbox",name="preventcut",
+	    label="prevent overlaps from adding leads",value=true},
+	    {x=3,y=5,width=4,height=1,class="checkbox",name="holdkf",
+	    label="don't add leads on keyframes",value=false},
+
 	    -- linking
-	    {x=0,y=5,width=2,height=1,class="label",label="Line linking:   max gap:" },
-	    {x=2,y=5,width=2,height=1,class="floatedit",name="link",value=line_linking_gap,min=0 },
-	    {x=4,y=5,width=1,height=1,class="label",label="ms    Bias:" },
-	    {x=5,y=5,width=1,height=1,class="dropdown",name="bias",
-	    items={"0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1"},value=linking_bias,hint="higher number=closer to 2nd line"},
-	    
+	    {x=0,y=6,width=2,height=1,class="label",label="Line linking:  Max gap:"},
+	    {x=2,y=6,width=2,height=1,class="floatedit",name="link",value=400,min=0},
+	    {x=4,y=6,width=1,height=1,class="label",label="ms   "},
+	    {x=5,y=6,width=1,height=1,class="label",label="Bias:  "},
+	    {x=6,y=6,width=1,height=1,class="dropdown",name="bias",items=BIAS,value="0.8",hint="higher number=closer to 2nd line"},
+
 	    -- overlaps
-	    {x=0,y=6,width=2,height=1,class="checkbox",name="over",label="fix overlaps up to:",value=fix_overlaps,hint="This is part of line linking. If you want only overlaps, set linking gap to 0." },
-	    {x=2,y=6,width=2,height=1,class="floatedit",name="overlap",value=overlap_value,min=0 },
-	    {x=4,y=6,width=1,height=1,class="label",label="ms    Bias:" },
-	    {x=5,y=6,width=1,height=1,class="dropdown",name="bios",
-	    items={"0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1"},value=overlap_bias,hint="higher number=closer to 2nd line"},
-	    
+	    {x=0,y=7,width=2,height=1,class="checkbox",name="over",label="Fix overlaps up to:",value=false,
+		hint="This is part of line linking.\nIf you want only overlaps, set linking gap to 0."},
+	    {x=2,y=7,width=2,height=1,class="floatedit",name="overlap",value=500,min=0 },
+	    {x=4,y=7,width=1,height=1,class="label",label="ms   "},
+	    {x=5,y=7,width=1,height=1,class="label",label="Bias:  "},
+	    {x=6,y=7,width=1,height=1,class="dropdown",name="bios",items=BIAS,value="0.5",hint="higher number=closer to 2nd line"},
+
 	    -- keyframes
-	    {x=7,y=0,width=1,height=1,class="label",label="Keyframes", },
+	    {x=8,y=1,width=1,height=1,class="label",label="Keyframes"},
 	    
-	    {x=7,y=1,width=1,height=1,class="label",label="Starts before:" },
-	    {x=7,y=2,width=1,height=1,class="label",label="Ends before:" },
-	    {x=7,y=3,width=1,height=1,class="label",label="Starts after:" },
-	    {x=7,y=4,width=1,height=1,class="label",label="Ends after:" },
+	    {x=8,y=2,width=1,height=1,class="label",label="Starts before:"},
+	    {x=8,y=3,width=1,height=1,class="label",label="Ends before:"},
+	    {x=8,y=4,width=1,height=1,class="label",label="Starts after:"},
+	    {x=8,y=5,width=1,height=1,class="label",label="Ends after:"},
 	    
-	    {x=8,y=1,width=1,height=1,class="floatedit",name="sb",value=starts_before,min=0,max=250,hint="frames, not ms" },
-	    {x=8,y=2,width=1,height=1,class="floatedit",name="eb",value=ends_before,min=0,max=250,hint="frames, not ms" },
-	    {x=8,y=3,width=1,height=1,class="floatedit",name="sa",value=starts_after,min=0,max=250,hint="frames, not ms" },
-	    {x=8,y=4,width=1,height=1,class="floatedit",name="ea",value=ends_after,min=0,max=250,hint="frames, not ms" },
+	    {x=9,y=2,width=1,height=1,class="floatedit",name="sb",value=0,min=0,max=250,hint="frames, not ms"},
+	    {x=9,y=3,width=1,height=1,class="floatedit",name="eb",value=0,min=0,max=250,hint="frames, not ms"},
+	    {x=9,y=4,width=1,height=1,class="floatedit",name="sa",value=0,min=0,max=250,hint="frames, not ms"},
+	    {x=9,y=5,width=1,height=1,class="floatedit",name="ea",value=0,min=0,max=250,hint="frames, not ms"},
 	    
-	    {x=7,y=5,width=1,height=1,class="checkbox",name="pres",label="Preset:",value=use_preset },
-	    {x=8,y=5,width=1,height=1,class="dropdown",name="preset",items=kf_snap_presets,value=kf_snap_preset},
+	    {x=8,y=6,width=1,height=1,class="checkbox",name="pres",label="Preset:",value=true},
+	    {x=9,y=6,width=1,height=1,class="dropdown",name="preset",items=kf_snap_presets,value="6,10,8,12"},
 	    
-	    {x=7,y=6,width=2,height=1,class="checkbox",name="prevent",label="Prevent overlaps by snapping",value=prevent_kf_overlaps },
-	    
-	} 	
-	pressed, res=aegisub.dialog.display(dialog_config,
-		{"[ cut or add lead in ]","[ cut or add lead out ]","shift times","line linking","kf snapping","cancel"},{cancel='cancel'})
+	    {x=8,y=7,width=2,height=1,class="checkbox",name="prevent",label="Prevent overlaps by snapping",value=true},
+	}
+	loadconfig()
+	pressed, res=aegisub.dialog.display(gui,
+		{"Lead in/out","Link Lines","Shift times","Snap to keyframes","Save config","Cancel"},{cancel='Cancel'})
 	if res.slct=="Apply to all lines" then sel=selectall(subs, sel) end
 	keyframes=aegisub.keyframes()
 	ms2fr=aegisub.frame_from_ms
 	fr2ms=aegisub.ms_from_frame
 	
-	if pressed=="[ cut or add lead in ]" then cutin(subs, sel) end
-	if pressed=="[ cut or add lead out ]" then cutout(subs, sel) end
-	if pressed=="shift times" then shiift(subs, sel) end
-	if pressed=="line linking" then linklines(subs, sel) end
-	if pressed=="kf snapping" then keyframesnap(subs, sel) end
-	if pressed=="cancel" then aegisub.cancel() end
-	if res.info then
-	    if pressed=="line linking" then aegisub.log("\n Linked lines: "..linx) end
-	    if pressed=="line linking" and res.over then aegisub.log("\n Overlaps fixed: "..overl) end
-	    if pressed=="kf snapping" then aegisub.log("\n Lines snapped to keyframes: "..snapd) end
+	if pressed=="Lead in/out" then 
+	    if res.IN or res.cutin then cutin(subs, sel) end
+	    if res.OUT or res.cutout then cutout(subs, sel) end
 	end
+	if pressed=="Shift times" then shiift(subs, sel) end
+	if pressed=="Link Lines" then linklines(subs, sel) end
+	if pressed=="Snap to keyframes" then keyframesnap(subs, sel) end
+	if pressed=="Cancel" then aegisub.cancel() end
+	if res.info then
+	    if pressed=="Link Lines" then aegisub.log("\n Linked lines: "..linx) end
+	    if pressed=="Link Lines" and res.over then aegisub.log("\n Overlaps fixed: "..overl) end
+	    if pressed=="Snap to keyframes" then aegisub.log("\n Lines snapped to keyframes: "..snapd) end
+	end
+	if pressed=="Save config" then saveconfig() end
+	
 	return sel
 end
 
