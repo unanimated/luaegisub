@@ -1,15 +1,18 @@
 script_name="Masquerade"
 script_description="Masquerade"
 script_author="unanimated"
-script_version="2.11"
+script_version="2.2"
 
 -- \ko has been removed. much improved version is in 'Apply fade'. alpha shift does a similar thing differently.
 
 --[[
 
-Create Mask
+Masquerade
 	Creates a mask with the selected shape.
-	"create mask on a new line" does te obvious and raises the layer of the current line by 1.
+	"create mask on a new line" does the obvious and raises the layer of the current line by 1.
+	"Save/delete mask" lets you save a mask from active line or delete one of your custom masks
+	  - to save a mask, type a name and the mask from your active line will be saved (appdata/masquerade.masks)
+	  - to delete a mask, type its name or type 'del' and select the name from the menu on the left
 
 Shift Tags
 	Allows you to shift tags by character or by word.
@@ -89,36 +92,43 @@ function addmask(subs, sel)
 		frx=l.text:match("\\frx[%d%.%-]+")	if frx~=nil then atags=atags..frx end
 		fry=l.text:match("\\fry[%d%.%-]+")	if fry~=nil then atags=atags..fry end
 		
-		
+		mmm=0
 		l.text=l.text:gsub(".*(\\pos%([%d%,%.%-]-%)).*","%1")
 		if l.text:match("\\pos")==nil then l.text="" end
 		
-		if res["mask"]=="square" then
+		if res["mask"]=="square" then mmm=1
 		  l.text="{\\an5\\bord0\\blur1"..l.text..mcol.."\\p1}m 0 0 l 100 0 100 100 0 100"
 		end
-		if res["mask"]=="rounded square" then
+		if res["mask"]=="rounded square" then mmm=1
 		  l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}m -100 -25 b -100 -92 -92 -100 -25 -100 l 25 -100 b 92 -100 100 -92 100 -25 l 100 25 b 100 92 92 100 25 100 l -25 100 b -92 100 -100 92 -100 25 l -100 -25"
 		end
-		if res["mask"]=="rounded square 2" then
+		if res["mask"]=="rounded square 2" then mmm=1
 		  l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}m -100 -60 b -100 -92 -92 -100 -60 -100 l 60 -100 b 92 -100 100 -92 100 -60 l 100 60 b 100 92 92 100 60 100 l -60 100 b -92 100 -100 92 -100 60 l -100 -60"
 		end
-		if res["mask"]=="rounded square 3" then
+		if res["mask"]=="rounded square 3" then mmm=1
 		  l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}m -100 -85 b -100 -96 -96 -100 -85 -100 l 85 -100 b 96 -100 100 -96 100 -85 l 100 85 b 100 96 96 100 85 100 l -85 100 b -96 100 -100 96 -100 85 l -100 -85"
 		end
-		if res["mask"]=="circle" then
+		if res["mask"]=="circle" then mmm=1
 		  l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}m -100 -100 b -45 -155 45 -155 100 -100 b 155 -45 155 45 100 100 b 46 155 -45 155 -100 100 b -155 45 -155 -45 -100 -100"
 		end
-		if res["mask"]=="equilateral triangle" then
+		if res["mask"]=="equilateral triangle" then mmm=1
 		  l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}m -122 70 l 122 70 l 0 -141"
 		end
-		if res["mask"]=="right-angled triangle" then
+		if res["mask"]=="right-angled triangle" then mmm=1
 		  l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}m -70 50 l 180 50 l -70 -100"
 		end
-		if res["mask"]=="alignment grid" then
+		if res["mask"]=="alignment grid" then mmm=1
 		  l.text="{\\an7\\bord0\\shad0\\blur0.6"..l.text..atags.."\\p1\\c&H000000&\\alpha&H80&}m -500 -199 l 500 -199 l 500 -201 l -500 -201 m -701 1 l 700 1 l 700 -1 l -701 -1 m -500 201 l 500 201 l 500 199 l -500 199 m -1 -500 l 1 -500 l 1 500 l -1 500 m -201 -500 l -199 -500 l -199 500 l -201 500 m 201 500 l 199 500 l 199 -500 l 201 -500 m -150 -25 l 150 -25 l 150 25 l -150 25"
 		end
-		if res["mask"]=="alignment grid 2" then
+		if res["mask"]=="alignment grid 2" then mmm=1
 		  l.text="{\\an7\\bord0\\shad0\\blur0.6"..l.text..atags.."\\p1\\c&H000000&\\alpha&H80&}m -500 -199 l 500 -199 l 500 -201 l -500 -201 m -701 1 l 700 1 l 700 -1 l -701 -1 m -500 201 l 500 201 l 500 199 l -500 199 m -1 -500 l 1 -500 l 1 500 l -1 500 m -201 -500 l -199 -500 l -199 500 l -201 500 m 201 500 l 199 500 l 199 -500 l 201 -500 m -150 -25 l 150 -25 l 150 25 l -150 25 m -401 -401 l 401 -401 l 401 401 l -401 401 m -399 -399 l -399 399 l 399 399 l 399 -399"
+		end
+		if mmm==0 then
+		  for k=1,#moremasks do
+		    if moremasks[k].n==res.mask then
+		      l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}"..moremasks[k].m
+		    end
+		  end
 		end
 		if l.text:match("\\pos")==nil then l.text=l.text:gsub("\\p1","\\pos(640,360)\\p1") end
 		end
@@ -127,10 +137,65 @@ function addmask(subs, sel)
 	end
 end
 
+function savemask(subs,sel,act)
+masker=aegisub.decode_path("?user").."\\masquerade.masks"
+file=io.open(masker)
+  if file~=nil then masx=file:read("*all") io.close(file) end
+  if masx==nil then masx="" end
+  mask_name=res.maskname
+  masx=masx:gsub(":\n$",":\n\n") :gsub(":$",":\n\n")
+  -- delete mask
+  deleted=0
+    for m=1,#maasks do
+      if mask_name=="del" then mask_name=res.mask end
+      if maasks[m]==mask_name then
+	if m<=10 then t_error("You can't delete a default mask.",true)
+	else e_name=esc(mask_name) masx=masx:gsub("mask:"..e_name..":.-:\n\n","") t_error("Mask '"..mask_name.."' deleted",false)
+	end
+	deleted=1
+      end
+    end
+  -- add new mask
+  if deleted==0 then
+    text=subs[act].text
+    text=text:gsub("{[^}]-}","")
+    newmask=text:match("m [%d%s%-mbl]+")
+    newmask=newmask:gsub("%s*$","")
+    if newmask==nil then t_error("No mask detected on active line.",true) end
+    if mask_name=="mask name here" or mask_name=="" then
+	p,rez=aegisub.dialog.display({{class="label",label="Enter a proper name for the mask:"},
+	{y=1,class="edit",name="mname"},},{"OK","Cancel"},{ok='OK',close='Cancel'})
+	if p=="Cancel" then aegisub.cancel() end
+	if rez.mname=="" then t_error("Naming fail",true) else mask_name=rez.mname end
+      for m=1,#maasks do
+        if maasks[m]==mask_name then
+	  t_error("Mask '"..mask_name.."' already exists.",true)
+        end
+      end
+    end
+  new_mask="mask:"..mask_name..":"..newmask..":\n\n"
+  masx=masx..new_mask
+  end
+  
+  masx=masx:gsub(":\nmask",":\n\nmask")
+    
+file=io.open(masker,"w")
+file:write(masx)
+file:close()
+if deleted==0 then
+  aegisub.dialog.display({{class="label",label="Mask '"..mask_name.."' saved to:\n"..masker}},{"OK"},{close='OK'})
+end
+end
+
+function t_error(message,cancel)
+  aegisub.dialog.display({{class="label",label=message}},{"OK"},{close='OK'})
+  if cancel then aegisub.cancel() end
+end
+
 function add_an8(subs, sel, act)
 	for z, i in ipairs(sel) do
-		local line=subs[i]
-		local text=subs[i].text
+		line=subs[i]
+		text=subs[i].text
 		if line.text:match("\\an%d") and res.an8~="q2" then
 		text=text:gsub("\\(an%d)","\\"..res.an8)
 		end
@@ -491,7 +556,6 @@ function addtag2(tag,text) -- mask version
 	tg=tag:match("\\%d?%a+")
 	text=text:gsub("^{(\\[^}]-)}","{"..tag.."%1}")
 	:gsub("("..tg.."[^\\}]+)([^}]-)("..tg.."[^\\}]+)","%2%1")
-	--aegisub.log("\n text "..text)
 	return text 
 end
 
@@ -537,12 +601,23 @@ function stylechk(subs,stylename)
 end
 
 function masquerade(subs,sel,act)
+maasks={"from clip","square","rounded square","rounded square 2","rounded square 3","circle","equilateral triangle","right-angled triangle","alignment grid","alignment grid 2"}
+moremasks={}
+masker=aegisub.decode_path("?user").."\\masquerade.masks"
+file=io.open(masker)
+    if file~=nil then
+	masx=file:read("*all")
+	io.close(file)
+	for nam,msk in masx:gmatch("mask:(.-):(.-):") do table.insert(maasks,nam) table.insert(moremasks,{n=nam,m=msk}) end
+    end
 	dialog_config=
 	{
 	    {x=0,y=0,width=1,height=1,class="label",label="Mask:",},
-	    {x=1,y=0,width=1,height=1,class="dropdown",name="mask",
-		items={"from clip","square","rounded square","rounded square 2","rounded square 3","circle","equilateral triangle","right-angled triangle","alignment grid","alignment grid 2"},value="square"},
+	    {x=1,y=0,width=1,height=1,class="dropdown",name="mask",items=maasks,value="square"},
 	    {x=0,y=1,width=2,height=1,class="checkbox",name="masknew",label="create mask on a new line",value=true},
+	    
+	    {x=9,y=0,width=1,height=1,class="checkbox",name="save",label="Save/delete mask    ",value=false},
+	    {x=9,y=1,width=2,height=1,class="edit",name="maskname",value="mask name here",hint="Type name of the mask you want to save/delete"},
 
 	    {x=3,y=0,width=1,height=1,class="dropdown",name="an8",
 		items={"q2","an1","an2","an3","an4","an5","an6","an7","an8","an9"},value="an8"},
@@ -554,17 +629,18 @@ function masquerade(subs,sel,act)
 	    {x=6,y=1,width=2,height=1,class="intedit",name="fs",value=3,min=1},
 	    {x=7,y=0,width=1,height=1,class="checkbox",name="mend",label="tag end",value=false},
 	    
-	    {x=17,y=0,width=1,height=0,class="label",label="Masquerade v"..script_version},
-	} 	
+	    {x=10,y=0,width=1,height=0,class="label",label="Masquerade "..script_version},
+	}
 	pressed, res=aegisub.dialog.display(dialog_config,
-	{"create mask","shift tags","an8 / q2","mocha scale","alpha shift","alpha time","strikealpha","cancel"},{cancel='cancel'})
+	{"masquerade","shift tags","an8 / q2","mocha scale","alpha shift","alpha time","strikealpha","cancel"},{cancel='cancel'})
 	if pressed=="cancel" then aegisub.cancel() end
-	if pressed=="create mask" then addmask(subs, sel) end
-	if pressed=="strikealpha" then strikealpha(subs, sel) end
-	if pressed=="an8 / q2" then add_an8(subs, sel,act) end
-	if pressed=="alpha shift" then alfashift(subs, sel) end
-	if pressed=="alpha time" then alfatime(subs, sel) end	
-	if pressed=="mocha scale" then scale(subs, sel) end
+	if pressed=="masquerade" and not res.save then addmask(subs,sel) end
+	if pressed=="masquerade" and res.save then savemask(subs,sel,act) end
+	if pressed=="strikealpha" then strikealpha(subs,sel) end
+	if pressed=="an8 / q2" then add_an8(subs,sel,act) end
+	if pressed=="alpha shift" then alfashift(subs,sel) end
+	if pressed=="alpha time" then alfatime(subs,sel) end	
+	if pressed=="mocha scale" then scale(subs,sel) end
 	if pressed=="shift tags" then shiftag(subs,sel,act) end
     aegisub.set_undo_point(script_name)
     return sel, act
