@@ -1,7 +1,7 @@
 script_name="Masquerade"
 script_description="Masquerade"
 script_author="unanimated"
-script_version="2.2"
+script_version="2.21"
 
 -- \ko has been removed. much improved version is in 'Apply fade'. alpha shift does a similar thing differently.
 
@@ -295,11 +295,11 @@ function shiftag(subs,sel,act)
     if tags==nil then tags="" end
     if ftags==nil then ftags="" end
     ftags=ftags:gsub("\\pos[^\\}]+","") :gsub("\\move[^\\}]+","") :gsub("\\org[^\\}]+","") 
-    :gsub("\\i?clip[^\\}]+","") :gsub("\\fad[^\\}]+","") :gsub("\\an?%d","")
+    :gsub("\\i?clip%([^%)]+%)","") :gsub("\\fad[^\\}]+","") :gsub("\\an?%d","")
     cstext=rine.text:gsub("^{(\\[^}]-)}","")
     -- remove transforms
-	ftags=ftags:gsub("\\t%([^%(%)]+%)","")
 	ftags=ftags:gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","")
+	ftags=ftags:gsub("\\t%([^%(%)]+%)","")
     rept={"drept"}
     -- build GUI
     shiftab={
