@@ -3,7 +3,7 @@ script_description="A multi-headed typesetting tool"
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/hydra.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/hydra.lua"
-script_version="3.8"
+script_version="3.81"
 
 -- SETTINGS - feel free to change these
 
@@ -24,23 +24,6 @@ default_fay=0.05
 order="\\r\\fad\\fade\\an\\q\\blur\\be\\bord\\shad\\fn\\fs\\fsp\\fscx\\fscy\\frx\\fry\\frz\\c\\2c\\3c\\4c\\alpha\\1a\\2a\\3a\\4a\\xbord\\ybord\\xshad\\yshad\\pos\\move\\org\\clip\\iclip\\b\\i\\u\\s\\p"
 
 -- END of SETTINGS
-
-function checkonfig()
-hconfig=aegisub.decode_path("?user").."\\hydra.conf"
-file=io.open(hconfig)
-    if file~=nil then
-	konf=file:read("*all")
-	startup_mode=tonumber(konf:match("startup_mode:(%d)"))
-	default_blur=tonumber(konf:match("default_blur:([%d%.]+)"))
-	default_border=tonumber(konf:match("default_border:([%d%.]+)"))
-	default_shadow=tonumber(konf:match("default_shadow:([%d%.]+)"))
-	default_fontsize=tonumber(konf:match("default_fontsize:([%d%.]+)"))
-	default_spacing=tonumber(konf:match("default_spacing:([%d%-%.]+)"))
-	default_fax=tonumber(konf:match("default_fax:([%d%-%.]+)"))
-	default_fay=tonumber(konf:match("default_fay:([%d%-%.]+)"))
-	io.close(file)
-    end
-end
     
 re=require'aegisub.re'
 
@@ -51,7 +34,7 @@ function hh9(subs, sel)
     for z, i in ipairs(sel) do
     cancelled=aegisub.progress.is_cancelled()
     if cancelled then aegisub.cancel() end
-    aegisub.progress.title(string.format("Hydralizing line: %d/%d",z,#sel))
+    progress(string.format("Hydralizing line: %d/%d",z,#sel))
     prog=math.floor((z+0.5)/#sel*100)
     aegisub.progress.set(prog)
     line=subs[i]
@@ -303,7 +286,7 @@ function special(subs, sel)
     sel=selover(subs)
   else
     for i=#sel,1,-1 do
-        aegisub.progress.title(string.format(res.spec..": %d/%d",#sel-i,#sel))
+        progress(string.format(res.spec..": %d/%d",#sel-i,#sel))
 	prog=math.floor((#sel-i+0.5)/#sel*100)
  	aegisub.progress.set(prog)
 	line=subs[sel[i]]
@@ -689,6 +672,12 @@ str=str
 return str
 end
 
+function progress(msg)
+  cancelled=aegisub.progress.is_cancelled()
+  if cancelled then aegisub.cancel() end
+  aegisub.progress.title(msg)
+end
+
 function styleget(subs)
     styles={}
     for i=1,#subs do
@@ -708,6 +697,23 @@ function stylechk(stylename)
 	end
     end
     return styleref
+end
+
+function checkonfig()
+hconfig=aegisub.decode_path("?user").."\\hydra.conf"
+file=io.open(hconfig)
+    if file~=nil then
+	konf=file:read("*all")
+	startup_mode=tonumber(konf:match("startup_mode:(%d)"))
+	default_blur=tonumber(konf:match("default_blur:([%d%.]+)"))
+	default_border=tonumber(konf:match("default_border:([%d%.]+)"))
+	default_shadow=tonumber(konf:match("default_shadow:([%d%.]+)"))
+	default_fontsize=tonumber(konf:match("default_fontsize:([%d%.]+)"))
+	default_spacing=tonumber(konf:match("default_spacing:([%d%-%.]+)"))
+	default_fax=tonumber(konf:match("default_fax:([%d%-%.]+)"))
+	default_fay=tonumber(konf:match("default_fay:([%d%-%.]+)"))
+	io.close(file)
+    end
 end
 
 hydraulics={"A multi-headed typesetting tool","Nine heads typeset better than one.","Eliminating the typing part of typesetting","Mass-production of typesetting tags","Hydraulic typesetting machinery","Making sure your subtitles aren't dehydrated","Making typesetting so easy that even you can do it!","A monstrous typesetting tool","A deadly typesetting beast","Building monstrous scripts with ease","For irrational typesetting wizardry","Building a Wall of Tags"}
@@ -910,7 +916,7 @@ hh3={
 	if res.tmode=="add2first" then tmode=2 end
 	if res.tmode=="add2all" then tmode=3 end
 	if res.tagpres=="in the middle" then fak=0.5 end
-	if res.tagpres:match("of text") then fa,fb=res.tagpres:match("(%d)/(%d)") fak=fa/fb end
+	if sm==3 and res.tagpres:match("of text") then fa,fb=res.tagpres:match("(%d)/(%d)") fak=fa/fb end
 	if res.aonly then res.alfas=true end
 	
 	if pressed=="Apply" then trans=0 hh9(subs, sel) end
