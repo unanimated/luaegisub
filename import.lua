@@ -3,48 +3,17 @@ script_description="Import stuff, number stuff, chapter stuff, replace stuff, do
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/import.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/import.lua"
-script_version="2.1"
+script_version="2.2"
 
 require "clipboard"
 re=require'aegisub.re'
-
---	SETTINGS	--
-
--- IMPORT --
-import="import signs"			-- options: "import OP","import ED","import sign","import signs","export sign","update lyrics"
-keep_line=true				-- options: true / false
-style_restriction=false		-- options: true / false
-script_path="relative"			-- options: "relative" / "absolute"
-relative_path=""			-- relative to where your script is -> "..\\OPED\\" = one folder up and then OPED folder
-					-- backslashes must be double and must be included at the end. default "" is the script folder.
-absolute_path="D:\\typesetting\\"	-- absolute path to import scripts from if you set script_path to "absolute" (case-sensitive)
-
--- CHAPTERS --
-default_marker="actor"			-- options: "actor","effect","comment"
-default_chapter_name="comment"		-- options: "comment","effect"
-default_save_name="script"		-- options: "script","video"
-deafault_chapter_mark="OP"		-- options: "Intro","OP","Part A","Part B","Part C","ED","Preview"
-autogenerate_intro=true			-- options: true / false
-ch_script_path="relative"		-- options: "relative" / "absolute"
-ch_relative_path=""			-- relative to where your script is -> "..\\chapters\\" = one folder up and then 'chapters' folder
-					-- backslashes must be double and must be included at the end. default "" is the script folder.
-ch_absolute_path="D:\\typesetting\\"	-- absolute path to save chapters if you set script_path to "absolute" (case-sensitive)
-
--- NUMBERS --
-actor_effect="effect"			-- options: "actor","effect","layer","style","text"
-numbering="01"				-- options: "1","01","001","0001"
-
--- STUFF --
-default_stuff="lua replacer"		-- options: just read them in the menu (backslashes must be double)
-
---	--	--	--		-- optional external config file: http://unanimated.xtreemhost.com/ts/unimportant.conf
 
 function addtag(tag,text) text=text:gsub("^({\\[^}]-)}","%1"..tag.."}") return text end
 function round(num) num=math.floor(num+0.5) return num end
 
 
 --	IMPORT/EXPORT	-------------------------------------------------------------------------------------
-function important(subs, sel, act)
+function important(subs,sel,act)
 	aline=subs[act]
 	atext=aline.text
 	atags=atext:match("^{(\\[^}]-)}") 
@@ -293,7 +262,7 @@ end
 
 
 --	 NUMBERS	-------------------------------------------------------------------------------------
-function numbers(subs, sel)
+function numbers(subs,sel)
     z=zer:len()
 	if sub3:match("[,/;]") then startn,int=sub3:match("(%d+)[,/;](%d+)") else startn=sub3:gsub("%[.-%]","") int=1 end
 	if sub3:match("%[") then numcycle=tonumber(sub3:match("%[(%d+)%]")) else numcycle=0 end
@@ -339,7 +308,7 @@ end
 
 
 --	CHAPTERS	-------------------------------------------------------------------------------------
-function chopters(subs, sel)
+function chopters(subs,sel)
   if res.marker=="effect" and res.nam=="effect" then 
 	aegisub.dialog.display({{class="label",label="Error. Both marker and name cannot be 'effect'."}},{"OK"},{close='OK'}) aegisub.cancel() 
   end
@@ -495,7 +464,7 @@ end
 
 
 --	STUFF	-------------------------------------------------------------------------------------
-function stuff(subs, sel)
+function stuff(subs,sel)
     repl=0
     data={}	raw=res.dat.."\n"
     for dataline in raw:gmatch("(.-)\n") do table.insert(data,dataline) end
@@ -1418,7 +1387,7 @@ end
 
 
 --	Jump to Next	--
-function nextsel(subs, sel)
+function nextsel(subs,sel)
 lm=nil
 i=sel[1]
 marks={}
@@ -1456,7 +1425,7 @@ end
 
 
 --	Alpha Shift	--
-function alfashift(subs, sel)
+function alfashift(subs,sel)
     count=1
     for x, i in ipairs(sel) do
         local line=subs[i]
@@ -1482,7 +1451,7 @@ end
 
 
 --	Merge inline tags	--
-function merge(subs, sel)
+function merge(subs,sel)
     tk={}
     tg={}
     stg=""
@@ -1579,7 +1548,7 @@ end
 
 
 --	Honorificslaughterhouse		--
-function honorifix(subs, sel)
+function honorifix(subs,sel)
     for i=#subs,1,-1 do
       if subs[i].class=="dialogue" then
         line=subs[i]
@@ -1616,6 +1585,7 @@ function honorifix(subs, sel)
       end
     end
 end
+
 
 --	framerate	--
 function framerate(subs)
@@ -1776,39 +1746,112 @@ function getpos(subs,text)
 end
 
 function progress(msg)
-  cancelled=aegisub.progress.is_cancelled()
-  if cancelled then aegisub.cancel() end
+  if aegisub.progress.is_cancelled() then aegisub.cancel() end
   aegisub.progress.title(msg)
 end
 
-function readconfig()
-hconfig=aegisub.decode_path("?user").."\\unimportant.conf"
-file=io.open(hconfig)
+
+--	Config Stuff	--
+function saveconfig()
+unconf="Unimportant Configuration\n\n"
+  for key,val in ipairs(unconfig) do
+    if val.class=="floatedit" or val.class=="dropdown" then
+      unconf=unconf..val.name..":"..res[val.name].."\n"
+    end
+    if val.class=="checkbox" and val.name~="save" then
+      unconf=unconf..val.name..":"..tf(res[val.name]).."\n"
+    end
+  end
+
+unimpkonfig=aegisub.decode_path("?user").."\\unimportant.conf"
+  file=io.open(unimpkonfig)
     if file~=nil then
 	konf=file:read("*all")
 	io.close(file)
-	import=konf:match("import:\"(.-)\"")
-	k_l=konf:match("keep_line:(%a+)")
-	    if k_l=="true" then keep_line=true else keep_line=false end
-	s_r=konf:match("style_restriction:(%a+)") --
-	    if s_r=="true" then style_restriction=true else style_restriction=false end
-	script_path=konf:match("script_path:\"(.-)\"")
-	relative_path=konf:match("relative_path:\"(.-)\"")
-	absolute_path=konf:match("absolute_path:\"(.-)\"")
-	default_marker=konf:match("default_marker:\"(.-)\"")
-	default_chapter_name=konf:match("default_chapter_name:\"(.-)\"")
-	default_save_name=konf:match("default_save_name:\"(.-)\"")
-	deafault_chapter_mark=konf:match("deafault_chapter_mark:\"(.-)\"")
-	a_i=konf:match("autogenerate_intro:(%a+)")--
-	    if a_i=="true" then autogenerate_intro=true else autogenerate_intro=false end
-	ch_script_path=konf:match("ch_script_path:\"(.-)\"")
-	ch_relative_path=konf:match("ch_relative_path:\"(.-)\"")
-	ch_absolute_path=konf:match("ch_absolute_path:\"(.-)\"")
-	actor_effect=konf:match("actor_effect:\"(.-)\"")
-	numbering=konf:match("numbering:\"(.-)\"")
-	default_stuff=konf:match("default_stuff:\"(.-)\"")
+	imp1=konf:match("imp1:(.-)\n")
+	imp2=konf:match("imp2:(.-)\n")
+	imp3=konf:match("imp3:(.-)\n")
+	chap1=konf:match("chap1:(.-)\n")
+	chap2=konf:match("chap2:(.-)\n")
+	chap3=konf:match("chap3:(.-)\n")
+    end
+    if imp1==nil then imp1="relative" end
+    if imp2==nil then imp2="" end
+    if imp3==nil then imp3="D:\\typesetting\\" end
+    if chap1==nil then chap1="relative" end
+    if chap2==nil then chap2="" end
+    if chap3==nil then chap3="D:\\typesetting\\" end
+
+  savestuff={
+  {x=0,y=0,class="label",label="Import script path:"},
+  {x=0,y=1,class="label",label="Import relative path:"},
+  {x=0,y=2,class="label",label="Import absolute path:"},
+  {x=0,y=3,class="label",label="Chapters save path:"},
+  {x=0,y=4,class="label",label="Chapters relative path:"},
+  {x=0,y=5,class="label",label="Chapters absolute path:"},
+  {x=1,y=0,class="dropdown",name="imp1",items={"relative","absolute"},value=imp1},
+  {x=1,y=1,class="edit",width=16,name="imp2",value=imp2},
+  {x=1,y=2,class="edit",width=16,name="imp3",value=imp3},
+  {x=1,y=3,class="dropdown",name="chap1",items={"relative","absolute"},value=chap1},
+  {x=1,y=4,class="edit",width=16,name="chap2",value=chap2},
+  {x=1,y=5,class="edit",width=16,name="chap3",value=chap3},
+  }
+  
+  click,rez=aegisub.dialog.display(savestuff,{"Save","Cancel"},{ok='Save',close='Cancel'})
+  if click=="Cancel" then aegisub.cancel() end
+  rez.imp3=rez.imp3:gsub("[^\\]$","%1\\")
+  rez.chap3=rez.chap3:gsub("[^\\]$","%1\\")
+  
+  for key,val in ipairs(savestuff) do
+    if val.x==1 then
+      unconf=unconf..val.name..":"..rez[val.name].."\n"
+    end
+  end
+  
+file=io.open(unimpkonfig,"w")
+file:write(unconf)
+file:close()
+aegisub.dialog.display({{class="label",label="Config saved to:\n"..unimpkonfig}},{"OK"},{close='OK'})
+end
+
+function loadconfig()
+unimpkonfig=aegisub.decode_path("?user").."\\unimportant.conf"
+file=io.open(unimpkonfig)
+    if file~=nil then
+	konf=file:read("*all")
+	io.close(file)
+	if konf:match("^%-%-") then konf=""
+	else
+	  for key,val in ipairs(unconfig) do
+	    if val.class=="floatedit" or val.class=="checkbox" or val.class=="dropdown" then
+	      if konf:match(val.name) then val.value=detf(konf:match(val.name..":(.-)\n")) end
+	      if lastimp and val.name=="stuff" then val.value=lastuff end
+	      if lastimp and val.name=="log" then val.value=lastlog end
+	    end
+	  end
+	end
+	script_path=konf:match("imp1:(.-)\n") if script_path==nil then script_path="relative" end
+	relative_path=konf:match("imp2:(.-)\n") if relative_path==nil then relative_path="" end
+	absolute_path=konf:match("imp3:(.-)\n") if absolute_path==nil then absolute_path="D:\\typesetting\\" end
+	ch_script_path=konf:match("chap1:(.-)\n") if ch_script_path==nil then ch_script_path="relative" end
+	ch_relative_path=konf:match("chap2:(.-)\n") if ch_relative_path==nil then ch_relative_path="" end
+	ch_absolute_path=konf:match("chap3:(.-)\n") if ch_absolute_path==nil then ch_absolute_path="D:\\typesetting\\" end
     end
 end
+
+function tf(val)
+    if val==true then ret="true" else ret="false" end
+    return ret
+end
+
+function detf(txt)
+    if txt=="true" then ret=true
+    elseif txt=="false" then ret=false
+    else ret=txt end
+    return ret
+end
+
+
 
 function analyze(l)
     text=l.text
@@ -1907,19 +1950,18 @@ help_n="- NUMBERS -\n\nThis is a tool to number lines and add various markers to
 help_d="- DO STUFF -\n\n- Save/Load -\nYou can use this to save for example bits of text you need to paste frequently (like a multi-clipboard).\nPaste text in the data area to save it. If the data area is empty, the function will load your saved texts.\n\n- Lua Replacer -\nUse \"Left\" and \"Right\" for a lua regexp replace function.\n\n- Perl Replacer -\nUse \"Left\" and \"Right\" for a perl regexp replace function.\n\n- Lua Calc -\nUse \"Left\" and \"Right\" with lua regexp to perform calculations on captured numbers.\nCaptures will be named a, b, c... up to p (16 captures max).\nFunctions are +, -, *, /, and round(a), which rounds the number captured in a.\n> Example: (%d)(%d)(%d) -> a+1b*2c-3\nThis will match 3-digit patterns, add 1 to first digit, multiply the second by 2, and subtract 3 from the 3rd.\nIf you want to leave one of the captures as is, use .. to separate it from other letters: a+1b..c-3 \n> Example: pos%(([%d%.]+),([%d%.]+) -> pos(a+50,b-100\nThis will shift position right by 50 and up by 100. \n\n- Jump to Next -\nThis is meant to get you to the \"next sign\" in the subtitle grid.\nWhen mocha-tracking 1000+ lines, it can be a pain in the ass to find where one sign ends and another begins.\nSelect lines that belong to the current \"sign\", ie. different layers/masks/texts.\nThe script will search for the first line in the grid that doesn't match any of the selected ones, based on the \"Marker\".\n\n- Alpha Shift -\nShifts {\\alpha&HFF&} by one letter for each line. Text thus appears letter by letter.\nIt's an alternative to the script that spawns \\ko, but this works with shadow too.\nDuplicate a line with {\\alpha&HFF&} however many times you need and run the script on the whole selection.\n\n- Merge Inline Tags -\nSelect lines with the same text but different tags, and they will be merged into one line with tags from all of them. For example:\n{\\bord2}AB{\\shad3}C\nA{\\fs55}BC\n-> {\\bord2}A{\\fs55}B{\\shad3}C\n\n- Add Comment -\nText that you type here in this box will be added as a {comment} at the end of selected lines.\n\n- Make Comments Visible -\nNukes { } from comments, thus making them part of the text visible on screen.\n\n- Switch Commented/Visible -\nComments out what's visible and makes visible what's commented. Allows switching between two texts.\n\n- Reverse Text -\nReverses text (character by character). Nukes comments and inline tags.\n\n- Reverse Words -\nReverses text (word by word). Nukes comments and inline tags.\n\n- Reverse Transforms -\n\\blur1\\t(\\blur3) becomes \\blur3\\t(\\blur1). Only for initial tags. Only one transform for each tag.\n\n- Fake Capitals -\nCreates fake capitals by increasing font size for first letters.\nWith all caps, for first letters of words. With mixed text, for uppercase letters.\nSet the \\fs for the capitals in the Left field.\nLooks like this: {\\fs60}F{\\fs}AKE {\\fs60}C{\\fs}APITALS\n\n- Format Dates -\nFormats dates to one of 4 options. Has its own GUI. Only converts from the other 3 options in the GUI.\n\n- Split into Letters -\nMakes a line for each letter, making the other letters invisible with alpha.\nThis lets you do things with each letter separately.\n\n- Explode -\nThis splits the line into letters and makes each of them move in a different direction and fade out.\n\n- Dissolve Text -\nVarious modes of dissolving text. Has its own Help.\n\n- Randomized Transforms -\nVarious modes of randomly transforming text. Has its own Help.\n\n- Clone Clip -\nClones/replicates a clip you draw.\nSet how many rows/columns and distances between them, and you can make large patterns.\n\n- Honorificslaughterhouse -\nComments out honorifics.\n\n- Convert Framerate -\nConverts framerate from a to b where a is the input from \"Left\" and b is input from \"Right\".\n"
 
 
+
 --	Unimportant GUI		-------------------------------------------------------------------------------------
-function unimportant(subs, sel, act)
-readconfig()
+function unimportant(subs,sel,act)
 aegisub.progress.title("Loading Unimportant Stuff")
 aegisub.progress.task("This should take less than a second, so you won't really read this.")
 if datata==nil then data="" else data=datata end
 if sub1==nil then sub1="" end
 if sub2==nil then sub2="" end
 if sub3==nil then sub3=1 end
-msg={"If it breaks, it's your fault.","This should be doing something...","Breaking your computer. Please wait.","Unspecified operations in progress.","This may or may not work.","Trying to avoid bugs...","Zero one one zero one zero...","10110101001101101010110101101100001","I'm surprised anyone's using this","If you're seeing this for too long, it's a bad sign."}
+msg={"If it breaks, it's your fault.","This should be doing something...","Breaking your computer. Please wait.","Unspecified operations in progress.","This may or may not work.","Trying to avoid bugs...","Zero one one zero one zero...","10110101001101101010110101101100001","I'm surprised anyone's using this","If you're seeing this for too long, it's a bad sign.","This might hurt a little.","Please wait... I'm pretending to work.","Close all your programs and run."}
 rm=math.random(1,#msg)	msge=msg[rm]
-dmark=deafault_chapter_mark
-if lastimp then dropstuff=lastuff logg=lastlog else dropstuff=default_stuff logg=false end
+if lastimp then dropstuff=lastuff logg=lastlog else dropstuff="lua replacer" logg=false end
 unconfig={
 	-- Sub --
 	{x=0,y=16,width=3,height=1,class="label",label="Left                                                    "},
@@ -1932,29 +1974,29 @@ unconfig={
 	-- import
 	{x=9,y=3,width=2,height=1,class="label",label="Import/Export"},
 	{x=9,y=4,width=2,height=1,class="dropdown",name="mega",
-	items={"import OP","import ED","import sign","import signs","export sign","update lyrics"},value=import},
-	{x=11,y=4,width=1,height=1,class="checkbox",name="keep",label="keep line",value=keep_line,},
-	{x=9,y=5,width=3,height=1,class="checkbox",name="restr",label="style restriction (lyrics)",value=style_restriction,},
+	items={"import OP","import ED","import sign","import signs","export sign","update lyrics"},value="import signs"},
+	{x=11,y=4,width=1,height=1,class="checkbox",name="keep",label="keep line",value=true,},
+	{x=9,y=5,width=3,height=1,class="checkbox",name="restr",label="style restriction (lyrics)",value=false,},
 	{x=9,y=6,width=3,height=1,class="edit",name="rest"},
 	
 	-- chapters
 	{x=9,y=7,width=1,height=1,class="label",label="Chapters"},
-	{x=10,y=7,width=2,height=1,class="checkbox",name="intro",label="autogenerate \"Intro\"",value=autogenerate_intro,},
+	{x=10,y=7,width=2,height=1,class="checkbox",name="intro",label="autogenerate \"Intro\"",value=true,},
 	{x=9,y=8,width=2,height=1,class="label",label="chapter marker:"},
-	{x=11,y=8,width=1,height=1,class="dropdown",name="marker",items={"actor","effect","comment"},value=default_marker},
+	{x=11,y=8,width=1,height=1,class="dropdown",name="marker",items={"actor","effect","comment"},value="actor"},
 	{x=9,y=9,width=2,height=1,class="label",label="chapter name:"},
-	{x=11,y=9,width=1,height=1,class="dropdown",name="nam",items={"comment","effect"},value=default_chapter_name},
+	{x=11,y=9,width=1,height=1,class="dropdown",name="nam",items={"comment","effect"},value="comment"},
 	{x=9,y=10,width=2,height=1,class="label",label="filename from:"},
-	{x=11,y=10,width=1,height=1,class="dropdown",name="sav",items={"script","video"},value=default_save_name},
+	{x=11,y=10,width=1,height=1,class="dropdown",name="sav",items={"script","video"},value="script"},
 	{x=9,y=11,width=2,height=1,class="checkbox",name="chmark",label="chapter mark:",value=false,hint="just sets the marker. no xml."},
-	{x=11,y=11,width=1,height=1,class="dropdown",name="chap",items={"Intro","OP","Part A","Part B","Part C","ED","Preview"},value=dmark},
+	{x=11,y=11,width=1,height=1,class="dropdown",name="chap",items={"Intro","OP","Part A","Part B","Part C","ED","Preview"},value="OP"},
 	{x=9,y=12,width=3,height=1,class="edit",name="lang"},
 	
 	-- numbers
 	{x=9,y=13,width=2,height=1,class="label",label="Numbers"},
 	{x=9,y=14,width=2,height=1,class="dropdown",name="modzero",items={"number lines","add to marker"},value="number lines"},
-	{x=11,y=14,width=1,height=1,class="dropdown",name="zeros",items={"1","01","001","0001"},value=numbering},
-	{x=9,y=15,width=2,height=1,class="dropdown",name="field",items={"actor","effect","layer","style","text"},value=actor_effect},
+	{x=11,y=14,width=1,height=1,class="dropdown",name="zeros",items={"1","01","001","0001"},value="01"},
+	{x=9,y=15,width=2,height=1,class="dropdown",name="field",items={"actor","effect","layer","style","text"},value="effect"},
 	
 	-- stuff
 	{x=0,y=15,width=1,height=1,class="label",label="Stuff  "},
@@ -1970,7 +2012,7 @@ unconfig={
 	{x=9,y=0,width=3,height=1,class="dropdown",name="help",items={"--- Help menu ---","Import/Export","Update Lyrics","Do Stuff","Numbers","Chapters"},value="--- Help menu ---"},
 	{x=9,y=17,width=3,height=1,class="label",label="   Unimportant version: "..script_version},
 }
-
+	loadconfig()
 	repeat
 	  if pressed=="Help" then aegisub.progress.title("Loading Help") aegisub.progress.task("RTFM")
 	    if res.help=="Import/Export" then help=help_i end
@@ -1989,7 +2031,7 @@ unconfig={
 		end
 	  end
 	pressed,res=aegisub.dialog.display(unconfig,
-	{"Import/Export","Do Stuff","Numbers","Chapters","Info","Help","Cancel"},{ok='Import/Export',cancel='Cancel'})
+	{"Import/Export","Do Stuff","Numbers","Chapters","Info","Help","Save Config","Cancel"},{ok='Import/Export',cancel='Cancel'})
 	until pressed~="Help" and pressed~="Info"
 	if pressed=="Cancel" then    aegisub.cancel() end
 	lastimp=true lastuff=res.stuff lastlog=res.log
@@ -2000,17 +2042,18 @@ unconfig={
 	    sub2=res.rep2
 	    sub3=res.rep3
 	    zer=res.zeros
-	if pressed=="Import/Export" then    important(subs, sel, act) end
-	if pressed=="Numbers" then    numbers(subs, sel) end
-	if pressed=="Chapters" then    chopters(subs, sel) end
+	if pressed=="Import/Export" then    important(subs,sel,act) end
+	if pressed=="Numbers" then    numbers(subs,sel) end
+	if pressed=="Chapters" then    chopters(subs,sel) end
 	if pressed=="Do Stuff" then
-	    if res.stuff=="jump to next" then sel=nextsel(subs, sel)
+	    if res.stuff=="jump to next" then sel=nextsel(subs,sel)
 	    elseif res.stuff=="convert framerate" then framerate(subs)
 	    elseif res.stuff=="alpha shift" then alfashift(subs,sel)
 	    elseif res.stuff=="merge inline tags" then sel=merge(subs,sel)
 	    elseif res.stuff=="honorificslaughterhouse" then honorifix(subs,sel)
-	    else stuff(subs, sel) end
+	    else stuff(subs,sel) end
 	end
+	if pressed=="Save Config" then saveconfig() end
     
     aegisub.set_undo_point(script_name)
     return sel
