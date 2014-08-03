@@ -26,29 +26,19 @@
 script_name="Blur and Glow"
 script_description="Add blur and/or glow to signs"
 script_author="unanimated"
-script_version="2.12"
+script_url1="http://unanimated.xtreemhost.com/ts/blur-and-glow.lua"
+script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/blur-and-glow.lua"
+script_version="2.2"
 
---	SETTINGS	--			OPTIONS
-
-glow_blur=3					-- any number usable for blur
-glow_alpha="80"					-- "00","20","30","40","50","60","70","80","90","A0","B0","C0","D0","F0"
-second_border_size=2				-- any number usable for border
-bottom_blur=1					-- any number usable for blur
-fix_for_fades=true				-- true/false
-change_layer="+1"				-- "-5","-4","-3","-2","-1","+1","+2","+3","+4","+5"
-automatically_use_double_border=true		-- true/false; automatically use double border if 2nd colour or 2nd border size is checked
 default_blur="0.6"
 
---	--	--	--
 
-
-function glow(subs, sel)
+function glow(subs,sel)
     if not res.rep then al=res.alfa bl=res.blur end
     if res.glowcol then glowc=res.glc:gsub("#(%x%x)(%x%x)(%x%x)","&H%3%2%1&") end
-    if automatically_use_double_border then if res.clr or res.bsize then res.double=true end end
+    if res.autod then if res.clr or res.bsize then res.double=true end end
     for i=#sel,1,-1 do
-	cancelled=aegisub.progress.is_cancelled()
-	if cancelled then aegisub.cancel() end
+	if aegisub.progress.is_cancelled() then aegisub.cancel() end
 	aegisub.progress.title(string.format("Glowing line: %d/%d",(#sel-i+1),#sel))
 	line=subs[sel[i]]
 	text=line.text
@@ -148,11 +138,10 @@ function glow(subs, sel)
     return sel
 end
 
-function layerblur(subs, sel)
-    if automatically_use_double_border then if res.clr or res.bsize then res.double=true end end
+function layerblur(subs,sel)
+    if res.autod then if res.clr or res.bsize then res.double=true end end
     for i=#sel,1,-1 do
-	cancelled=aegisub.progress.is_cancelled()
-	if cancelled then aegisub.cancel() end
+	if aegisub.progress.is_cancelled() then aegisub.cancel() end
 	aegisub.progress.title(string.format("Blurring line: %d/%d",(#sel-i+1),#sel))
 	line=subs[sel[i]]
 	text=line.text
@@ -282,7 +271,7 @@ function borderline2(txt)
     txt=txt:gsub("(\\r[^}]+)}","%1\\3c"..rimary.."}")
     :gsub("\\c&H%x+&([^}]-)(\\c&H%x+&)",function(a,b) if not a:match("\\t") then return a..b end end)
     :gsub("\\3c&H%x+&([^}]-)(\\3c&H%x+&)",function(a,b) if not a:match("\\t") then return a..b end end)
-    :gsub("{}","")
+    :gsub("{%*?}","")
     if res.bbl and res.double then txt=txt:gsub("\\blur[%d%.]+","\\blur"..res.bblur) end
     if res.botalpha and txt:match("\\fad%(") then txt=botalfa(txt) end
     return txt
@@ -295,7 +284,7 @@ function glowlayer(txt,kol,alf)
     :gsub("(\\r[^}]-)}","%1\\alpha&H"..al.."&}")
     if not txt:match("^{[^}]-\\alpha") then txt=txt:gsub("^({\\[^}]-)}","%1\\alpha&H"..al.."&}") end
     if res.alfa=="00" then txt=txt:gsub("^({\\[^}]-)\\alpha&H00&","%1") end
-    txt=txt:gsub("{}","")
+    txt=txt:gsub("{%*?}","")
     if res.glowcol then
 	if txt:match("^{\\[^}]-\\"..kol.."&") then txt=txt:gsub("\\"..kol.."&H%x+&","\\"..kol..glowc)
 	else txt=txt:gsub("\\"..kol.."&H%x+&","\\"..kol..glowc) txt=txt:gsub("^({\\[^}]-)}","%1\\"..kol..glowc.."}")
@@ -367,7 +356,7 @@ function preprocess(text)
     return text
 end
 
-function fixfade(subs, sel)
+function fixfade(subs,sel)
     for i=#sel,1,-1 do
 	line=subs[sel[i]]
 	text=line.text
@@ -387,7 +376,7 @@ function fixfade(subs, sel)
     end
 end
 
-function layeraise(subs, sel)
+function layeraise(subs,sel)
     for i=#sel,1,-1 do
 	line=subs[sel[i]]
 	    if line.layer+res["layer"]>=0 then
@@ -420,103 +409,117 @@ function stylechk(stylename)
     return styleref
 end
 
-function konfig(subs, sel)
-dialog_config=
-{
-    --left
-    {x=0,y=0,width=2,height=1,class="label",label="  =   Blur and Glow version "..script_version.."   =" },
-    {x=0,y=1,width=1,height=1,class="label",label="Glow blur:" },
-    {x=0,y=2,width=1,height=1,class="label",label="Glow alpha:" },
-    
-    {x=1,y=1,width=2,height=1,class="floatedit",name="blur",value=glow_blur },
-    {x=1,y=2,width=2,height=1,class="dropdown",name="alfa",
-    items={"00","20","30","40","50","60","70","80","90","A0","B0","C0","D0","F0"},value=glow_alpha },
-
-    {x=0,y=3,width=1,height=1,class="checkbox",name="glowcol",label="glow c.:",value=false,hint="glow colour"},
-    {x=1,y=3,width=2,height=1,class="color",name="glc" },
-    
-    {x=0,y=4,width=5,height=1,class="checkbox",name="botalpha",label="fix \\1a for layers with border and fade --> transition:",
-			value=fix_for_fades,hint="uses \\1a&HFF& for bottom layer during fade"},
-    {x=5,y=4,width=1,height=1,class="dropdown",name="alphade",items={0,45,80,120,160,200,"max"},value=45 },
-    {x=6,y=4,width=1,height=1,class="label",label="ms" },
-    
-    {x=0,y=5,width=4,height=1,class="checkbox",name="onlyg",label="only add glow (layers w/ border)",value=false},
-    
-    -- right
-    {x=4,y=0,width=1,height=1,class="checkbox",name="double",label="double border",value=false },
-    {x=5,y=0,width=2,height=1,class="checkbox",name="onlyb",label="only add 2nd border",value=false},
-    
-    {x=4,y=1,width=1,height=1,class="checkbox",name="bbl",label="bottom blur:",
-	hint="Blur for bottom layer \n[not the glow layer] \nif different from top layer."},
-    {x=5,y=1,width=2,height=1,class="floatedit",name="bblur",value=bottom_blur },
-    
-    {x=4,y=2,width=1,height=1,class="checkbox",name="bsize",label="2nd b. size:",
-	hint="Size for 2nd border \n[counts from first border out] \nif different from the current border."},
-    {x=5,y=2,width=2,height=1,class="floatedit",name="secbord",value=second_border_size },
-    
-    {x=4,y=3,width=1,height=1,class="checkbox",name="clr",label="2nd b. colour:",hint="Colour for 2nd border \nif different from primary." },
-    {x=5,y=3,width=2,height=1,class="color",name="c3" },
-    
-    {x=4,y=5,width=1,height=1,class="label",label="     Change layer:", },
-    {x=5,y=5,width=1,height=1,class="dropdown",name="layer",
-	items={"-5","-4","-3","-2","-1","+1","+2","+3","+4","+5"},value=change_layer },
-    
-    {x=6,y=5,width=1,height=1,class="checkbox",name="rep",label="repeat",value=false,hint="repeat with last settings"},
-} 
-	buttons={"Blur / Layers","Blur + Glow","Fix fades","Change layer","cancel"}
-	pressed, res=aegisub.dialog.display(dialog_config,buttons,{ok='Blur / Layers',cancel='cancel'})
-	if res.onlyg then res.double=false end
-	if res.onlyb then res.double=true end
-	
-	if pressed=="Blur / Layers" then repetition() styleget(subs) layerblur(subs, sel) end
-	if pressed=="Blur + Glow" then repetition() styleget(subs) sel=glow(subs, sel) end
-	if pressed=="Fix fades" then repetition() styleget(subs) fixfade(subs, sel) end
-	if pressed=="Change layer" then repetition() layeraise(subs, sel) end
-	
-	if res.rep==false then
-	lastblur=res.blur
-	lastalfa=res.alfa
-	lastdouble=res.double
-	lastclr=res.clr
-	lastc3=res.c3
-	lastbsize=res.bsize
-	lastsecbord=res.secbord
-	lastbbl=res.bbl
-	lastbblur=res.bblur
-	lastbotalpha=res.botalpha
-	lastalphade=res.alphade
-	lastlayer=res.layer
-	lastglowcol=res.glowcol
-	lastonlyg=res.onlyg
-	lastonlyb=res.onlyb
-	end
-	return sel
+function saveconfig()
+bgconf="Blur & Glow config\n\n"
+  for key,val in ipairs(GUI) do
+    if val.class=="floatedit" or val.class=="dropdown" or val.class=="color" then
+      bgconf=bgconf..val.name..":"..res[val.name].."\n"
+    end
+    if val.class=="checkbox" and val.name~="save" then
+      bgconf=bgconf..val.name..":"..tf(res[val.name]).."\n"
+    end
+  end
+blurkonfig=aegisub.decode_path("?user").."\\blurandglow.conf"
+file=io.open(blurkonfig,"w")
+file:write(bgconf)
+file:close()
+aegisub.dialog.display({{class="label",label="Config saved to:\n"..blurkonfig}},{"OK"},{close='OK'})
 end
 
-function repetition()
-   if res.rep then
-	res.blur=lastblur
-	res.alfa=lastalfa
-	res.double=lastdouble
-	res.clr=lastclr
-	res.c3=lastc3
-	res.bsize=lastbsize
-	res.secbord=lastsecbord
-	res.bbl=lastbbl
-	res.bblur=lastbblur
-	res.botalpha=lastbotalpha
-	res.alphade=lastalphade
-	res.layer=lastlayer
-	res.glowcol=lastglowcol
-	res.onlyg=lastonlyg
-	res.onlyb=lastonlyb
+function loadconfig()
+blurkonfig=aegisub.decode_path("?user").."\\blurandglow.conf"
+file=io.open(blurkonfig)
+    if file~=nil then
+	konf=file:read("*all")
+	io.close(file)
+	  for key,val in ipairs(GUI) do
+	    if val.class=="floatedit" or val.class=="checkbox" or val.class=="dropdown" or val.class=="color" then
+	      if konf:match(val.name) then val.value=detf(konf:match(val.name..":(.-)\n")) end
+	    end
+	  end
     end
 end
 
-function blurandglow(subs, sel)
-    sel=konfig(subs, sel)
-    aegisub.set_undo_point(script_name)
-    if pressed~="Change layer" then return sel end
+function tf(val)
+    if val==true then ret="true" else ret="false" end
+    return ret
 end
 
-aegisub.register_macro(script_name, script_description, blurandglow)
+function detf(txt)
+    if txt=="true" then ret=true
+    elseif txt=="false" then ret=false
+    else ret=txt end
+    return ret
+end
+
+function konfig(subs,sel)
+GUI={
+    --left
+    {x=0,y=0,width=2,class="label",label="  =   Blur and Glow version "..script_version.."   =" },
+    {x=0,y=1,width=1,class="label",label="Glow blur:" },
+    {x=0,y=2,width=1,class="label",label="Glow alpha:" },
+    
+    {x=1,y=1,width=2,class="floatedit",name="blur",value=3 },
+    {x=1,y=2,width=2,class="dropdown",name="alfa",
+    items={"00","20","30","40","50","60","70","80","90","A0","B0","C0","D0","F0"},value="80" },
+
+    {x=0,y=3,width=1,class="checkbox",name="glowcol",label="glow c.:",value=false,hint="glow colour"},
+    {x=1,y=3,width=2,class="color",name="glc" },
+    
+    {x=0,y=4,width=5,class="checkbox",name="botalpha",label="fix \\1a for layers with border and fade --> transition:",
+			value=true,hint="uses \\1a&HFF& for bottom layer during fade"},
+    {x=5,y=4,width=1,class="dropdown",name="alphade",items={0,45,80,120,160,200,"max"},value=45 },
+    {x=6,y=4,width=1,class="label",label="ms" },
+    
+    {x=0,y=5,width=4,class="checkbox",name="onlyg",label="only add glow (layers w/ border)",value=false},
+    
+    -- right
+    {x=4,y=0,width=1,class="checkbox",name="double",label="double border",value=false },
+    {x=5,y=0,width=2,class="checkbox",name="onlyb",label="only add 2nd border",value=false},
+    
+    {x=4,y=1,width=1,class="checkbox",name="bbl",label="bottom blur:",
+	hint="Blur for bottom layer \n[not the glow layer] \nif different from top layer."},
+    {x=5,y=1,width=2,class="floatedit",name="bblur",value=1 },
+    
+    {x=4,y=2,width=1,class="checkbox",name="bsize",label="2nd b. size:",
+	hint="Size for 2nd border \n[counts from first border out] \nif different from the current border."},
+    {x=5,y=2,width=2,class="floatedit",name="secbord",value=2 },
+    
+    {x=4,y=3,width=1,class="checkbox",name="clr",label="2nd b. colour:",hint="Colour for 2nd border \nif different from primary." },
+    {x=5,y=3,width=2,class="color",name="c3" },
+    
+    {x=4,y=5,width=1,class="label",label="     Change layer:", },
+    {x=5,y=5,width=1,class="dropdown",name="layer",
+	items={"-5","-4","-3","-2","-1","+1","+2","+3","+4","+5"},value="+1" },
+    
+    {x=0,y=6,width=2,class="checkbox",name="rep",label="repeat with last settings",value=false},
+    {x=4,y=6,width=1,class="checkbox",name="autod",label="auto double",value=true,
+	hint="automatically use double border\nif 2nd colour or 2nd border size is checked"},
+    {x=5,y=6,width=2,class="checkbox",name="save",label="save configuration",value=false},
+} 
+    loadconfig()
+    buttons={"Blur / Layers","Blur + Glow","Fix fades","Change layer","cancel"}
+    pressed, res=aegisub.dialog.display(GUI,buttons,{ok='Blur / Layers',close='cancel'})
+    if pressed=="cancel" then aegisub.cancel() end
+    if res.onlyg then res.double=false end
+    if res.onlyb then res.double=true end
+    if res.save then saveconfig()
+    else
+	if res.rep then res=lastres end
+	styleget(subs)
+	if pressed=="Blur / Layers" then layerblur(subs,sel) end
+	if pressed=="Blur + Glow" then sel=glow(subs,sel) end
+	if pressed=="Fix fades" then fixfade(subs,sel) end
+	if pressed=="Change layer" then layeraise(subs,sel) end
+    end
+    if res.rep==false then lastres=res end
+    return sel
+end
+
+function blurandglow(subs,sel)
+    sel=konfig(subs,sel)
+    aegisub.set_undo_point(script_name)
+    return sel
+end
+
+aegisub.register_macro(script_name,script_description,blurandglow)
