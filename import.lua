@@ -3,7 +3,7 @@ script_description="Import stuff, number stuff, chapter stuff, replace stuff, do
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/import.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/import.lua"
-script_version="2.0"
+script_version="2.1"
 
 require "clipboard"
 re=require'aegisub.re'
@@ -252,6 +252,7 @@ function important(subs, sel, act)
 	if res.mega=="update lyrics" then
 	  sup1=esc(sub1)	sup2=esc(sub2)
 	  for x, i in ipairs(sel) do
+	  progress("Updating Lyrics... "..round(x/#sel)*100 .."%")
             local line=subs[i]
             local text=subs[i].text
 	
@@ -273,8 +274,8 @@ function important(subs, sel, act)
 		    songcheck=1
 		    if songlyr[index]~=puretext then
 			if lastag~=nil then text=text:gsub("(.)$",lastag.."%1") end
-			change="   (Changed)" 
-			else change="" 
+			change="   (Changed)"
+			else change=""
 		    end
 		    aegisub.log("\nupdate: "..puretext.." --> "..songlyr[index]..change)
 		end
@@ -308,6 +309,7 @@ function numbers(subs, sel)
         text=subs[sel[i]].text
 	
 	if res.modzero=="number lines" then
+	progress("Numbering... "..round(i/#sel)*100 .."%")
 		index=i
 		count=math.ceil(index/int)+(startn-1)
 		  if numcycle>0 and count>numcycle then repeat count=count-(numcycle-startn+1) until count<=numcycle end
@@ -321,6 +323,7 @@ function numbers(subs, sel)
 	end
 	
 	if res.modzero=="add to marker" then
+	progress("Adding... "..round(i/#sel)*100 .."%")
 		if res.field=="actor" then line.actor=sub1..line.actor..sub2
 		elseif res.field=="effect" then line.effect=sub1..line.effect..sub2
 		elseif res.field=="text" then text=sub1..text..sub2
@@ -350,8 +353,6 @@ function chopters(subs, sel)
 	if res.marker=="comment" then text=text.."{chptr}" end
 	if res.nam=="effect" then line.effect=kap end
 	if res.nam=="comment" then text="{"..kap.."}"..text end
-	--line.effect="chptr"
-	--text="{"..res.chap.."}"
       line.text=text
       subs[i]=line
     end
@@ -558,6 +559,85 @@ function stuff(subs, sel)
 	seqpc=round(rez.seqpc)	invseq=rez.invseq
 	exremember=rez.rem	excom=rez.excom
 	exploded=true
+    end
+    
+    -- Randomized Transforms GUI --
+    if res.stuff=="randomized transforms" then
+	rine=subs[sel[1]]
+	durone=rine.end_time-rine.start_time
+	rtgui={
+	  {x=0,y=0,class="checkbox",name="rtfad",label="Random Fade",width=2,value=true},
+	  {x=0,y=1,class="checkbox",name="rtdur",label="Random Duration",width=2,value=true},
+	  {x=2,y=0,class="label",label="Min: "},
+	  {x=2,y=1,class="label",label="Max: "},
+	  {x=3,y=0,class="floatedit",name="minfad",width=1,value=math.floor(durone/5),min=0},
+	  {x=3,y=1,class="floatedit",name="maxfad",width=1,value=durone},
+	  {x=4,y=0,class="checkbox",name="rtin",label="Fade In",width=3,value=false,hint="In instead of Out"},
+	  {x=4,y=1,class="checkbox",name="maxisdur",label="Max = Current Duration",width=4,value=true,hint="The maximum will be the duration of each selected line"},
+	  
+	  {x=0,y=3,class="label",label="Transform"},
+	  {x=1,y=3,class="dropdown",name="rttag",value="blur",
+	    items={"blur","bord","shad","fs","fsp","fscx","fscy","fax","fay","frz","frx","fry","xbord","ybord","xshad","yshad"}},
+	  {x=2,y=3,class="label",label="Min: "},
+	  {x=4,y=3,class="label",label=" Max: "},
+	  {x=3,y=3,class="floatedit",name="mintfn",width=1,value=0,hint="Minimum value for a given tag"},
+	  {x=5,y=3,class="floatedit",name="maxtfn",width=3,value=0,hint="Maximum value for a given tag"},
+	  
+	  {x=0,y=4,class="label",width=2,label="Colour Transform"},
+	  {x=2,y=4,class="label",label="Max: "},
+	  {x=3,y=4,class="floatedit",name="rtmaxc",value=100,min=1,max=100,hint="Maximum % of colour change.\nColour tag must be present. Otherwise set to 100%."},
+	  {x=4,y=4,class="label",label="%"},
+	  {x=5,y=4,class="checkbox",name="rtc1",label="\\c ",value=true},
+	  {x=6,y=4,class="checkbox",name="rtc3",label="\\3c ",value=false},
+	  {x=7,y=4,class="checkbox",name="rtc4",label="\\4c ",value=false},
+	  
+	  {x=0,y=5,class="checkbox",name="rtacc",label="Use Acceleration",width=2,value=false},
+	  {x=2,y=5,class="label",label="Min: "},
+	  {x=3,y=5,class="floatedit",name="minacc",width=1,value=1,min=0},
+	  {x=4,y=5,class="label",label=" Max:"},
+	  {x=5,y=5,class="floatedit",name="maxacc",width=3,value=1,min=0},
+	  
+	  {x=0,y=6,class="checkbox",name="rtmx",label="Random Move X",width=2,value=false},
+	  {x=2,y=6,class="label",label="Min: "},
+	  {x=3,y=6,class="floatedit",name="minmx",width=1,value=0},
+	  {x=4,y=6,class="label",label=" Max:"},
+	  {x=5,y=6,class="floatedit",name="maxmx",width=3,value=0},
+	  
+	  {x=0,y=7,class="checkbox",name="rtmy",label="Random Move Y",width=2,value=false},
+	  {x=2,y=7,class="label",label="Min: "},
+	  {x=3,y=7,class="floatedit",name="minmy",width=1,value=0},
+	  {x=4,y=7,class="label",label=" Max:"},
+	  {x=5,y=7,class="floatedit",name="maxmy",width=3,value=0},
+	}
+	if rtremember then
+	    for key,val in ipairs(rtgui) do
+		if val.class~="label" then val.value=rez[val.name] end
+	    end
+	end
+	rtchoice={"Fade/Duration","Number Transform","Colour Transform","Help","Cancel"}
+	rthlp={"Fade/Duration","Number Transform","Colour Transform","Cancel"}
+	pres,rez=aegisub.dialog.display(rtgui,rtchoice,{ok='Fade/Duration',close='Cancel'})
+	if pres=="Help" then
+	    rthelp={x=0,y=8,width=8,height=4,class="textbox",value="This is supposed to be used after 'split into letters' or with gradients.\n\nFade/Duration Example:  Min: 500, Max: 2000.\nA random number between those is generated for each line, let's say 850.\nThis line's duration will be 850ms, and it will have a 850ms fade out.\n\nNumber Transform Example:  Blur, Min: 0.6, Max: 2.5\nRandom number generated: 1.7. Line will have: \\t(\\blur1.7)\n\nRandom Colour Transform creates transforms to random colours. \nMax % transform limits how much the colour can change.\n\nAccel works with either transform function.\n\nRandom Move works as an additional option with any function.\nIt can be used on its own if you uncheck other stuff. Works with Fade In."}
+	    table.insert(rtgui,rthelp)
+	    pres,rez=aegisub.dialog.display(rtgui,rthlp,{ok='Fade/Duration',close='Cancel'})
+	end
+	if pres=="Cancel" then aegisub.cancel() end
+	if pres=="Fade/Duration" then RTM="FD" end
+	if pres=="Number Transform" then RTM="NT" end
+	if pres=="Colour Transform" then RTM="CT" end
+	rtremember=true
+	RTF=rez.rtfad	RTD=rez.rtdur
+	MnF=rez.minfad	MxF=rez.maxfad
+	RTin=rez.rtin	RTMax=rez.maxisdur
+	RTT=rez.rttag	MnT=rez.mintfn		MxT=rez.maxtfn
+	RTA=rez.rtacc	MnA=rez.minacc	MxA=rez.maxacc
+	MnX=rez.minmx	MxX=rez.maxmx	MnY=rez.minmy	MxY=rez.maxmy
+	MxC=round(rez.rtmaxc*255/100)
+	rtcol={}
+	if rez.rtc1 then table.insert(rtcol,1) end
+	if rez.rtc3 then table.insert(rtcol,3) end
+	if rez.rtc4 then table.insert(rtcol,4) end
     end
     
     -- Clone Clip GUI --
@@ -800,6 +880,7 @@ function stuff(subs, sel)
     
     if res.stuff:match("replacer") then table.sort(sel,function(a,b) return a>b end) end
     
+    -- LINES START HERE ----------------------------------------------------------------------
     for i=#sel,1,-1 do
         line=subs[sel[i]]
         text=line.text
@@ -948,6 +1029,38 @@ function stuff(subs, sel)
 	    text=tags..nt
 	end
 	
+	-- REVERSE TRANSFORMS ------------------
+	if res.stuff=="reverse transforms" then
+	    styleref=stylechk(subs,line.style)
+	    text=text:gsub("\\1c","\\c")
+	    tags=text:match("^{\\[^}]-}") if tags==nil then tags="" end
+	    text=text:gsub("^{[^}]-}","")
+	    tags=cleantr(tags)
+	    tags=duplikill(tags)
+	    tags=tags:gsub("\\fs(%d)","\\fsize%1")
+	    notrans=tags:gsub("(\\t%([^%(%)]+%))","") :gsub("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","")
+	    for tr in tags:gmatch("\\t%((([^%(%)]+))%)") do
+		for tag in tr:gmatch("\\[1234]?%a+") do
+		    if not notrans:match(tag) then
+			tags=fill_in(tags,tag)
+		    end
+		    tags=tags:gsub(tag.."([^\\}]+)([^}]-)"..tag.."([^\\}%)]+)",tag.."%3%2"..tag.."%1")
+		end
+	    end
+	    for tr in tags:gmatch("\\t%(([^%(%)]-%([^%)]-%)[^%)]-)%)") do
+		tr=tr:gsub("\\i?clip%([^%)]+%)","")
+		for tag in tr:gmatch("\\[1234]?%a+") do
+		    if not notrans:match(tag) then
+			tags=fill_in(tags,tag)
+		    end
+		    tags=tags:gsub(tag.."([^\\}]+)([^}]-)"..tag.."([^\\}%)]+)",tag.."%3%2"..tag.."%1")
+		end
+	    end
+	    tags=tags:gsub("(i?clip%([^%)]+%))([^}]-\\t[^}]-)(i?clip%([^%)]+%))","%3%2%1")
+	    tags=tags:gsub("\\fsize","\\fs")
+	    text=tags..text
+	end
+	
 	if res.stuff=="fake capitals" then
 	    tags=text:match("^{\\[^}]-}") if tags==nil then tags="" end
 	    text=text:gsub("^{\\[^}]-}","")
@@ -1032,6 +1145,7 @@ function stuff(subs, sel)
 		tx=textmod(text,tx)
 		txt2=tags..tx
 		if not txt2:match("\\pos") then txt2=getpos(subs,txt2) end
+		txt2=txt2:gsub("{\\alpha&HFF&}$","")
 		txt2=txt2:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 		txt2=txt2:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 		  -- Explode
@@ -1092,9 +1206,11 @@ function stuff(subs, sel)
 			txt2=txt2:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)%)",
 		        function(a,b) return EFO.."\\move("..a..","..b..","..a+ex1..","..b+ex2..","..xt1..","..xt2..")" end)
 		    end
+		    txt2=txt2:gsub("{\\[^}]-}$","")
 		  end
 		l2.text=txt2
-		if letters[l]~=" " then subs.insert(sel[i]+1,l2) end
+		if letters[l]~=" " then subs.insert(sel[i]+1,l2) table.insert(sel,sel[#sel]+i) end
+		
 	    end
 	    line.comment=true
 	end
@@ -1195,9 +1311,79 @@ function stuff(subs, sel)
 	end
 	-- DISSOLVE END 2 ----------------------------------------------
 	
+	-- RANDOMIZED TRANSFORMS ---------------------------------------
+	if res.stuff=="randomized transforms" then
+	  dur=line.end_time-line.start_time
+	  if RTMax then MxF=dur end
+	  
+	    -- Fade/Duration
+	    if RTM=="FD" then
+	      FD=math.random(MnF,MxF)
+	      if RTD and not RTin then line.end_time=line.start_time+FD end
+	      if RTD and RTin then line.start_time=line.end_time-FD end
+	      if RTF and not RTin then text="{\\fad(0,"..FD..")}"..text text=text:gsub(FD.."%)}{",FD..")") end
+	      if RTF and RTin then text="{\\fad("..FD..",0)}"..text text=text:gsub(",0%)}{",",0)") end
+	    end
+	    
+	    -- Number Transform
+	    if RTM=="NT" then
+	      NT=math.random(MnT*10,MxT*10)/10
+	      if RTA then NTA=math.random(MnA*10,MxA*10)/10 axel=NTA.."," else axel="" end
+	      text=addtag("\\t("..axel.."\\"..RTT..NT..")",text)
+	    end
+	    
+	    -- Colour Transform
+	    if RTM=="CT" then
+	      CTfull=""
+	      for c=1,#rtcol do
+		ctype="\\"..rtcol[c].."c"
+		ctype=ctype:gsub("\\1c","\\c")
+	        Bluu,Grin,Rett=text:match("^{[^}]-"..ctype.."&H(%x%x)(%x%x)(%x%x)&")
+		if Bluu~=nil then
+		  R=tonumber(Rett,16)
+		  G=tonumber(Grin,16)
+		  B=tonumber(Bluu,16)
+		  Red=math.random(R-MxC,R+MxC)
+		  Green=math.random(G-MxC,G+MxC)
+		  Blue=math.random(B-MxC,B+MxC)
+		else
+		  Red=math.random(0,255)
+		  Green=math.random(0,255)
+		  Blue=math.random(0,255)
+		end
+		CT=ctype.."&H"..tohex(Blue)..tohex(Green)..tohex(Red).."&"
+		CTfull=CTfull..CT
+	      end
+	      if RTA then NTA=math.random(MnA*10,MxA*10)/10 axel=NTA.."," else axel="" end
+	      if CTfull~="" then text=addtag("\\t("..axel..CTfull..")",text) end
+	    end
+	    
+	    -- Move X
+	    if rez.rtmx then
+	      MMX=math.random(MnX,MxX)
+	      text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
+		function(a,b,c,d) if RTin then a=a+MMX else c=c+MMX end
+		return "\\move("..a..","..b..","..c..","..d end)
+	      text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)",
+		function(a,b) a2=a if RTin then a=a+MMX else a2=a2+MMX end
+		return "\\move("..a..","..b..","..a2..","..b end)
+	    end
+	    
+	    -- Move Y
+	    if rez.rtmy then
+	      MMY=math.random(MnY,MxY)
+	      text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
+		function(a,b,c,d) if RTin then b=b+MMY else d=d+MMY end
+		return "\\move("..a..","..b..","..c..","..d end)
+	      text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)",
+		function(a,b) b2=b if RTin then b=b+MMY else b2=b2+MMY end
+		return "\\move("..a..","..b..","..a..","..b2 end)
+	    end
+	end
+	
 	line.text=text
 	subs[sel[i]]=line
-	if res.stuff=="split into letters" or res.stuff=="explode" and not rez.excom then subs.delete(sel[i]) end
+	if res.stuff=="split into letters" or res.stuff=="explode" and not rez.excom then subs.delete(sel[i]) table.remove(sel,#sel) end
     end
     if res.stuff:match"replacer" then aegisub.progress.task("All stuff has been finished.")
 	if repl==1 then rp=" modified line" else rp=" modified lines" end
@@ -1205,6 +1391,28 @@ function stuff(subs, sel)
     end
     if res.stuff=="format dates" and rez.log then aegisub.log(datelog) end
     savetab=nil
+end
+
+
+function fill_in(tags,tag)
+    if tag=="\\bord" then tags=tags:gsub("^{","{"..tag..styleref.outline)
+    elseif tag=="\\shad" then tags=tags:gsub("^{","{"..tag..styleref.shadow)
+    elseif tag=="\\fscx" then tags=tags:gsub("^{","{"..tag..styleref.scale_x)
+    elseif tag=="\\fscy" then tags=tags:gsub("^{","{"..tag..styleref.scale_y)
+    elseif tag=="\\fsize" then tags=tags:gsub("^{","{"..tag..styleref.fontsize)
+    elseif tag=="\\fsp" then tags=tags:gsub("^{","{"..tag..styleref.spacing)
+    elseif tag=="\\alpha" then tags=tags:gsub("^{","{"..tag.."&H00&")
+    elseif tag=="\\1a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color1:match("H%x%x").."&")
+    elseif tag=="\\2a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color2:match("H%x%x").."&")
+    elseif tag=="\\3a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color3:match("H%x%x").."&")
+    elseif tag=="\\4a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color4:match("H%x%x").."&")
+    elseif tag=="\\c" then tags=tags:gsub("^{","{"..tag..styleref.color1:gsub("H%x%x","H"))
+    elseif tag=="\\2c" then tags=tags:gsub("^{","{"..tag..styleref.color2:gsub("H%x%x","H"))
+    elseif tag=="\\3c" then tags=tags:gsub("^{","{"..tag..styleref.color3:gsub("H%x%x","H"))
+    elseif tag=="\\4c" then tags=tags:gsub("^{","{"..tag..styleref.color4:gsub("H%x%x","H"))
+    else tags=tags:gsub("^{","{"..tag.."0")
+    end
+    return tags
 end
 
 
@@ -1485,6 +1693,42 @@ function duplikill(tagz)
 	return tagz
 end
 
+function cleantr(tags)
+	trnsfrm=""
+	for t in tags:gmatch("(\\t%([^%(%)]-%))") do trnsfrm=trnsfrm..t end
+	for t in tags:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))") do trnsfrm=trnsfrm..t end
+	tags=tags:gsub("(\\t%([^%(%)]+%))","")
+	tags=tags:gsub("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","")
+	tags=tags:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}")
+
+	cleant=""
+	for ct in tags:gmatch("\\t%((\\[^%(%)]-)%)") do cleant=cleant..ct end
+	for ct in tags:gmatch("\\t%((\\[^%(%)]-%([^%)]-%)[^%)]-)%)") do cleant=cleant..ct end
+	tags=tags:gsub("(\\t%(\\[^%(%)]+%))","")
+	tags=tags:gsub("(\\t%(\\[^%(%)]-%([^%)]-%)[^%)]-%))","")
+	if cleant~="" then tags=tags:gsub("^({\\[^}]*)}","%1\\t("..cleant..")}") end
+	return tags
+end
+
+function tohex(num)
+    n1=math.floor(num/16)
+    n2=num%16
+    num=tohex1(n1)..tohex1(n2)
+return num
+end
+
+function tohex1(num)
+    if num<1 then num="0"
+    elseif num>14 then num="F"
+    elseif num==10 then num="A"
+    elseif num==11 then num="B"
+    elseif num==12 then num="C"
+    elseif num==13 then num="D"
+    elseif num==14 then num="E"
+    end
+return num
+end
+
 function stylechk(subs,stylename)
   for i=1, #subs do
     if subs[i].class=="style" then
@@ -1531,8 +1775,14 @@ function getpos(subs,text)
     return text
 end
 
+function progress(msg)
+  cancelled=aegisub.progress.is_cancelled()
+  if cancelled then aegisub.cancel() end
+  aegisub.progress.title(msg)
+end
+
 function readconfig()
-hconfig=aegisub.decode_path("?user").."//unimportant.conf"
+hconfig=aegisub.decode_path("?user").."\\unimportant.conf"
 file=io.open(hconfig)
     if file~=nil then
 	konf=file:read("*all")
@@ -1600,7 +1850,7 @@ function info(subs,sel,act)
 	    if k=="PlayResX" then resx=v end
 	    if k=="PlayResY" then resy=v end
         end
-	if video==nil then prop=aegisub.project_properties() video=prop.video_file:gsub("^.*\\","") end
+	if video==nil then video=prop.video_file:gsub("^.*\\","") end
 	if stitle==nil then sct="" else sct="Script title: "..stitle.."\n" end
 	if video==nil then vf="" else vf="Video file: "..video.."\n" end
 	if resy==nil then reso="" else reso="Script resolution: "..resx.."x"..resy.."\n" end
@@ -1654,7 +1904,7 @@ help_c="- CHAPTERS -\n\nThis will generate chapters from the .ass file\n\nMARKER
 
 help_n="- NUMBERS -\n\nThis is a tool to number lines and add various markers to actor/effect fields.\nThe dropdown with \"01\" lets you choose how many leading zeros you want.\nThe Left and Right fields will add stuff to the numbers. If Left is \"x\" and Right is \"yz\", the first marker will be \"x01yz\".\nWhat makes this function much more versatile is the \"Mod\" field.\nIf you put in one number, then that's the number from which the numbering will start, so \"5\" -> 5, 6, 7, etc.\nYou can, however, use a comma or slash to modify the numbering some more.\n\"8,3\" or \"8/3\" will start numbering from 8, repeating each number 3 times, so 8, 8, 8, 9, 9, 9, 10, 10, 10, etc.\nThis allows you to easily number lines that are typeset in layers etc.\nAdditionally, you can set a limit in [], for example 1/3[2], which will start from 1, use each number 3 times,\nand only go up to 2 and then start again, so: 1 1 1 2 2 2 1 1 1 2 2 2\n2/3[4] would give you 2 2 2 3 3 3 4 4 4 2 2 2 3 3 3 4 4 4 ...\n\n\"add to marker\" uses the Left and Right fields to add stuff to the current content of actor/effect/text.\nIf you number lines for the OP, you can set \"OP-\" in Left and \"-eng\" in Right to get \"OP-01-eng\".\n(Mod does nothing when adding markers.)"
 
-help_d="- DO STUFF -\n\n- Save/Load -\nYou can use this to save for example bits of text you need to paste frequently (like a multi-clipboard).\nPaste text in the data area to save it. If the data area is empty, the function will load your saved texts.\n\n- Lua Replacer -\nUse \"Left\" and \"Right\" for a lua regexp replace function.\n\n- Perl Replacer -\nUse \"Left\" and \"Right\" for a perl regexp replace function.\n\n- Lua Calc -\nUse \"Left\" and \"Right\" with lua regexp to perform calculations on captured numbers.\nCaptures will be named a, b, c... up to p (16 captures max).\nFunctions are +, -, *, /, and round(a), which rounds the number captured in a.\n> Example: (%d)(%d)(%d) -> a+1b*2c-3\nThis will match 3-digit patterns, add 1 to first digit, multiply the second by 2, and subtract 3 from the 3rd.\nIf you want to leave one of the captures as is, use .. to separate it from other letters: a+1b..c-3 \n> Example: pos%(([%d%.]+),([%d%.]+) -> pos(a+50,b-100\nThis will shift position right by 50 and up by 100. \n\n- Jump to Next -\nThis is meant to get you to the \"next sign\" in the subtitle grid.\nWhen mocha-tracking 1000+ lines, it can be a pain in the ass to find where one sign ends and another begins.\nSelect lines that belong to the current \"sign\", ie. different layers/masks/texts.\nThe script will search for the first line in the grid that doesn't match any of the selected ones, based on the \"Marker\".\n\n- Alpha Shift -\nShifts {\\alpha&HFF&} by one letter for each line. Text thus appears letter by letter.\nIt's an alternative to the script that spawns \\ko, but this works with shadow too.\nDuplicate a line with {\\alpha&HFF&} however many times you need and run the script on the whole selection.\n\n- Merge Inline Tags -\nSelect lines with the same text but different tags, and they will be merged into one line with tags from all of them. For example:\n{\\bord2}AB{\\shad3}C\nA{\\fs55}BC\n-> {\\bord2}A{\\fs55}B{\\shad3}C\n\n- Add Comment -\nText that you type here in this box will be added as a {comment} at the end of selected lines.\n\n- Make Comments Visible -\nNukes { } from comments, thus making them part of the text visible on screen.\n\n- Switch Commented/Visible -\nComments out what's visible and makes visible what's commented. Allows switching between two texts.\n\n- Reverse text -\nReverses text (character by character). Nukes comments and inline tags.\n\n- Reverse Words -\nReverses text (word by word). Nukes comments and inline tags.\n\n- Fake Capitals -\nCreates fake capitals by increasing font size for first letters.\nWith all caps, for first letters of words. With mixed text, for uppercase letters.\nSet the \\fs for the capitals in the Left field.\nLooks like this: {\\fs60}F{\\fs}AKE {\\fs60}C{\\fs}APITALS\n\n- Format Dates -\nFormats dates to one of 4 options. Has its own GUI. Only converts from the other 3 options in the GUI.\n\n- Split into Letters -\nMakes a line for each letter, making the other letters invisible with alpha.\nThis lets you do things with each letter separately.\n\n- Explode -\nThis splits the line into letters and makes each of them move in a different direction and fade out.\n\n- Dissolve Text -\nVarious modes of dissolving text. Has its own Help.\n\n- Clone Clip -\nClones/replicates a clip you draw.\nSet how many rows/columns and distances between them, and you can make large patterns.\n\n- Honorificslaughterhouse -\nComments out honorifics.\n\n- Convert Framerate -\nConverts framerate from a to b where a is the input from \"Left\" and b is input from \"Right\".\n"
+help_d="- DO STUFF -\n\n- Save/Load -\nYou can use this to save for example bits of text you need to paste frequently (like a multi-clipboard).\nPaste text in the data area to save it. If the data area is empty, the function will load your saved texts.\n\n- Lua Replacer -\nUse \"Left\" and \"Right\" for a lua regexp replace function.\n\n- Perl Replacer -\nUse \"Left\" and \"Right\" for a perl regexp replace function.\n\n- Lua Calc -\nUse \"Left\" and \"Right\" with lua regexp to perform calculations on captured numbers.\nCaptures will be named a, b, c... up to p (16 captures max).\nFunctions are +, -, *, /, and round(a), which rounds the number captured in a.\n> Example: (%d)(%d)(%d) -> a+1b*2c-3\nThis will match 3-digit patterns, add 1 to first digit, multiply the second by 2, and subtract 3 from the 3rd.\nIf you want to leave one of the captures as is, use .. to separate it from other letters: a+1b..c-3 \n> Example: pos%(([%d%.]+),([%d%.]+) -> pos(a+50,b-100\nThis will shift position right by 50 and up by 100. \n\n- Jump to Next -\nThis is meant to get you to the \"next sign\" in the subtitle grid.\nWhen mocha-tracking 1000+ lines, it can be a pain in the ass to find where one sign ends and another begins.\nSelect lines that belong to the current \"sign\", ie. different layers/masks/texts.\nThe script will search for the first line in the grid that doesn't match any of the selected ones, based on the \"Marker\".\n\n- Alpha Shift -\nShifts {\\alpha&HFF&} by one letter for each line. Text thus appears letter by letter.\nIt's an alternative to the script that spawns \\ko, but this works with shadow too.\nDuplicate a line with {\\alpha&HFF&} however many times you need and run the script on the whole selection.\n\n- Merge Inline Tags -\nSelect lines with the same text but different tags, and they will be merged into one line with tags from all of them. For example:\n{\\bord2}AB{\\shad3}C\nA{\\fs55}BC\n-> {\\bord2}A{\\fs55}B{\\shad3}C\n\n- Add Comment -\nText that you type here in this box will be added as a {comment} at the end of selected lines.\n\n- Make Comments Visible -\nNukes { } from comments, thus making them part of the text visible on screen.\n\n- Switch Commented/Visible -\nComments out what's visible and makes visible what's commented. Allows switching between two texts.\n\n- Reverse Text -\nReverses text (character by character). Nukes comments and inline tags.\n\n- Reverse Words -\nReverses text (word by word). Nukes comments and inline tags.\n\n- Reverse Transforms -\n\\blur1\\t(\\blur3) becomes \\blur3\\t(\\blur1). Only for initial tags. Only one transform for each tag.\n\n- Fake Capitals -\nCreates fake capitals by increasing font size for first letters.\nWith all caps, for first letters of words. With mixed text, for uppercase letters.\nSet the \\fs for the capitals in the Left field.\nLooks like this: {\\fs60}F{\\fs}AKE {\\fs60}C{\\fs}APITALS\n\n- Format Dates -\nFormats dates to one of 4 options. Has its own GUI. Only converts from the other 3 options in the GUI.\n\n- Split into Letters -\nMakes a line for each letter, making the other letters invisible with alpha.\nThis lets you do things with each letter separately.\n\n- Explode -\nThis splits the line into letters and makes each of them move in a different direction and fade out.\n\n- Dissolve Text -\nVarious modes of dissolving text. Has its own Help.\n\n- Randomized Transforms -\nVarious modes of randomly transforming text. Has its own Help.\n\n- Clone Clip -\nClones/replicates a clip you draw.\nSet how many rows/columns and distances between them, and you can make large patterns.\n\n- Honorificslaughterhouse -\nComments out honorifics.\n\n- Convert Framerate -\nConverts framerate from a to b where a is the input from \"Left\" and b is input from \"Right\".\n"
 
 
 --	Unimportant GUI		-------------------------------------------------------------------------------------
@@ -1708,7 +1958,7 @@ unconfig={
 	
 	-- stuff
 	{x=0,y=15,width=1,height=1,class="label",label="Stuff  "},
-	{x=1,y=15,width=2,height=1,class="dropdown",name="stuff",items={"save/load","lua replacer","perl replacer","lua calc","jump to next","alpha shift","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","reverse text","reverse words","fake capitals","format dates","split into letters","explode","dissolve text","clone clip","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"},value=dropstuff},
+	{x=1,y=15,width=2,height=1,class="dropdown",name="stuff",items={"save/load","lua replacer","perl replacer","lua calc","jump to next","alpha shift","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","reverse text","reverse words","reverse transforms","fake capitals","format dates","split into letters","explode","dissolve text","randomized transforms","clone clip","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"},value=dropstuff}, --dropstuff
 	{x=3,y=15,width=1,height=1,class="checkbox",name="log",label="log",value=logg,hint="replacers"},
 	{x=8,y=15,width=1,height=1,class="label",label="Marker:"},
 	
@@ -1742,12 +1992,10 @@ unconfig={
 	{"Import/Export","Do Stuff","Numbers","Chapters","Info","Help","Cancel"},{ok='Import/Export',cancel='Cancel'})
 	until pressed~="Help" and pressed~="Info"
 	if pressed=="Cancel" then    aegisub.cancel() end
-	cancelled=aegisub.progress.is_cancelled()
-	if cancelled then aegisub.cancel() end
 	lastimp=true lastuff=res.stuff lastlog=res.log
 	ms2fr=aegisub.frame_from_ms
 	fr2ms=aegisub.ms_from_frame
-	aegisub.progress.title("Doing Stuff") aegisub.progress.task(msge)
+	progress("Doing Stuff") aegisub.progress.task(msge)
 	    sub1=res.rep1
 	    sub2=res.rep2
 	    sub3=res.rep3
