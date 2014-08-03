@@ -1,7 +1,7 @@
 ﻿script_name="Colorize"
 script_description="Does things with colours"
 script_author="unanimated"
-script_version="3.81"
+script_version="3.9"
 
 --[[
 
@@ -49,7 +49,8 @@ script_version="3.81"
  This works for lines with multiple same-type colour tags, including gradient by character.
  You can select from -255 to 255.
  Check types of colours you want it to apply to.
- "Apply even to colours without tags in line" means it will be applied to the colour set in style.
+ "Apply to missing" means it will be applied to the colour set in style if there's no tag in the line.
+ "Randomize" - if you set Brightness (any RGB/HSB) to 20, the resulting colour will have anywhere between -20 and +20 of the original brightness.
  
    "Remember last"
  Remembers last settings of checkboxes and dropdowns.
@@ -64,7 +65,7 @@ re=require'aegisub.re'
 --	Colorize	--
 function colors(subs,sel)
     for x, i in ipairs(sel) do
-        aegisub.progress.title(string.format("Colorizing line %d/%d",x,#sel))
+        progress(string.format("Colorizing line %d/%d",x,#sel))
 	line=subs[i]
 	text=line.text
 	
@@ -228,7 +229,7 @@ for c=1,cn do
 end
 
     for x, i in ipairs(sel) do
-        aegisub.progress.title(string.format("Colorizing line %d/%d",x,#sel))
+        progress(string.format("Colorizing line %d/%d",x,#sel))
 	line=subs[i]
 	text=line.text
 	text=text:gsub("\\1c","\\c") :gsub(kt.."&H%x+&","")
@@ -265,7 +266,7 @@ function shift(subs,sel)
 	count=1				-- start line counter
 	if res.shit=="line" then sline=true else sline=false end
     for x, i in ipairs(sel) do
-        aegisub.progress.title(string.format("Colorizing line %d/%d",x,#sel))
+        progress(string.format("Colorizing line %d/%d",x,#sel))
 	line=subs[i]
 	text=line.text
 
@@ -363,7 +364,7 @@ end
 --	Match colours	--
 function matchcolors(subs,sel)
     for x, i in ipairs(sel) do
-        aegisub.progress.title(string.format("Colorizing line %d/%d",x,#sel))
+        progress(string.format("Colorizing line %d/%d",x,#sel))
 	line=subs[i]
 	text=line.text
 	if defaref~=nil and line.style=="Default" then styleref=defaref
@@ -486,7 +487,7 @@ function matchcolors(subs,sel)
 	    text=text:gsub("\\what","")
 	end
 
-	-- RGB Colour / BRIGHTNESS
+	-- RGB / HSB
 	if pressed=="RGB" or pressed=="HSB" then
 	    lvlr=res.R lvlg=res.G lvlb=res.B
 	    hue=res.huehue
@@ -503,12 +504,12 @@ function matchcolors(subs,sel)
 		n=tonumber(corols[i])
 		local kl="\\"..n.."c"
 		kl=kl:gsub("\\1c","\\c")
-		--aegisub.log("\n kl: "..kl)
 		
 		if res.mktag and not tagz:match(kl) then
 		    text=text:gsub("^({\\[^}]-)}","%1"..kl..stylecol[n].."}")
 		end 
 	      
+		-- R G B --
 		if pressed=="RGB" then
 		  for kol1,kol2,kol3 in text:gmatch(kl.."&H(%x%x)(%x%x)(%x%x)&") do
 		    kol1n=brightness(kol1,lvlb)
@@ -518,18 +519,23 @@ function matchcolors(subs,sel)
 		  end
 		end
 		
+		-- H S B --
 		if pressed=="HSB" then
 		  for kol1,kol2,kol3 in text:gmatch(kl.."&H(%x%x)(%x%x)(%x%x)&") do
-		  H,S,L=RGB_to_HSL(kol3,kol2,kol1)
-		  H=H+hue/255
-		  S=S+sat/255
-		  L=L+brite/255
-		  if H>1 then H=H-1 end
-		  if H<0 then H=H+1 end
-		  if S>1 then S=1 end
-		  if S<0 then S=0 end
-		  if L>1 then L=1 end
-		  if L<0 then L=0 end
+		  H1,S1,L1=RGB_to_HSL(kol3,kol2,kol1)
+		  H=H1+hue/255
+		  S=S1+sat/255
+		  L=L1+brite/255
+		  H,S,L=HSLround(H,S,L)
+		  if randomize then
+		    H2=H1-hue/255
+		    S2=S1-sat/255
+		    L2=L1-brite/255
+		    H2,S2,L2=HSLround(H2,S2,L2)
+		    H=math.random(H*1000,H2*1000)/1000
+		    S=math.random(S*1000,S2*1000)/1000
+		    L=math.random(L*1000,L2*1000)/1000
+		  end
 		  kol3n,kol2n,kol1n=HSL_to_RGB(H,S,L)
 		  kol3n=tohex(round(kol3n))
 		  kol2n=tohex(round(kol2n))
@@ -604,9 +610,24 @@ function Hue_to_RGB(v1,v2,vH)
     return(v1)
 end
 
+function HSLround(H,S,L)
+  if H>1 then H=H-1 end
+  if H<0 then H=H+1 end
+  if S>1 then S=1 end
+  if S<0 then S=0 end
+  if L>1 then L=1 end
+  if L<0 then L=0 end
+  return H,S,L
+end
+
 function brightness(klr,lvl)
     klr=tonumber(klr,16)
-    klr=klr+lvl
+    if randomize then
+	rAn=math.random(klr-lvl,klr+lvl)
+	klr=round(rAn)
+    else
+	klr=klr+lvl
+    end
     if klr<0 then klr=0 end
     if klr<10 then klr="0"..klr else klr=tohex(klr) end
 return klr
@@ -637,7 +658,7 @@ function gradient(subs,sel)
     if res.grtype=="RGB" then GRGB=true else GRGB=false end
     if res.ast then ast="*" else ast="" end
     for x, i in ipairs(sel) do
-        aegisub.progress.title(string.format("Colorizing line %d/%d",x,#sel))
+        progress(string.format("Colorizing line %d/%d",x,#sel))
 	line=subs[i]
 	text=line.text
 	text=text:gsub("\\c&","\\1c&")
@@ -800,6 +821,12 @@ end
 
 function round(num) num=math.floor(num+0.5) return num end
 
+function progress(msg)
+  cancelled=aegisub.progress.is_cancelled()
+  if cancelled then aegisub.cancel() end
+  aegisub.progress.title(msg)
+end
+
 function repetition()
 	if res.rept then
 	res.clrs=lastclrs
@@ -949,7 +976,8 @@ function colorize(subs,sel)
 	{x=8,y=8,width=1,height=1,class="checkbox",name="k3",label="\\3c      ",value=false },
 	{x=9,y=8,width=1,height=1,class="checkbox",name="k4",label="\\4c      ",value=false },
 	{x=10,y=8,width=1,height=1,class="checkbox",name="k2",label="\\2c",value=false },
-	{x=7,y=9,width=5,height=1,class="checkbox",name="mktag",label="Apply even to colours without tags in line",value=false },
+	{x=7,y=9,width=2,height=1,class="checkbox",name="mktag",label="Apply to missing",hint="Apply even to colours without tags in line",value=false },
+	{x=9,y=9,width=2,height=1,class="checkbox",name="randoom",label="Randomize",hint="",value=false },
 	
 	{x=7,y=0,width=1,height=1,class="label",label="Match col.:"},
 	{x=8,y=0,width=1,height=1,class="checkbox",name="match13",label="c->3c  ",value=false,hint="copy primary to outline"},
@@ -980,6 +1008,7 @@ function colorize(subs,sel)
 	end
 	pressed,res=aegisub.dialog.display(colorfiguration,{"Colorize","Shift","Match Colours","RGB","HSB","Cancel"},{ok='Colorize',close='Cancel'})
 	if pressed=="Cancel" then aegisub.cancel() end
+	randomize=res.randoom
 	if pressed=="Colorize" then repetition() 
 	    if res.conf then saveconfig()
 	    elseif res.gcl then gcolors(subs,sel)
