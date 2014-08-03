@@ -1,7 +1,7 @@
 ﻿script_name="MultiCopy"
 script_description="Copy tags or text from multiple lines and paste to others"
 script_author="unanimated"
-script_version="2.3"
+script_version="2.31"
 
 -- Use the Help button for info
 
@@ -13,15 +13,12 @@ re=require'aegisub.re'
 function copy(subs, sel)	-- tags
 	copytags=""
     for x, i in ipairs(sel) do
-    	cancelled=aegisub.progress.is_cancelled()	if cancelled then aegisub.cancel() end
-	aegisub.progress.title(string.format("Copying from line: %d/%d",x,#sel))
+    	progress("Copying from line: "..x.."/"..#sel)
 	text=subs[i].text
 	if text:match("^({\\[^}]*})") then tags=text:match("^({\\[^}]*})") copytags=copytags..tags.."\n" end
 	if x==#sel then copytags=copytags:gsub("\n$","") end
     end
-    copydialog=
-	{{x=0,y=0,width=40,height=1,class="label",label="Text to export:"},
-	{x=0,y=1,width=40,height=15,class="textbox",name="copytext",value=copytags},}
+    copydialog[2].value=copytags
     pressed,res=aegisub.dialog.display(copydialog,{"OK","Copy to clipboard"},{close='OK'})
     if pressed=="Copy to clipboard" then    clipboard.set(copytags) end
 end
@@ -29,16 +26,13 @@ end
 function copyt(subs, sel)	-- text
 	copytekst=""
     for x, i in ipairs(sel) do
-    	cancelled=aegisub.progress.is_cancelled()	if cancelled then aegisub.cancel() end
-	aegisub.progress.title(string.format("Copying from line: %d/%d",x,#sel))
+    	progress("Copying from line: "..x.."/"..#sel)
 	text=subs[i].text
 	text=text:gsub("^{\\[^}]-}","")
 	copytekst=copytekst..text.."\n"
 	if x==#sel then copytekst=copytekst:gsub("\n$","") end
     end
-    copydialog=
-	{{x=0,y=0,width=40,height=1,class="label",label="Text to export:"},
-	{x=0,y=1,width=40,height=15,class="textbox",name="copytext",value=copytekst},}
+    copydialog[2].value=copytekst
     pressed,res=aegisub.dialog.display(copydialog,{"OK","Copy to clipboard"},{close='OK'})
     if pressed=="Copy to clipboard" then    clipboard.set(copytekst) end
 end
@@ -51,8 +45,7 @@ function copyc(subs, sel)	-- clip etc
 	cc=""
 	tag=res.dat:gsub("\n","")
     for x, i in ipairs(sel) do
-	cancelled=aegisub.progress.is_cancelled()	if cancelled then aegisub.cancel() end
-	aegisub.progress.title(string.format("Copying from line: %d/%d",x,#sel))
+	progress("Copying from line: "..x.."/"..#sel)
 	line=subs[i]
 	text=subs[i].text
 	vis=text:gsub("{[^}]-}","")
@@ -79,7 +72,6 @@ function copyc(subs, sel)	-- clip etc
 	  if tagst:match("\\t") then tak=""
 	    for t in tagst:gmatch("(\\t%([^%(%)]-%))") do tak=tak..t end
 	    for t in tagst:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","") do tak=tak..t end
-	 aegisub.log("\n tak "..tak)
 	  end
 	 elseif tag=="a" then tak=tags:match("(\\a%d*)[\\}]")
 	 elseif tag=="b" then tak=tags:match("(\\b%d*)[\\}]")
@@ -107,9 +99,8 @@ function copyc(subs, sel)	-- clip etc
 	
 	if x==#sel then cc=cc:gsub("\n$","") end
     end
-    copydialog=
-	{{x=0,y=0,width=40,height=1,class="label",label="Data to export:"},
-	{x=0,y=1,width=40,height=15,class="textbox",name="copytext",value=cc},}
+    copydialog[1].label="Data to export:"
+    copydialog[2].value=cc
     pressed,res=aegisub.dialog.display(copydialog,{"OK","Copy to clipboard"},{close='OK'})
     if pressed=="Copy to clipboard" then    clipboard.set(cc) end
 end
@@ -117,13 +108,12 @@ end
 function copyall(subs, sel)	-- all
 	copylines=""
     for x, i in ipairs(sel) do
+    	progress("Copying from line: "..x.."/"..#sel)
 	text=subs[i].text
 	if x~=#sel then copylines=copylines..text.."\n" end
 	if x==#sel then copylines=copylines..text end
     end
-    copydialog=
-	{{x=0,y=0,width=40,height=1,class="label",label="Text to export:"},
-	{x=0,y=1,width=40,height=15,class="textbox",name="copytext",value=copylines},}
+    copydialog[2].value=copylines
     pressed,res=aegisub.dialog.display(copydialog,{"OK","Copy to clipboard"},{cancel='OK'})
     if pressed=="Copy to clipboard" then    clipboard.set(copylines) end
 end
@@ -132,6 +122,7 @@ end
 
 function crmod(subs)
     for i=1, #subs do
+    	progress("Crunching line: "..i.."/"..#subs)
         if subs[i].class=="dialogue" then
         line=subs[i]
         text=subs[i].text
@@ -175,6 +166,7 @@ end
 
 -- move signs to the top of the script
 function crsort(subs)
+	aegisub.progress.title("Sorting")
 	i=1	moved=0
 	while i<=(#subs-moved) do
 	    line=subs[i]
@@ -192,6 +184,7 @@ end
 function crcopy(subs, sel)
 	copylines=""
     for i=1, #subs do
+	progress("Copying from line: "..i.."/"..#subs)
         if subs[i].class == "dialogue" then
         line=subs[i]
 	text=subs[i].text
@@ -200,9 +193,7 @@ function crcopy(subs, sel)
 	subs[i]=line
 	end
     end
-    copydialog=
-	{{x=0,y=0,width=40,height=1,class="label",label="Text to export:"},
-	{x=0,y=1,width=40,height=15,class="textbox",name="copytext",value=copylines},}
+    copydialog[2].value=copylines
     pressed,res=aegisub.dialog.display(copydialog,{"OK","Copy to clipboard"},{close='OK'})
     if pressed=="Copy to clipboard" then    clipboard.set(copylines) end
 end
@@ -749,6 +740,16 @@ str=str
 :gsub("%?","%%%?")
 return str
 end
+
+function progress(msg)
+  cancelled=aegisub.progress.is_cancelled()
+  if cancelled then aegisub.cancel() end
+  aegisub.progress.title(msg)
+end
+
+copydialog=
+{{x=0,y=0,width=44,height=1,class="label",label="Text to export:"},
+{x=0,y=1,width=44,height=18,class="textbox",name="copytext"}}
 
 -- GUI PART
 
