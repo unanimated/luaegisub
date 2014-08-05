@@ -693,33 +693,38 @@ function modifier(subs, sel)
 		aegisub.dialog.display({{class="label",label="Requires rectangular clip"}},{"OK"},{close='OK'})  aegisub.cancel() end
 	    end
 	    
-	    if res.mod=="extend mask" then
-		if xx==0 and yy==0 then aegisub.dialog.display({{class="label",label="Error. Both given values are 0.\nUse the Teleporter X and Y fields."}},{"OK"},{close='OK'}) aegisub.cancel() end
-		draw=text:match("}m ([^{]+)")
-		draw2=draw:gsub("([%d%.%-]+) ([%d%.%-]+)",function(a,b) 
-		if tonumber(a)>0 then ax=xx elseif tonumber(a)<0 then ax=0-xx else ax=0 end
-		if tonumber(b)>0 then by=yy elseif tonumber(b)<0 then by=0-yy else by=0 end
-		return a+ax.." "..b+by end)
-		draw=esc(draw)
-		text=text:gsub("(}m )"..draw,"%1"..draw2)
-	    end
-	    
-	    if res.mod=="expand mask" then
-		if xx==0 and yy==0 then aegisub.dialog.display({{class="label",label="Error. Both given values are 0.\nUse the Teleporter X and Y fields."}},{"OK"},{close='OK'}) aegisub.cancel() end
-		if xx==0 then xx=1 end
-		if yy==0 then yy=1 end
-		draw=text:match("}m ([^{]+)")
-		draw2=draw:gsub("([%d%.%-]+) ([%d%.%-]+)",function(a,b) return round(a*xx).." "..round(b*yy) end)
-		draw=esc(draw)
-		text=text:gsub("(}m )"..draw,"%1"..draw2)
-	    end
-	    
-	    if res.mod=="flip mask" then
-		draw=text:match("}m ([^{]+)")
-		draw2=draw:gsub("([%d%.%-]+) ([%d%.%-]+)",function(a,b) return 0-a.." "..b end)
-		draw=esc(draw)
-		text=text:gsub("(}m )"..draw,"%1"..draw2)
-	    end
+        local ops = {
+            ["extend mask"] = function(a,b,x,y)
+                local ax,by = 0,0
+                if tonumber(a)>0 then ax=x elseif tonumber(a)<0 then ax=0-x end
+                if tonumber(b)>0 then by=y elseif tonumber(b)<0 then by=0-y end
+                return a+ax, b+by 
+            end,
+            ["expand mask"] = function(a,b,x,y)
+                function NullToOne(n) return n>0 and n or 1 end
+                x,y = NullToOne(x), NullToOne(y)
+                return round(a*x), round(b*y) 
+            end,
+            ["flip mask"] = function(a,b,_,_)
+                function NullToOne(n) return n>0 and n or 1 end
+                return 0-a, b
+            end,
+            noXy = {["flip mask"] = true}
+        }
+        
+        if maskOps[res.mod] then
+            local xyErrDlg = {{{class="label",label="Error. Both given values are 0.\nUse the Teleporter X and Y fields."}},{"OK"},{close='OK'}}
+            if xx==0 and yy==0 and not ops.noXy[res.mod] then aegisub.dialog.display(unpack(xyErrDlg)) aegisub.cancel() end
+            
+            local maskPattern = {res.clipmode and "(\\i?clip%(m )" or "(}m )","([%w%s%.]+)"}
+            text=text:gsub(table.concat(maskPattern), function(prefix, draw)
+                draw=draw:gsub("([%d%.%-]+) ([%d%.%-]+)", function(a,b)
+                    a,b = maskOps[res.mod](a,b,xx,yy)
+                    return a .. " " .. b
+                end)
+                return prefix .. draw
+            end )
+        end
 	    
 	    if res.mod=="adjust drawing" then
 		if not text:match("\\p%d") then aegisub.cancel() end
@@ -1623,7 +1628,7 @@ hyperconfig={
 	items={"transmove","horizontal","vertical","multimove","rvrs. move","shiftstart","shiftmove","move clip"}},
     {x=3,y=2,width=1,height=1,class="checkbox",name="keep",label="keep both",value=false,hint="keeps both lines for transmove"},
     {x=3,y=3,width=3,height=1,class="checkbox",name="rotac",label="rotation acceleration",value=true,hint="transmove option"},
-    {x=3,y=5,width=3,height=1,class="label",name="moo",label=mlbl},
+    {x=3,y=6,width=3,height=1,class="label",name="moo",label=mlbl},
     
     {x=5,y=0,width=2,height=1,class="label",label="Morphing Grounds",},
     {x=5,y=1,width=2,height=1,class="dropdown",name="mod",value=morphdrop,
@@ -1633,6 +1638,7 @@ hyperconfig={
     {x=6,y=3,width=1,height=1,class="dropdown",name="freeze",
 	items={"-frz-","30","45","60","90","120","135","150","180","-30","-45","-60","-90","-120","-135","-150"},value="-frz-"},
     {x=5,y=4,width=2,height=1,class="checkbox",name="delfbf",label="delete orig. line",value=true,hint="delete the original line for line2fbf / mirror functions"},
+    {x=5,y=5,width=2,height=1,class="checkbox",name="clipmode",label="clip mode",value=false,hint="process clips instead of drawings"},
     
     {x=7,y=0,width=3,height=1,class="label",label="Cloning Laboratory",},
     {x=7,y=1,width=2,height=1,class="checkbox",name="cpos",label="\\posimove",value=true },
@@ -1654,7 +1660,7 @@ hyperconfig={
     {x=11,y=5,width=1,height=1,class="checkbox",name="autopos",label="p",value=true,hint="Teleport position when \\pos tags missing" },
     {x=13,y=5,width=1,height=1,class="label",label="  [v"..script_version.."]",},
     
-    {x=6,y=5,width=1,height=1,class="checkbox",name="save",label="Save",value=false,hint="Save current configuration"},
+    {x=0,y=6,width=1,height=1,class="checkbox",name="save",label="Save",value=false,hint="Save current configuration"},
 } 
 
 	loadconfig()
