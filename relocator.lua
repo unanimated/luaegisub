@@ -693,7 +693,7 @@ function modifier(subs, sel)
 		aegisub.dialog.display({{class="label",label="Requires rectangular clip"}},{"OK"},{close='OK'})  aegisub.cancel() end
 	    end
 	    
-        local ops = {
+        local maskOps = {
             ["extend mask"] = function(a,b,x,y)
                 local ax,by = 0,0
                 if tonumber(a)>0 then ax=x elseif tonumber(a)<0 then ax=0-x end
@@ -714,7 +714,7 @@ function modifier(subs, sel)
         
         if maskOps[res.mod] then
             local xyErrDlg = {{{class="label",label="Error. Both given values are 0.\nUse the Teleporter X and Y fields."}},{"OK"},{close='OK'}}
-            if xx==0 and yy==0 and not ops.noXy[res.mod] then aegisub.dialog.display(unpack(xyErrDlg)) aegisub.cancel() end
+            if xx==0 and yy==0 and not maskOps.noXy[res.mod] then aegisub.dialog.display(unpack(xyErrDlg)) aegisub.cancel() end
             
             local maskPattern = {res.clipmode and "(\\i?clip%(m )" or "(}m )","([%w%s%.]+)"}
             text=text:gsub(table.concat(maskPattern), function(prefix, draw)
