@@ -3,16 +3,17 @@
 script_name="Re-Split"
 script_description="Resplits lines at a different place"
 script_author="unanimated"
-script_version="1.0"
+script_version="1.1"
 
-function resplitl(subs, sel, act)
+function resplitl(subs,sel,act)
 	line=subs[act]
 	text=line.text
-	if act<#subs and subs[act+1].text:match("^([%w']+%p?) ") then
+	if act<#subs then
 	    nl=subs[act+1]
 	    first=nl.text:match("^([%w']+%p?) ")
+	    if first==nil then first=nl.text:match("^{\\[^}]-}([%w']+%p?) ") end
 	    if first~=nil then
-		nl.text=nl.text:gsub("^([%w']+%p?) ","")
+		nl.text=nl.text:gsub("^([%w']+%p?) ","") :gsub("^({\\[^}]-})[%w']+%p? ","%1")
 		text=text.." "..first
 	    end
 	    subs[act+1]=nl
@@ -23,15 +24,19 @@ function resplitl(subs, sel, act)
     return sel
 end
 
-function resplitr(subs, sel, act)
+function resplitr(subs,sel,act)
 	line=subs[act]
 	text=line.text
-	if act<#subs and text:match(" [%w']+%p?$") then
+	if act<#subs then
 	    nl=subs[act+1]
-	    last=text:match(" ([%w']+%p?)$")
+	    last=text:match("[} ]([%w']+%p?)$")
 	    if last~=nil then
-		text=text:gsub(" [%w']+%p?$","")
-		nl.text=last.." "..nl.text
+		text=text:gsub("%s?[%w']+%p?$","") :gsub("%s*{\\[^}]-}$","")
+		if nl.text:match("^{\\[^}]-}") then
+		  nl.text=nl.text:gsub("^({\\[^}]-})","%1"..last.." ")
+		else
+		  nl.text=last.." "..nl.text
+		end
 	    end
 	    subs[act+1]=nl
 	end
@@ -41,5 +46,5 @@ function resplitr(subs, sel, act)
     return sel
 end
 
-aegisub.register_macro("ReSplit - Backward", script_description, resplitl)
-aegisub.register_macro("ReSplit - Forward", script_description, resplitr)
+aegisub.register_macro("ReSplit - Backward",script_description,resplitl)
+aegisub.register_macro("ReSplit - Forward",script_description,resplitr)
