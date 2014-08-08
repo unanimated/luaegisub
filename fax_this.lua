@@ -1,7 +1,7 @@
 ﻿script_name="Copyfax This"
 script_description="Copyfax This"
 script_author="unanimated"
-script_version="2.6"
+script_version="2.7"
 
 -- all the "copy" things copy things from first selected line and paste them to the other lines
 -- clip shift coordinates will shift the clip by that amount each line
@@ -47,6 +47,7 @@ Split by \N
 copy_style=true			-- "copy style with tags" checked in the gui
 autogradient_clip2fax=true	-- automatically gradient \fax for "fax from clip" with 4-point clip
 
+re=require'aegisub.re'
 
 function fucks(subs, sel)
 	if res.right then res.fax=0-res.fax end
@@ -60,13 +61,10 @@ function fucks(subs, sel)
 		t=t:gsub("^({\\[^}]-)}{\\","%1\\")
 		end
 	    else
-		if not t:match("\\clip") then
-		  aegisub.dialog.display({{class="label",label="Missing \\clip.",width=1,height=2}},{"OK"},{close='OK'}) aegisub.cancel()
-		end
+		if not t:match("\\clip") then t_error("Missing \\clip.",true) end
 		cx1,cy1,cx2,cy2,cx3,cy3,cx4,cy4=t:match("\\clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+)")
 		if cx1==nil then cx1,cy1,cx2,cy2=t:match("\\clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+)") end
-		rota=t:match("\\frz([%d%.%-]+)")
-		if rota==nil then rota=0 end
+		rota=t:match("\\frz([%d%.%-]+)") or 0
 		ad=cx1-cx2
 		op=cy1-cy2
 		tang=(ad/op)
@@ -93,7 +91,10 @@ function fucks(subs, sel)
 			orig=t:gsub("^{\\[^}]*}","")
 			tg=t:match("^{\\[^}]-}")
 			chars={}
-			for char in vis:gmatch(".") do table.insert(chars,char) end
+			ltrmatches=re.find(vis,".")
+			  for l=1,#ltrmatches do
+			    table.insert(chars,ltrmatches[l].str)
+			  end
 			faxdiff=(faks2-faks)/(#chars-1)
 			tt=chars[1]
 			for c=2,#chars do
@@ -103,6 +104,7 @@ function fucks(subs, sel)
 			    end
 			end
 			t=tg..tt
+			
 			if orig:match("{%*?\\") then t=textmod(orig,t) end
 		    end
 		    
@@ -118,68 +120,20 @@ function fucks(subs, sel)
 	end
 end
 
-function round(num)  num=math.floor(num+0.5)  return num  end
-
-function textmod(orig,text)
-    tk={}
-    tg={}
-	text=text:gsub("{\\\\k0}","")
-	repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
-	vis=text:gsub("{[^}]-}","")
-	  for c in vis:gmatch(".") do
-	    table.insert(tk,c)
-	  end
-	stags=text:match("^{(\\[^}]-)}")
-	if stags==nil then stags="" end
-	text=text:gsub("^{\\[^}]-}","") :gsub("{[^\\}]-}","")
-	count=0
-	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
-	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
-	    pos=chars:len()+count
-	    tgl={p=pos,t=tak,a=as}
-	    table.insert(tg,tgl)
-	    count=pos
-	end
-	count=0
-	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
-	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
-	    pos=chars:len()+count
-	    tgl={p=pos,t=tak,a=as}
-	    table.insert(tg,tgl)
-	    count=pos
-	end
-    newline=""
-    for i=1,#tk do
-	newline=newline..tk[i]
-	newt=""
-	for n, t in ipairs(tg) do
-	    if t.p==i then newt=newt..t.a..t.t end
-	end
-	if newt~="" then newline=newline.."{"..newt.."}" end
-    end
-    newtext="{"..stags.."}"..newline
-    text=newtext
-    return text
-end
-
 function copystuff(subs, sel)
     -- get stuff from line 1
     rine=subs[sel[1]]
-    ftags=rine.text:match("^{(\\[^}]-)}")
+    ftags=(rine.text:match("^{(\\[^}]-)}") or "")
     cstext=rine.text:gsub("^{(\\[^}]-)}","")
     vis=rine.text:gsub("{([^}]-)}","")
     csstyle=rine.style
     csst=rine.start_time
     cset=rine.end_time
-    if ftags==nil then ftags="" end
     -- detect / save / remove transforms
-    ftra1="" ftra2=""
+    ftra=""
     if ftags:match("\\t") then
-	for t in ftags:gmatch("(\\t%([^%(%)]-%))") do ftra1=ftra1..t end
-	ftags=ftags:gsub("\\t%([^%(%)]+%)","")
-	for t in ftags:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))") do ftra2=ftra2..t end
-	ftags=ftags:gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","")
+	for t in ftags:gmatch("\\t%b()") do ftra=ftra..t end
+	ftags=ftags:gsub("\\t%b()","")
     end
     rept={"drept"}
     -- build GUI
@@ -204,18 +158,13 @@ function copystuff(subs, sel)
 	  end
     end
     -- transform tags
-    for f in ftra1:gmatch("\\t%([^%(%)]-%)") do
+    for f in ftra:gmatch("\\t%b()") do
 	cb={x=0,y=ftw,width=2,height=1,class="checkbox",name="chk"..ftw,label=f,value=false}
 	  drept=0 for r=1,#rept do if f==rept[r] then drept=1 end end
 	  if drept==0 then
 	  table.insert(copyshit,cb)	ftw=ftw+1
 	  table.insert(rept,f)
 	  end
-    end
-    -- transform with clip
-    for f in ftra2:gmatch("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)") do
-	cb={x=0,y=ftw,width=2,height=1,class="checkbox",name="chk"..ftw,label=f,value=false}
-	table.insert(copyshit,cb)	ftw=ftw+1
     end
     itw=3
     -- inline tags
@@ -238,9 +187,9 @@ function copystuff(subs, sel)
 		    if val.class=="checkbox" and not val.label:match("%[ ") and val.x==0 then val.value=true end
 		end
 	    end
-	press,rez=aegisub.dialog.display(copyshit,{"Copy","Check All Tags","Paste Saved","[Un]hide","Cancel"},{ok='Copy',close='Cancel'})
+	press,rez=ADD(copyshit,{"Copy","Check All Tags","Paste Saved","[Un]hide","Cancel"},{ok='Copy',close='Cancel'})
 	until press~="Check All Tags"
-	if press=="Cancel" then aegisub.cancel() end
+	if press=="Cancel" then ak() end
 	-- save checked tags
 	kopytags=""
 	copytfs=""
@@ -264,8 +213,8 @@ function copystuff(subs, sel)
     -- lines 2+
     if press~="[Un]hide" then
     for i=sn,maxx do
-        local line=subs[sel[i]]
-        local text=subs[sel[i]].text
+        line=subs[sel[i]]
+        text=subs[sel[i]].text
 	text=text:gsub("\\1c","\\c")
 
 	    if not text:match("^{\\") then text="{\\stuff}"..text end
@@ -310,7 +259,7 @@ function copystuff(subs, sel)
     else
 	txt=rine.text
 	    -- unhide
-	    if kopytags=="" then 
+	    if kopytags=="" and copytfs=="" then 
 		uncom={}
 		wai=0
 		for com in txt:gmatch("{//([^}]+)}") do
@@ -320,8 +269,8 @@ function copystuff(subs, sel)
 		    txt=txt:gsub("^(.*){//([^}]+})","{\\%2%1")
 		    txt=txt:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%2%1}")
 		else
-		    pss,rz=aegisub.dialog.display(uncom,{"OK","Cancel"},{ok='OK',close='Cancel'})
-		    if pss=="Cancel" then aegisub.cancel() end
+		    pss,rz=ADD(uncom,{"OK","Cancel"},{ok='OK',close='Cancel'})
+		    if pss=="Cancel" then ak() end
 		    for key,val in ipairs(uncom) do
 			enam=esc(val.name)
 			if rz[val.name]==true then 
@@ -333,8 +282,11 @@ function copystuff(subs, sel)
 	    -- hide
 	    else
 		ekopytags=esc(kopytags)
+		ecopytfs=esc(copytfs)
 		for tg in ekopytags:gmatch("\\[^\\}]+") do txt=txt:gsub(tg,"") end
 		for tg in kopytags:gmatch("\\([^\\}]+)") do txt=txt.."{//"..tg.."}" end
+		for tg in ecopytfs:gmatch("\\t%%%b()") do txt=txt:gsub(tg,"") end
+		for tg in copytfs:gmatch("\\(t%b())") do txt=txt.."{//"..tg.."}" end
 		txt=txt:gsub("{}","")
 	    end
 	rine.text=txt
@@ -345,8 +297,8 @@ end
 
 function copytags(subs, sel)
     for x, i in ipairs(sel) do
-        local line=subs[i]
-        local text=subs[i].text
+        line=subs[i]
+        text=subs[i].text
 	    if x==1  then
 	      tags=text:match("^({\\[^}]*})")
 	      if res.cpstyle then style=line.style end
@@ -367,8 +319,8 @@ end
 
 function copytext(subs, sel)
     for x, i in ipairs(sel) do
-        local line=subs[i]
-        local text=subs[i].text
+        line=subs[i]
+        text=subs[i].text
 	    if x==1  then
 	      tekst=text:gsub("^{\\[^}]*}","")
 	    end
@@ -389,8 +341,8 @@ function copyclip(subs, sel)
 	xc=res.xlip
 	yc=res.ylip
     for x, i in ipairs(sel) do
-        local line=subs[i]
-        local text=subs[i].text
+        line=subs[i]
+        text=subs[i].text
 	    if x==1  then
 	      if text:match("\\i?clip") then -- read clip
 	      klipstart=text:match("\\i?clip%(([^%)]+)%)")
@@ -399,7 +351,7 @@ function copyclip(subs, sel)
 	    end
 	    
 	    if x~=1 then
-	      if not text:match("^{\\") then text="{\\}"..text end
+	      if not text:match("^{\\") then text="{\\klip}"..text end
 	      if not text:match("\\i?clip") then text=addtag("\\clip()",text) end
 	      
 		-- calculations
@@ -416,7 +368,7 @@ function copyclip(subs, sel)
 		end
 	      -- set clip
 	      text=text:gsub("(\\i?clip)%([^%)]-%)","%1("..klip..")")
-	      text=text:gsub("\\\\","\\")
+	      text=text:gsub("\\klip","")
 	    end
 	line.text=text
 	subs[i]=line
@@ -426,78 +378,55 @@ function copyclip(subs, sel)
 end
 
 function copycolours(subs, sel)
-if not res.c1 and not res.c2 and not res.c3 and not res.c4 then aegisub.cancel() end
+if not res.c1 and not res.c2 and not res.c3 and not res.c4 then ak() end
     for x, i in ipairs(sel) do
-        local line=subs[i]
-        local text=subs[i].text
-	styleref=stylechk(subs,line.style)
-	sr=styleref
+        line=subs[i]
+        text=subs[i].text
+	sr=stylechk(subs,line.style)
 	text=text:gsub("\\1c","\\c")
 	
 	    -- copy from line 1
 	    if x==1  then
 	      if res.c1 then
-	        if text:match("\\c&") then col1=text:match("\\c(&H%x+&)") else col1=sr.color1:gsub("H%x%x","H") end
-	        if text:match("\\1a&") then alf1=text:match("\\a(&H%x+&)") else alf1=sr.color1:match("H%x%x") end
+	        if text:match("^{[^}]-\\c&") then col1=text:match("\\c(&H%x+&)") else col1=sr.color1:gsub("H%x%x","H") end
+	        if text:match("^{[^}]-\\1a&") then alf1=text:match("\\a(&H%x+&)") else alf1=sr.color1:match("H%x%x") end
 	      end
 	      if res.c3 then
-	        if text:match("\\3c&") then col3=text:match("\\3c(&H%x+&)") else col3=sr.color3:gsub("H%x%x","H") end
-	        if text:match("\\3a&") then alf3=text:match("\\3a(&H%x+&)") else alf3=sr.color3:match("H%x%x") end
+	        if text:match("^{[^}]-\\3c&") then col3=text:match("\\3c(&H%x+&)") else col3=sr.color3:gsub("H%x%x","H") end
+	        if text:match("^{[^}]-\\3a&") then alf3=text:match("\\3a(&H%x+&)") else alf3=sr.color3:match("H%x%x") end
 	      end
 	      if res.c4 then
-	        if text:match("\\4c&") then col4=text:match("\\4c(&H%x+&)") else col4=sr.color4:gsub("H%x%x","H") end
-	        if text:match("\\4a&") then alf4=text:match("\\4a(&H%x+&)") else alf4=sr.color4:match("H%x%x") end
+	        if text:match("^{[^}]-\\4c&") then col4=text:match("\\4c(&H%x+&)") else col4=sr.color4:gsub("H%x%x","H") end
+	        if text:match("^{[^}]-\\4a&") then alf4=text:match("\\4a(&H%x+&)") else alf4=sr.color4:match("H%x%x") end
 	      end
 	      if res.c2 then
-	        if text:match("\\2c&") then col2=text:match("\\2c(&H%x+&)") else col2=sr.color2:gsub("H%x%x","H") end
-	        if text:match("\\2a&") then alf2=text:match("\\2a(&H%x+&)") else alf2=sr.color2:match("H%x%x") end
+	        if text:match("^{[^}]-\\2c&") then col2=text:match("\\2c(&H%x+&)") else col2=sr.color2:gsub("H%x%x","H") end
+	        if text:match("^{[^}]-\\2a&") then alf2=text:match("\\2a(&H%x+&)") else alf2=sr.color2:match("H%x%x") end
 	      end
 	    end
 
 	    -- paste to other lines
-	    if x~=1 then if not text:match("^{\\") then text=text:gsub("^","{\\}") end
-	      if res.c1 then
-	        if text:match("\\c&") then text=text:gsub("\\c(&H%x+&)","\\c"..col1) else text=addtag("\\c"..col1,text) end
-	      end
-	      if res.c3 then
-	        if text:match("\\3c&") then text=text:gsub("\\3c(&H%x+&)","\\3c"..col3) else text=addtag("\\3c"..col3,text) end
-	      end
-	      if res.c4 then
-	        if text:match("\\4c&") then text=text:gsub("\\4c(&H%x+&)","\\4c"..col4) else text=addtag("\\4c"..col4,text) end
-	      end
-	      if res.c2 then
-	        if text:match("\\2c&") then text=text:gsub("\\2c(&H%x+&)","\\2c"..col2) else text=addtag("\\2c"..col2,text) end
-	      end
+	    if x~=1 then if not text:match("^{\\") then text=text:gsub("^","{\\kol}") end
+	      if res.c1 then text=addtag2("\\c"..col1,text) end
+	      if res.c3 then text=addtag2("\\3c"..col3,text) end
+	      if res.c4 then text=addtag2("\\4c"..col4,text) end
+	      if res.c2 then text=addtag2("\\2c"..col2,text) end
 	     -- alpha
 	     if res.alfa then
-	      if res.c1 then
-	        if text:match("\\1a&") then text=text:gsub("\\1a(&H%x+&)","\\1a"..alf1) else text=addtag("\\1a"..alf1,text) end
-	      end
-	      if res.c3 then
-	        if text:match("\\3a&") then text=text:gsub("\\3a(&H%x+&)","\\3a"..alf3) else text=addtag("\\3a"..alf3,text) end
-	      end
-	      if res.c4 then
-	        if text:match("\\4a&") then text=text:gsub("\\4a(&H%x+&)","\\4a"..alf4) else text=addtag("\\4a"..alf4,text) end
-	      end
-	      if res.c2 then
-	        if text:match("\\2a&") then text=text:gsub("\\2a(&H%x+&)","\\2a"..alf2) else text=addtag("\\2a"..alf2,text) end
-	      end
+	      if res.c1 then text=addtag2("\\1a"..alf1,text) end
+	      if res.c3 then text=addtag2("\\3a"..alf3,text) end
+	      if res.c4 then text=addtag2("\\4a"..alf4,text) end
+	      if res.c2 then text=addtag2("\\2a"..alf2,text) end
 	     end
 	    end
 	    
-	text=text:gsub("\\\\","\\")
-	text=text:gsub("\\}","}")
-	text=text:gsub("{}","")
+	text=text:gsub("\\kol","")
 	line.text=text
 	subs[i]=line
     end
     aegisub.set_undo_point(script_name)
     return sel
 end
-
-function addtag(tag,text) text=text:gsub("^({\\[^}]-)}","%1"..tag.."}") return text end
-function despace(txt) txt=txt:gsub("%s","_sp_") return txt end
-function debreak(txt) txt=txt:gsub("\\N","_break_") return txt end
 
 function splitbreak(subs, sel)		-- 1.6
 	for i=#sel,1,-1 do
@@ -506,11 +435,11 @@ function splitbreak(subs, sel)		-- 1.6
 	    text=text:gsub("({[^}]-})",function (a) return debreak(a) end)
 	    
 	    if not text:match("\\N") then
-	    pressed=aegisub.dialog.display({{class="label",
+	    P=ADD({{class="label",
 	    label="Selection line "..i.." has no \\N. \nYou can split by spaces or by tags.",x=0,y=0,width=1,height=2}},{"Spaces","Tags","Skip","Cancel"})
-	      if pressed=="Cancel" then aegisub.cancel() end
-	      if pressed=="Spaces" then text=text:gsub(" "," \\N") end
-	      if pressed=="Tags" then text=text:gsub("(.)({\\[^}]-})","%1\\N%2") end
+	      if P=="Cancel" then ak() end
+	      if P=="Spaces" then text=text:gsub(" "," \\N") end
+	      if P=="Tags" then text=text:gsub("(.)({\\[^}]-})","%1\\N%2") end
 	    end
 	  
 	    -- split by \N
@@ -545,8 +474,6 @@ function splitbreak(subs, sel)		-- 1.6
 		end
 	    end
 	    
-	    --aegisub.log("\n text "..text)
-	    
 	    line2=line
 		if text:match("%*")then text=text:gsub("%*","_asterisk_") end
 		if text:match("^{\\") then				-- lines 2+, with initial tags
@@ -563,7 +490,6 @@ function splitbreak(subs, sel)		-- 1.6
 			poscount=poscount+1
 		      if aftern~="" then
 		        count=count+1
-		        --line2.effect=count+1
 		        line2.text=line2.text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 		        line2.text=line2.text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 		        tags=line2.text:match("^({\\[^}]*})")
@@ -585,7 +511,6 @@ function splitbreak(subs, sel)		-- 1.6
 		if text:match("^{\\") then				-- line 1, with initial tags
 		    text=text:gsub("^({\\[^}]-})(.-)%*(.*)","%1%2")
 		    text=text:gsub("_break_","\\N")	:gsub("%s*$","")
-		    --line.effect=1
 		else							-- line 1, without initial tags
 		    text=text:gsub("^(.-)%*(.*)","%1")
 		    text=text:gsub("_break_","\\N")	:gsub("%s*$","")
@@ -599,41 +524,94 @@ function splitbreak(subs, sel)		-- 1.6
 	aegisub.set_undo_point(script_name)
 end
 
+--	reanimatools	--
+function addtag(tag,text) text=text:gsub("^({\\[^}]-)}","%1"..tag.."}") return text end
+
+function addtag2(tag,text) 
+	local tg=tag:match("\\%d?%a+")
+	text=text:gsub("^({\\[^}]-)}","%1"..tag.."}")
+	:gsub(tg.."[^\\}]+([^}]-)("..tg.."[^\\}]+)","%2%1")
+	return text 
+end
+
+function despace(txt) txt=txt:gsub("%s","_sp_") return txt end
+
+function debreak(txt) txt=txt:gsub("\\N","_break_") return txt end
+
+function round(num)  num=math.floor(num+0.5)  return num  end
+
+function textmod(orig,text)
+    tk={}
+    tg={}
+	text=text:gsub("{\\\\k0}","")
+	repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
+	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
+	vis=text:gsub("{[^}]-}","")
+	ltrmatches=re.find(vis,".")
+	  for l=1,#ltrmatches do
+	    table.insert(tk,ltrmatches[l].str)
+	  end
+	stags=text:match("^{(\\[^}]-)}")
+	if stags==nil then stags="" end
+	text=text:gsub("^{\\[^}]-}","") :gsub("{[^\\}]-}","")
+	count=0
+	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
+	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
+	    pos=re.find(chars,".")
+	    if pos==nil then ps=0+count else ps=#pos+count end
+	    tgl={p=ps,t=tak,a=as}
+	    table.insert(tg,tgl)
+	    count=ps
+	end
+	count=0
+	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
+	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
+	    pos=re.find(chars,".")
+	    if pos==nil then ps=0+count else ps=#pos+count end
+	    tgl={p=ps,t=tak,a=as}
+	    table.insert(tg,tgl)
+	    count=ps
+	end
+    newline=""
+    for i=1,#tk do
+	newline=newline..tk[i]
+	newt=""
+	for n, t in ipairs(tg) do
+	    if t.p==i then newt=newt..t.a..t.t end
+	end
+	if newt~="" then newline=newline.."{"..as..newt.."}" end
+    end
+    newtext="{"..stags.."}"..newline
+    text=newtext
+    return text
+end
+
 function trem(tags)
 	trnsfrm=""
-	for t in tags:gmatch("(\\t%([^%(%)]-%))") do trnsfrm=trnsfrm..t end
-	for t in tags:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))") do trnsfrm=trnsfrm..t end
-	tags=tags:gsub("(\\t%([^%(%)]+%))","")
-	tags=tags:gsub("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","")
+	for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
+	tags=tags:gsub("\\t%b()","")
 	return tags
 end
 
 function cleantr(tags)
 	trnsfrm=""
-	for t in tags:gmatch("(\\t%([^%(%)]-%))") do trnsfrm=trnsfrm..t end
-	for t in tags:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))") do trnsfrm=trnsfrm..t end
-	tags=tags:gsub("(\\t%([^%(%)]+%))","")
-	tags=tags:gsub("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","")
-	tags=tags:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}")
+	for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
+	tags=tags:gsub("\\t%b()","")
 
 	cleant=""
-	for ct in tags:gmatch("\\t%((\\[^%(%)]-)%)") do cleant=cleant..ct end
-	for ct in tags:gmatch("\\t%((\\[^%(%)]-%([^%)]-%)[^%)]-)%)") do cleant=cleant..ct end
-	tags=tags:gsub("(\\t%(\\[^%(%)]+%))","")
-	tags=tags:gsub("(\\t%(\\[^%(%)]-%([^%)]-%)[^%)]-%))","")
-	if cleant~="" then tags=tags:gsub("^({\\[^}]*)}","%1\\t("..cleant..")}") end
-	tags=tags:gsub("(\\clip%([^%)]+%))([^%(%)]-)(\\c&H%x+&)","%2%3%1")
+	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-)%)") do cleant=cleant..ct end
+	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-%b()[^%)]-)%)") do cleant=cleant..ct end
+	trnsfrm=trnsfrm:gsub("\\t%(\\[^%(%)]+%)","")
+	trnsfrm=trnsfrm:gsub("\\t%((\\[^%(%)]-%b()[^%)]-)%)","")
+	trnsfrm="\\t("..cleant..")"..trnsfrm
+	tags=tags:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}")
 	return tags
 end
 
 function duplikill(tagz)
 	tf=""
-	if tagz:match("\\t") then 
-	    for t in tagz:gmatch("(\\t%([^%(%)]-%))") do tf=tf..t end
-	    for t in tagz:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","") do tf=tf..t end
-	    tagz=tagz:gsub("\\t%([^%(%)]+%)","")
-	    tagz=tagz:gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","")
-	end
+	for t in tagz:gmatch("\\t%b()") do tf=tf..t end
+	tagz=tagz:gsub("\\t%b()","")
 	tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
 	for i=1,#tags1 do
 	    tag=tags1[i]
@@ -675,6 +653,11 @@ str=str
 return str
 end
 
+function t_error(message,cancel)
+  aegisub.dialog.display({{class="label",label=message}},{"OK"},{close='OK'})
+  if cancel then aegisub.cancel() end
+end
+
 function stylechk(subs,stylename)
   for i=1, #subs do
     if subs[i].class=="style" then
@@ -690,7 +673,7 @@ function konfig(subs, sel)
 	if lastfax==nil then lastfax=0.05 end
 	if lastxlip==nil then lastxlip=0 end
 	if lastylip==nil then lastylip=0 end
-	dialog_config=
+	GUI=
 	{
 	    {x=0,y=0,width=1,height=1,class="label",label="\\fax ",},
 	    {x=1,y=0,width=2,height=1,class="floatedit",name="fax",value=lastfax},
@@ -712,23 +695,25 @@ function konfig(subs, sel)
 	    
 	    {x=10,y=1,width=2,height=1,class="label",label="   Copyfax This v"..script_version},
 	} 	
-	pressed, res=aegisub.dialog.display(dialog_config,
+	P, res=ADD(GUI,
 	{"fax it","copy stuff","copy tags","copy text","copy clip","copy colours","split by \\N","cancel"},{cancel='cancel'})
 	
-	if pressed=="cancel" then aegisub.cancel() end
-	if pressed=="fax it" then fucks(subs, sel) end
-	if pressed=="copy stuff" then copystuff(subs, sel) end
-	if pressed=="copy tags" then copytags(subs, sel) end
-	if pressed=="copy text" then copytext(subs, sel) end
-	if pressed=="copy clip" then copyclip(subs, sel) end
-	if pressed=="copy colours" then copycolours(subs, sel) end
-	if pressed=="split by \\N" then splitbreak(subs, sel) end
+	if P=="cancel" then ak() end
+	if P=="fax it" then fucks(subs, sel) end
+	if P=="copy stuff" then copystuff(subs, sel) end
+	if P=="copy tags" then copytags(subs, sel) end
+	if P=="copy text" then copytext(subs, sel) end
+	if P=="copy clip" then copyclip(subs, sel) end
+	if P=="copy colours" then copycolours(subs, sel) end
+	if P=="split by \\N" then splitbreak(subs, sel) end
 	lastfax=res.fax
 	lastxlip=res.xlip
 	lastylip=res.ylip
 end
 
 function fax_this(subs, sel)
+    ADD=aegisub.dialog.display
+    ak=aegisub.cancel
     konfig(subs, sel)
     aegisub.set_undo_point(script_name)
     return sel
