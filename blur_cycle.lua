@@ -3,7 +3,7 @@
 script_name="Blur Cycle"
 script_description="Adds blur"
 script_author="unanimated"
-script_version="1.61"
+script_version="1.62"
 
 sequence={"0.6","0.8","1","1.2","1.5","2","3","4","5","6","8","0.4","0.5"}	-- you can modify this
 
@@ -15,10 +15,8 @@ function blur(subs,sel,act)
 	    if text:match("^{\\[^}]-}") then
 	    tags,after=text:match("^({\\[^}]-})(.*)")
 		if tags:match("\\t") then 
-		    for t in tags:gmatch("(\\t%([^%(%)]-%))") do tf=tf..t end
-		    for t in tags:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","") do tf=tf..t end
-		    tags=tags:gsub("\\t%([^%(%)]+%)","")
-		    :gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","")
+		    for t in tags:gmatch("\\t%b()") do tf=tf..t end
+		    tags=tags:gsub("\\t%b()","")
 		    :gsub("{}","")
 		    text=tags..after
 		end

@@ -3,7 +3,7 @@
 script_name="Shadow cycle"
 script_description="Add shadow tags to selected lines."
 script_author="unanimated"
-script_version="1.61"
+script_version="1.62"
 
 sequence={"0","1","2","3","4","5","6","7","8","9"}	-- you can modify this
 
@@ -15,10 +15,8 @@ function shad(subs, sel)
 	    if text:match("^{\\[^}]-}") then
 	    tags,after=text:match("^({\\[^}]-})(.*)")
 		if tags:match("\\t") then 
-		    for t in tags:gmatch("(\\t%([^%(%)]-%))") do tf=tf..t end
-		    for t in tags:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","") do tf=tf..t end
-		    tags=tags:gsub("\\t%([^%(%)]+%)","")
-		    :gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","")
+		    for t in tags:gmatch("\\t%b()") do tf=tf..t end
+		    tags=tags:gsub("\\t%b()","")
 		    :gsub("{}","")
 		    text=tags..after
 		end
