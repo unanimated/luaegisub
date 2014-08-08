@@ -3,13 +3,10 @@ script_description="Import stuff, number stuff, chapter stuff, replace stuff, do
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/import.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/import.lua"
-script_version="2.2"
+script_version="2.3"
 
 require "clipboard"
 re=require'aegisub.re'
-
-function addtag(tag,text) text=text:gsub("^({\\[^}]-)}","%1"..tag.."}") return text end
-function round(num) num=math.floor(num+0.5) return num end
 
 
 --	IMPORT/EXPORT	-------------------------------------------------------------------------------------
@@ -22,7 +19,7 @@ function important(subs,sel,act)
 	atxt=atext:gsub("^{\\[^}]-}","")
 	-- create table from user data (lyrics)
 	sdata={}
-	if res.mega=="update lyrics" and res.dat=="" then aegisub.dialog.display({{x=0,y=0,width=1,height=1,class="label",label="No lyrics given."}},{"ok"},{cancel='ok'}) aegisub.cancel()
+	if res.mega=="update lyrics" and res.dat=="" then t_error("No lyrics given.",true)
 	else
 	res.dat=res.dat.."\n"
 	  for dataline in res.dat:gmatch("(.-)\n") do
@@ -82,7 +79,7 @@ function important(subs,sel,act)
 	    songtype=res.mega:match("import (%a+)")
 	    if songtype=="sign" then songtype=signame end
 	    file=io.open(path..songtype..".ass")
-	    if file==nil then aegisub.dialog.display({{x=0,y=0,width=1,height=1,class="label",label=path..songtype..".ass\nNo such file."}},{"ok"},{cancel='ok'}) aegisub.cancel() end
+	    if file==nil then t_error(path..songtype..".ass\nNo such file.",true) end
 	    song=file:read("*all")
 	    io.close(file)
 	    
@@ -198,7 +195,7 @@ function important(subs,sel,act)
 	    for x, i in ipairs(sel) do
             line=subs[i]
             text=line.text
-	    if line.effect=="" then aegisub.dialog.display({{class="label",label="Effect must contain name."}},{"OK"},{close='OK'}) aegisub.cancel() end
+	    if line.effect=="" then t_error("Effect must contain name.",true) end
 	    if x==1 then snam=line.effect end
 	    exportsign=exportsign..line.raw.."\n"
 	    end
@@ -268,10 +265,7 @@ function numbers(subs,sel)
 	if sub3:match("%[") then numcycle=tonumber(sub3:match("%[(%d+)%]")) else numcycle=0 end
 	if sub3=="" then startn=1 end
 	startn=tonumber(startn)
-	if startn==nil or numcycle>0 and startn>numcycle then
-	    aegisub.dialog.display({{class="label",label="Wrong parameters."}},{"OK"},{close='OK'}) 
-	    aegisub.cancel() 
-	end
+	if startn==nil or numcycle>0 and startn>numcycle then t_error("Wrong parameters.",true) end
 	
     for i=1,#sel do
         line=subs[sel[i]]
@@ -309,9 +303,7 @@ end
 
 --	CHAPTERS	-------------------------------------------------------------------------------------
 function chopters(subs,sel)
-  if res.marker=="effect" and res.nam=="effect" then 
-	aegisub.dialog.display({{class="label",label="Error. Both marker and name cannot be 'effect'."}},{"OK"},{close='OK'}) aegisub.cancel() 
-  end
+  if res.marker=="effect" and res.nam=="effect" then t_error("Error. Both marker and name cannot be 'effect'.",true) end
   if res.chmark then
     if res.lang~="" then kap=res.lang else kap=res.chap end
     for x, i in ipairs(sel) do
@@ -611,24 +603,28 @@ function stuff(subs,sel)
     
     -- Clone Clip GUI --
     if res.stuff=="clone clip" then
-	if clone_h~=nil then cchc=clone_h else cchc=1 end
-	if clone_v~=nil then ccvc=clone_v else ccvc=1 end
-	if dist_h~=nil then cchd=dist_h else cchd=0 end
-	if dist_v~=nil then ccvd=dist_v else ccvd=0 end
+	if clone_h then cchc=clone_h else cchc=2 end
+	if clone_v then ccvc=clone_v else ccvc=2 end
+	if dist_h then cchd=dist_h else cchd=20 end
+	if dist_v then ccvd=dist_v else ccvd=20 end
+	if ccshift then ccsh=ccshift else ccsh=0 end
 	ccgui={
 	  {x=0,y=0,class="label",label="Horizontal distance:  "},
-	  {x=1,y=0,class="floatedit",name="hdist",value=cchd},
+	  {x=1,y=0,class="intedit",name="hdist",value=cchd,min=1},
 	  {x=0,y=1,class="label",label="Horizontal clones:  "},
-	  {x=1,y=1,class="floatedit",name="hclone",value=cchc,step=1,min=1},
+	  {x=1,y=1,class="intedit",name="hclone",value=cchc,min=1},
 	  {x=0,y=2,class="label",label="Vertical distance:  "},
-	  {x=1,y=2,class="floatedit",name="vdist",value=ccvd},
+	  {x=1,y=2,class="intedit",name="vdist",value=ccvd,min=1},
 	  {x=0,y=3,class="label",label="Vertical clones:  "},
-	  {x=1,y=3,class="floatedit",name="vclone",value=ccvc,step=1,min=1},
+	  {x=1,y=3,class="intedit",name="vclone",value=ccvc,min=1},
+	  {x=0,y=4,class="label",label="Shift even rows by:"},
+	  {x=1,y=4,class="intedit",name="ccshift",value=ccsh,min=0},
 	}
 	pres,rez=aegisub.dialog.display(ccgui,{"OK","Cancel"},{ok='OK',close='Cancel'})
 	if pres=="Cancel" then aegisub.cancel() end
 	clone_h=rez.hclone	dist_h=rez.hdist
 	clone_v=rez.vclone	dist_v=rez.vdist
+	ccshift=rez.ccshift
     end
     
     -- DISSOLVE GUI ---------------------------------------------------------------------------------------------
@@ -670,7 +666,7 @@ function stuff(subs,sel)
 	if v2d=="from left" then dir=4 end
 	if v2d=="from right" then dir=6 end
 	if not otherdis and v_dist==4 then
-	  aegisub.dialog.display({{class="label",label="Distance 4 is only allowed for square mod. Changing to 6."}},{"OK"},{close='OK'})
+	  t_error("Distance 4 is only allowed for square mod. Changing to 6.")
 	  v_dist=6
 	end
 	if otherdis then
@@ -689,10 +685,7 @@ function stuff(subs,sel)
 	    start=rine.start_time	    endt=rine.end_time
 	    startf=ms2fr(start)		    endf=ms2fr(endt)
 	    lframes=ms2fr(endt-start)
-	      if lframes<linez then
-		aegisub.dialog.display({{class="label",label="Line must be at least "..linez.." frames long."}},
-		{"OK"},{close='OK'})		aegisub.cancel()
-	      end
+	      if lframes<linez then t_error("Line must be at least "..linez.." frames long.",true) end
 	    if disin then
 	      for l=1,linez do
 		rine.start_time=fr2ms(startf+l-1)
@@ -847,6 +840,16 @@ function stuff(subs,sel)
     -- DISSOLVE END --------------------------------------------------------------------
     end
     
+    if res.stuff=="time by frames" then frs=res.rep1:match("%-?%d+") or 0 fre=res.rep2:match("%-?%d+") or 0
+	rine=subs[sel[1]]
+	fstart=ms2fr(rine.start_time)
+	fendt=ms2fr(rine.end_time)
+	rine.start_time=fr2ms(fstart)
+	rine.end_time=fr2ms(fendt)
+	subs[sel[1]]=rine
+	if frs==0 and fre==0 then t_error("Use Left/Right to input \nnumber of frames \nto shift by for start/end.",true) end
+    end
+    
     if res.stuff:match("replacer") then table.sort(sel,function(a,b) return a>b end) end
     
     -- LINES START HERE ----------------------------------------------------------------------
@@ -961,7 +964,7 @@ function stuff(subs,sel)
 	
 	if res.stuff=="add comment line by line" then
 		kom=data[i] 
-		if kom~=nil then text=text.."{"..kom.."}" end
+		if kom then text=text.."{"..kom.."}" end
 	end
 	
 	if res.stuff=="make comments visible" then
@@ -982,15 +985,11 @@ function stuff(subs,sel)
 	end
 	
 	if res.stuff=="reverse text" then
-	    tags=text:match("^{\\[^}]-}") if tags==nil then tags="" end
-	    text=text:gsub("{[^}]-}","")
-	    nt=""
-	    for l in text:gmatch(".") do nt=l..nt end
-	    text=tags..nt
+	    text=(text:match("^{\\[^}]-}") or "")..text.reverse(text:gsub("{[^}]-}",""))
 	end
 	
 	if res.stuff=="reverse words" then
-	    tags=text:match("^{\\[^}]-}") if tags==nil then tags="" end
+	    tags=(text:match("^{\\[^}]-}") or "")
 	    text=text:gsub("{[^}]-}","")
 	    nt=""
 	    for l in text:gmatch("[^%s]+") do nt=" "..l..nt end
@@ -1002,22 +1001,14 @@ function stuff(subs,sel)
 	if res.stuff=="reverse transforms" then
 	    styleref=stylechk(subs,line.style)
 	    text=text:gsub("\\1c","\\c")
-	    tags=text:match("^{\\[^}]-}") if tags==nil then tags="" end
+	    tags=(text:match("^{\\[^}]-}") or "")
 	    text=text:gsub("^{[^}]-}","")
 	    tags=cleantr(tags)
 	    tags=duplikill(tags)
 	    tags=tags:gsub("\\fs(%d)","\\fsize%1")
-	    notrans=tags:gsub("(\\t%([^%(%)]+%))","") :gsub("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","")
-	    for tr in tags:gmatch("\\t%((([^%(%)]+))%)") do
-		for tag in tr:gmatch("\\[1234]?%a+") do
-		    if not notrans:match(tag) then
-			tags=fill_in(tags,tag)
-		    end
-		    tags=tags:gsub(tag.."([^\\}]+)([^}]-)"..tag.."([^\\}%)]+)",tag.."%3%2"..tag.."%1")
-		end
-	    end
-	    for tr in tags:gmatch("\\t%(([^%(%)]-%([^%)]-%)[^%)]-)%)") do
-		tr=tr:gsub("\\i?clip%([^%)]+%)","")
+	    notrans=tags:gsub("\\t%b()","")
+	    for tr in tags:gmatch("\\t%b()") do
+		tr=tr:gsub("\\i?clip%([^%)]+%)","") :gsub("\\t%(","") :gsub("%)$","")
 		for tag in tr:gmatch("\\[1234]?%a+") do
 		    if not notrans:match(tag) then
 			tags=fill_in(tags,tag)
@@ -1031,7 +1022,7 @@ function stuff(subs,sel)
 	end
 	
 	if res.stuff=="fake capitals" then
-	    tags=text:match("^{\\[^}]-}") if tags==nil then tags="" end
+	    tags=(text:match("^{\\[^}]-}") or "")
 	    text=text:gsub("^{\\[^}]-}","")
 		:gsub("(%u)","{\\fs"..sub1.."}%1{\\fs}")
 		:gsub("{\\fs}(%p?){\\fs%d+}","{\\fs}%1")
@@ -1092,7 +1083,7 @@ function stuff(subs,sel)
 	-- SPLIT and EXPLODE -------------------------------------------
 	if res.stuff=="split into letters" or res.stuff=="explode" then
 	    l2=line
-	    tags=text:match("^{\\[^}]-}") if tags==nil then tags="" end
+	    tags=(text:match("^{\\[^}]-}") or "")
 	    vis=text:gsub("{[^}]-}","")
 	    af="{\\alpha&HFF&}"
 	    a0="{\\alpha&H00&}"
@@ -1198,7 +1189,8 @@ function stuff(subs,sel)
 	    end
 	    fullclip=h_clip
 	    for v=1,clone_v-1 do
-		vc=h_clip:gsub("([%d%-]+) ([%d%-]+)",function(a,b) return a.." "..b+dist_v*v end)
+		if v%2==1 then offset=ccshift else offset=0 end
+		vc=h_clip:gsub("([%d%-]+) ([%d%-]+)",function(a,b) return a+offset.." "..b+dist_v*v end)
 		fullclip=fullclip..vc
 	    end
 	    fullclip=fullclip:gsub(" $","")
@@ -1350,6 +1342,11 @@ function stuff(subs,sel)
 	    end
 	end
 	
+	if res.stuff=="time by frames" and i>1 then
+	    line.start_time=fr2ms(fstart+(i-1)*frs)
+	    line.end_time=fr2ms(fendt+(i-1)*fre)
+	end
+	
 	line.text=text
 	subs[sel[i]]=line
 	if res.stuff=="split into letters" or res.stuff=="explode" and not rez.excom then subs.delete(sel[i]) table.remove(sel,#sel) end
@@ -1428,23 +1425,23 @@ end
 function alfashift(subs,sel)
     count=1
     for x, i in ipairs(sel) do
-        local line=subs[i]
-	local text=line.text
-	if not text:match("{\\alpha&HFF&}[%w%p]") then aegisub.dialog.display({{class="label",
-		label="Line "..x.." does not \nappear to have alpha FF",x=0,y=0,width=1,height=2}},{"OK"}) aegisub.cancel() end
-	    if count>1 then
-		switch=1
-		repeat 
-		text=text:gsub("({\\alpha&HFF&})([%w%p])","%2%1")
-		text=text:gsub("({\\alpha&HFF&})(%s)","%2%1")
-		text=text:gsub("({\\alpha&HFF&})(\\N)","%2%1")
-		text=text:gsub("({\\alpha&HFF&})$","")
-		switch=switch+1
-		until switch>=count
-	    end
-	count=count+1
-	line.text=text
-        subs[i]=line
+    line=subs[i]
+    text=line.text
+    if not text:match("{\\alpha&HFF&}[%w%p]") then t_error("Line "..x.." does not \nappear to have \n\\alpha&&HFF&&",true) end
+    if count>1 then
+	switch=1
+	repeat 
+	text=text
+	:gsub("({\\alpha&HFF&})([%w%p])","%2%1")
+	:gsub("({\\alpha&HFF&})(%s)","%2%1")
+	:gsub("({\\alpha&HFF&})(\\N)","%2%1")
+	:gsub("({\\alpha&HFF&})$","")
+	switch=switch+1
+	until switch>=count
+    end
+    count=count+1
+    line.text=text
+    subs[i]=line
     end
 end
 
@@ -1468,7 +1465,7 @@ function merge(subs,sel)
 	    table.insert(tk,ltrmatches[l].str)
 	  end
 	end
-	if vis~=rt then aegisub.dialog.display({{class="label",label="Error. Inconsistent text."}},{"OK"},{close='OK'}) aegisub.cancel() end
+	if vis~=rt then t_error("Error. Inconsistent text.",true) end
 	stags=text:match("^{(\\[^}]-)}")
 	if stags~=nil then stg=stg..stags stg=duplikill(stg) end
 	text=text:gsub("^{\\[^}]-}","") :gsub("{[^\\}]-}","")
@@ -1601,6 +1598,7 @@ function framerate(subs)
     end
 end
 
+--	reanimatools 	--
 function string2line(str)
 	local ltype,layer,s_time,e_time,style,actor,margl,margr,margv,eff,txt=str:match("(%a+): (%d+),([^,]-),([^,]-),([^,]-),([^,]-),([^,]-),([^,]-),([^,]-),([^,]-),(.*)")
 	l2={}
@@ -1641,12 +1639,8 @@ end
 
 function duplikill(tagz)
 	tf=""
-	if tagz:match("\\t") then 
-	    for t in tagz:gmatch("(\\t%([^%(%)]-%))") do tf=tf..t end
-	    for t in tagz:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","") do tf=tf..t end
-	    tagz=tagz:gsub("\\t%([^%(%)]+%)","")
-	    tagz=tagz:gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","")
-	end
+	for t in tagz:gmatch("\\t%b()") do tf=tf..t end
+	tagz=tagz:gsub("\\t%b()","")
 	tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
 	for i=1,#tags1 do
 	    tag=tags1[i]
@@ -1658,25 +1652,22 @@ function duplikill(tagz)
 	    tag=tags2[i]
 	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1")
 	end
-	tagz=tagz:gsub("(\\pos%([^%)]+%))([^}]-)(\\pos%([^%)]+%))","%1%2")
 	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf.."}")
 	return tagz
 end
 
 function cleantr(tags)
 	trnsfrm=""
-	for t in tags:gmatch("(\\t%([^%(%)]-%))") do trnsfrm=trnsfrm..t end
-	for t in tags:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))") do trnsfrm=trnsfrm..t end
-	tags=tags:gsub("(\\t%([^%(%)]+%))","")
-	tags=tags:gsub("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","")
-	tags=tags:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}")
+	for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
+	tags=tags:gsub("\\t%b()","")
 
 	cleant=""
-	for ct in tags:gmatch("\\t%((\\[^%(%)]-)%)") do cleant=cleant..ct end
-	for ct in tags:gmatch("\\t%((\\[^%(%)]-%([^%)]-%)[^%)]-)%)") do cleant=cleant..ct end
-	tags=tags:gsub("(\\t%(\\[^%(%)]+%))","")
-	tags=tags:gsub("(\\t%(\\[^%(%)]-%([^%)]-%)[^%)]-%))","")
-	if cleant~="" then tags=tags:gsub("^({\\[^}]*)}","%1\\t("..cleant..")}") end
+	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-)%)") do cleant=cleant..ct end
+	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-%b()[^%)]-)%)") do cleant=cleant..ct end
+	trnsfrm=trnsfrm:gsub("\\t%(\\[^%(%)]+%)","")
+	trnsfrm=trnsfrm:gsub("\\t%((\\[^%(%)]-%b()[^%)]-)%)","")
+	trnsfrm="\\t("..cleant..")"..trnsfrm
+	tags=tags:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}")
 	return tags
 end
 
@@ -1697,6 +1688,11 @@ function tohex1(num)
     elseif num==14 then num="E"
     end
 return num
+end
+
+function t_error(message,cancel)
+  aegisub.dialog.display({{class="label",label=message}},{"OK"},{close='OK'})
+  if cancel then aegisub.cancel() end
 end
 
 function stylechk(subs,stylename)
@@ -1750,6 +1746,9 @@ function progress(msg)
   aegisub.progress.title(msg)
 end
 
+function addtag(tag,text) text=text:gsub("^({\\[^}]-)}","%1"..tag.."}") return text end
+function round(num) num=math.floor(num+0.5) return num end
+function logg(m) return aegisub.log("\n "..m) end
 
 --	Config Stuff	--
 function saveconfig()
@@ -1939,15 +1938,237 @@ function info(subs,sel,act)
     infodump=nfo.."Styles used: "..#styletab.."\nDialogue lines: "..dc..", Selected: "..#sel.."\nCombined length of selected lines: "..seldur.."s\nSelection duration: "..(E-S)/1000 .."s\n\n"..aktif
 end
 
-help_i="- IMPORT/EXPORT -\n\nThis allows you to import OP/ED or signs (or whatever) from an external .ass file.\nOP/ED must be saved as OP.ass and ED.ass; a sign can have any name.\nThe .ass file may contain headers, or it can be just the dialogue lines.\nThe imported stuff will be shifted to your currently selected line (or the first one in your selection).\nThe first line of the saved file works as a reference point, so use a \"First frame of OP\" line etc.\n(You can save your OP/ED shifted to 0 or you can just leave it as is; the times will be recalculated to start at the current line.)\n\"keep line\" will keep your current line and comment it. Otherwise the line gets deleted (you can change it in settings).\n\nIMPORT SIGN / IMPORT SIGNS - works like OP/ED, but you have to input the sign's name.\nThe difference between the two is:\nSIGN - each sign must be saved in its own .ass file. \nIn the GUI, input the sign's/file's name, for example \"eptitle\"[.ass].\nSIGNS - all signs must be saved in signs.ass. \nThey are distinguished by what's in the \"effect\" field - that's the sign's name.\nFor SIGN, make something like eptitle.ass, eyecatch.ass;\nfor SIGNS, put \"eptitle\" or \"eyecatch\" in the effect field, and put all the signs in signs.ass.\n(You can have blank lines between signs for clarity. The script can deal with those.)\nThe GUI will then show you a list of signs that it gets from the effect fields.\nI recommend using SIGNS, as it's imo more efficient (but SIGN was written first and I didn't nuke it).\n\nOptions:\nWith nothing checked, stuff is shifted to the first frame of your active line (like OP/ED).\n(SIGN) File name: \"custom\" will use what you type below. The other ones are presets.\n\"keep current line's times\" - all imported lines will have the start/end time of your active line\n\"keep current line's text\" - all imported lines will have their text (not tags) replaced with your active line's text\n   - If you want to replace only some lines and keep others, like masks, put 'x' in actor field of the mask.\n\"combine tags (current overrides)\" - tags from current + imported line get combined (current overrides imported)\n\"combine tags (imported overrides)\" - same as above, but imported overrides current\n   - Both of these will also be ignored for imported lines that have \"x\" in actor field.\n\"don't shift times\" - times of imported lines will be kept as they were saved\n\"delete original line\" - this overrides the \"keep line\" option in the main menu. \n(I thought it would be convenient to have it here.)\n\nEXPORT SIGN - Saves the selected sign(s) either to 'signs.ass' or to a new file.\nEffect field must contain the signs' names.\n\nYou can use relative or absolute paths. (Check the settings below.)\nDefault is the script's folder. If you want the default to be one folder up, use \"..\\\".\nYou can use an absolute path, have one huge signs.ass there, \nand have all the signs marked \"show_name-sign_name\" in the effect field.\n\n"
+help_i=[[
+- IMPORT/EXPORT -
 
-help_u="UPDATE LYRICS\n\nThis is probably the most complicated part, but if your songs have some massive styling with layers and mocha tracking,\nthis will make updating lyrics, which would otherwise be a pain in the ass, really easy.\nThe only styling that will prevent this from working is inline tags - gradient by character etc.\n\nThe prerequisite here is that your OP/ED MUST have NUMBERED lines! (See NUMBERS section - might be good to read that first.)\nThe numbers must correspond to the verses, not to lines in the script.\nIf line 1 of the SONG is mocha-tracked over 200 frames, all of those frames must be numbered 01.\nIt is thus most convenient to number the lines before you start styling, when it's still simple.\n\nHow this works:\nPaste your updated lyrics into the large, top-left area of the GUI.\nUse the Left and Right fields to set the markers to detect the right lines.\nWithout markers it will just look for numbers.\nIf your OP lines are numbered with \"OP01eng\", you must set \"OP\" under Left and \"eng\" under Right.\nFor now, everything is case-sensitive (I might change that later if it gets really annoying and pointless).\nYou must also correctly set the actor/effect choice in the bottom-right part of the GUI.\nIf you pasted lyrics, selected \"update lyrics\", and set markers and actor/effect, then hit Import, and lyrics will be updated.\n\nHow it works - example: The lyrics you pasted in the data box get their lines assigned with numbers from 1 to whatever.\nLet's say your markers are \"OP01eng\" and you're using the effect field.\nThe script looks for lines with that pattern in the effect field.\nWhen it finds one, it reads the number (for example \"01\" from \"OP01eng\")\nand replaces the line's text (skipping tags) with line 1 from the pasted lyrics.\nFor every line marked \"OP##eng\" it replaces the current lyrics with line ## from your pasted updated lyrics.\n\nTo make sure this doesn't fuck up tremendously, it shows you a log with all replacements at the end.\n\nThat's pretty much all you really need to know for updating lyrics, but there are a few more things.\n\nIf the script doesn't find any lines that match the markers, it gives you a message like this:\n\"The effect field of selected lines doesn't match given pattern...\"\nThis means the lines either don't exist in your selection, or you probably forgot to set the markers.\n\n\"style restriction\" is an extra option that lets you limit the replacing to lines whose style contains given pattern.\nLet's give some examples:\nYou check the restriction and type \"OP\" in the field below.\nYou can now select the whole script instead of selecting only the OP lines, and only lines with \"OP\" in style will be updated.\nYou may have the ED numbered the same way, but the \"OP\" restriction will ignore it.\nThis can be also useful if you have lines numbered just 01, 02 etc., and you have english and romaji, all mixed together.\nIf your styles are OP-jap and OP-eng, you can type \"jap\" in the restriction field if you're updating romaji\nto make sure the script doesn't update the english lines as well (replacing them with romaji).\nIt is, however, recommended to just use different markers, like j01 / e01.\n"
+This allows you to import OP/ED or signs (or whatever) from an external .ass file.
+OP/ED must be saved as OP.ass and ED.ass; a sign can have any name.
+The .ass file may contain headers, or it can be just the dialogue lines.
+The imported stuff will be shifted to your currently selected line (or the first one in your selection).
+The first line of the saved file works as a reference point, so use a "First frame of OP" line etc.
+(You can save your OP/ED shifted to 0 or you can just leave it as is;
+   the times will be recalculated to start at the current line.)
+"keep line" will keep your current line and comment it. Otherwise the line gets deleted.
 
-help_c="- CHAPTERS -\n\nThis will generate chapters from the .ass file\n\nMARKER: For a line to be used for chapters, it has to be marked with \"chapter\"/\"chptr\"/\"chap\" in actor/effect field (depending on settings) or the same 3 options as a separate comment, ie. {chapter} etc.\n\nCHAPTER NAME: What will be used as chapter name. It's either the content of the effect field, or the line's FIRST comment. If the comment is {OP first frame} or {ED start}, the script will remove \" first frame\" or \" start\", so you can keep those.\n\nIf you use default settings, just put \"chapter\" in actor field and make comments like {OP} or {Part A}.\n\nSubchapters: You can make subchapters like this {Part A::Scene 5}. This will be a subchapter of \"Part A\" called \"Scene 5\".\n\nIf you want a different LANGUAGE than 'eng', set it in the textbox below \"chapter mark\"\n\nCHAPTER MARK: Sets the selected chapter for selected line(s). Uses marker and name. (Doesn't create xml.)\nIf you want a custom chapter name, type it in the textbox below this."
+IMPORT SIGN / IMPORT SIGNS - works like OP/ED, but you have to input the sign's name.
+The difference between the two is:\nSIGN - each sign must be saved in its own .ass file.
+In the GUI, input the sign's/file's name, for example "eptitle"[.ass].
+SIGNS - all signs must be saved in signs.ass.
+They are distinguished by what's in the "effect" field - that's the sign's name.
+For SIGN, make something like eptitle.ass, eyecatch.ass;
+for SIGNS, put "eptitle" or "eyecatch" in the effect field, and put all the signs in signs.ass.
+(You can have blank lines between signs for clarity. The script can deal with those.)
+The GUI will then show you a list of signs that it gets from the effect fields.
+I recommend using SIGNS, as it's imo more efficient (but SIGN was written first and I didn't nuke it).
 
-help_n="- NUMBERS -\n\nThis is a tool to number lines and add various markers to actor/effect fields.\nThe dropdown with \"01\" lets you choose how many leading zeros you want.\nThe Left and Right fields will add stuff to the numbers. If Left is \"x\" and Right is \"yz\", the first marker will be \"x01yz\".\nWhat makes this function much more versatile is the \"Mod\" field.\nIf you put in one number, then that's the number from which the numbering will start, so \"5\" -> 5, 6, 7, etc.\nYou can, however, use a comma or slash to modify the numbering some more.\n\"8,3\" or \"8/3\" will start numbering from 8, repeating each number 3 times, so 8, 8, 8, 9, 9, 9, 10, 10, 10, etc.\nThis allows you to easily number lines that are typeset in layers etc.\nAdditionally, you can set a limit in [], for example 1/3[2], which will start from 1, use each number 3 times,\nand only go up to 2 and then start again, so: 1 1 1 2 2 2 1 1 1 2 2 2\n2/3[4] would give you 2 2 2 3 3 3 4 4 4 2 2 2 3 3 3 4 4 4 ...\n\n\"add to marker\" uses the Left and Right fields to add stuff to the current content of actor/effect/text.\nIf you number lines for the OP, you can set \"OP-\" in Left and \"-eng\" in Right to get \"OP-01-eng\".\n(Mod does nothing when adding markers.)"
+Options:\nWith nothing checked, stuff is shifted to the first frame of your active line (like OP/ED).
+(SIGN) File name: "custom" will use what you type below. The other ones are presets.
+"keep current line's times" - all imported lines will have the start/end time of your active line
+"keep current line's text" - all imported lines will have their text (not tags) replaced with your active line's text
+   - If you want to replace only some lines and keep others, like masks, put 'x' in actor field of the mask.
+"combine tags (current overrides)" - tags from current + imported line get combined (current overrides imported)
+"combine tags (imported overrides)" - same as above, but imported overrides current
+   - Both of these will also be ignored for imported lines that have "x" in actor field.
+"don't shift times" - times of imported lines will be kept as they were saved
+"delete original line" - this overrides the "keep line" option in the main menu.
+(I thought it would be convenient to have it here.)
 
-help_d="- DO STUFF -\n\n- Save/Load -\nYou can use this to save for example bits of text you need to paste frequently (like a multi-clipboard).\nPaste text in the data area to save it. If the data area is empty, the function will load your saved texts.\n\n- Lua Replacer -\nUse \"Left\" and \"Right\" for a lua regexp replace function.\n\n- Perl Replacer -\nUse \"Left\" and \"Right\" for a perl regexp replace function.\n\n- Lua Calc -\nUse \"Left\" and \"Right\" with lua regexp to perform calculations on captured numbers.\nCaptures will be named a, b, c... up to p (16 captures max).\nFunctions are +, -, *, /, and round(a), which rounds the number captured in a.\n> Example: (%d)(%d)(%d) -> a+1b*2c-3\nThis will match 3-digit patterns, add 1 to first digit, multiply the second by 2, and subtract 3 from the 3rd.\nIf you want to leave one of the captures as is, use .. to separate it from other letters: a+1b..c-3 \n> Example: pos%(([%d%.]+),([%d%.]+) -> pos(a+50,b-100\nThis will shift position right by 50 and up by 100. \n\n- Jump to Next -\nThis is meant to get you to the \"next sign\" in the subtitle grid.\nWhen mocha-tracking 1000+ lines, it can be a pain in the ass to find where one sign ends and another begins.\nSelect lines that belong to the current \"sign\", ie. different layers/masks/texts.\nThe script will search for the first line in the grid that doesn't match any of the selected ones, based on the \"Marker\".\n\n- Alpha Shift -\nShifts {\\alpha&HFF&} by one letter for each line. Text thus appears letter by letter.\nIt's an alternative to the script that spawns \\ko, but this works with shadow too.\nDuplicate a line with {\\alpha&HFF&} however many times you need and run the script on the whole selection.\n\n- Merge Inline Tags -\nSelect lines with the same text but different tags, and they will be merged into one line with tags from all of them. For example:\n{\\bord2}AB{\\shad3}C\nA{\\fs55}BC\n-> {\\bord2}A{\\fs55}B{\\shad3}C\n\n- Add Comment -\nText that you type here in this box will be added as a {comment} at the end of selected lines.\n\n- Make Comments Visible -\nNukes { } from comments, thus making them part of the text visible on screen.\n\n- Switch Commented/Visible -\nComments out what's visible and makes visible what's commented. Allows switching between two texts.\n\n- Reverse Text -\nReverses text (character by character). Nukes comments and inline tags.\n\n- Reverse Words -\nReverses text (word by word). Nukes comments and inline tags.\n\n- Reverse Transforms -\n\\blur1\\t(\\blur3) becomes \\blur3\\t(\\blur1). Only for initial tags. Only one transform for each tag.\n\n- Fake Capitals -\nCreates fake capitals by increasing font size for first letters.\nWith all caps, for first letters of words. With mixed text, for uppercase letters.\nSet the \\fs for the capitals in the Left field.\nLooks like this: {\\fs60}F{\\fs}AKE {\\fs60}C{\\fs}APITALS\n\n- Format Dates -\nFormats dates to one of 4 options. Has its own GUI. Only converts from the other 3 options in the GUI.\n\n- Split into Letters -\nMakes a line for each letter, making the other letters invisible with alpha.\nThis lets you do things with each letter separately.\n\n- Explode -\nThis splits the line into letters and makes each of them move in a different direction and fade out.\n\n- Dissolve Text -\nVarious modes of dissolving text. Has its own Help.\n\n- Randomized Transforms -\nVarious modes of randomly transforming text. Has its own Help.\n\n- Clone Clip -\nClones/replicates a clip you draw.\nSet how many rows/columns and distances between them, and you can make large patterns.\n\n- Honorificslaughterhouse -\nComments out honorifics.\n\n- Convert Framerate -\nConverts framerate from a to b where a is the input from \"Left\" and b is input from \"Right\".\n"
+EXPORT SIGN - Saves the selected sign(s) either to 'signs.ass' or to a new file.
+Effect field must contain the signs' names.
+
+You can use relative or absolute paths. (Check the settings below.)
+Default is the script's folder. If you want the default to be one folder up, use "..\".
+You can use an absolute path, have one huge signs.ass there,
+and have all the signs marked "show_name-sign_name" in the effect field.\n\n]]
+
+help_u=[[
+UPDATE LYRICS
+
+This is probably the most complicated part, but if your songs have some massive styling with layers + tracking,
+this will make updating lyrics, which would otherwise be a pain in the ass, really easy.
+The only styling that will prevent this from working is inline tags - gradient by character etc.
+
+The prerequisite here is that your OP/ED MUST have NUMBERED lines!
+(See NUMBERS section - might be good to read that first.)
+The numbers must correspond to the verses, not to lines in the script.
+If line 1 of the SONG is mocha-tracked over 200 frames, all of those frames must be numbered 01.
+It is thus most convenient to number the lines before you start styling, when it's still simple.
+
+How this works:
+Paste your updated lyrics into the large, top-left area of the GUI.
+Use the Left and Right fields to set the markers to detect the right lines.
+Without markers it will just look for numbers.
+If your OP lines are numbered with "OP01eng", you must set "OP" under Left and "eng" under Right.
+For now, everything is case-sensitive (I might change that later if it gets really annoying and pointless).
+You must also correctly set the actor/effect choice in the bottom-right part of the GUI.
+If you pasted lyrics, selected "update lyrics", and set markers and actor/effect.
+Then hit Import, and lyrics will be updated.
+
+How it works - example:
+The lyrics you pasted in the data box get their lines assigned with numbers from 1 to whatever.
+Let's say your markers are "OP01eng" and you're using the effect field.
+The script looks for lines with that pattern in the effect field.
+When it finds one, it reads the number (for example "01" from "OP01eng")
+and replaces the line's text (skipping tags) with line 1 from the pasted lyrics.
+For every line marked "OP##eng" it replaces the current lyrics with line ## from your pasted updated lyrics.
+
+To make sure this doesn't fuck up tremendously, it shows you a log with all replacements at the end.
+
+That's pretty much all you really need to know for updating lyrics, but there are a few more things.
+
+If the script doesn't find any lines that match the markers, it gives you a message like this:
+"The effect field of selected lines doesn't match given pattern..."
+This means the lines either don't exist in your selection, or you probably forgot to set the markers.
+
+"style restriction" is an extra option that lets you limit the replacing to lines whose style contains given pattern.
+Let's give some examples:
+You check the restriction and type "OP" in the field below.
+You can now select the whole script instead of selecting only the OP lines,
+and only lines with "OP" in style will be updated.
+You may have the ED numbered the same way, but the "OP" restriction will ignore it.
+This can be also useful if you have lines numbered just 01, 02 etc.,
+and you have english and romaji, all mixed together.
+If your styles are OP-jap and OP-eng, you can type "jap" in the restriction field if you're updating romaji
+to make sure the script doesn't update the english lines as well (replacing them with romaji).
+It is, however, recommended to just use different markers, like j01 / e01.]]
+
+help_c=[[
+- CHAPTERS -
+
+This will generate chapters from the .ass file
+
+MARKER: For a line to be used for chapters, it has to be marked with "chapter"/"chptr"/"chap"
+in actor/effect field (depending on settings) or the same 3 options as a separate comment, ie. {chapter} etc.
+
+CHAPTER NAME: What will be used as chapter name.
+It's either the content of the effect field, or the line's FIRST comment.
+If the comment is {OP first frame} or {ED start}, the script will remove " first frame" or " start",
+so you can keep those.
+
+If you use default settings, just put "chapter" in actor field and make comments like {OP} or {Part A}.
+
+Subchapters: You can make subchapters like this {Part A::Scene 5}.
+This will be a subchapter of "Part A" called "Scene 5".
+
+If you want a different LANGUAGE than 'eng', set it in the textbox below "chapter mark"
+
+CHAPTER MARK: Sets the selected chapter for selected line(s). Uses marker and name. (Doesn't create xml.)
+If you want a custom chapter name, type it in the textbox below this.]]
+
+help_n=[[
+- NUMBERS -
+
+This is a tool to number lines and add various markers to actor/effect fields.
+The dropdown with "01" lets you choose how many leading zeros you want.
+The Left and Right fields will add stuff to the numbers. If Left is "x" and Right is "yz",
+the first marker will be "x01yz".
+What makes this function much more versatile is the "Mod" field.
+If you put in one number, then that's the number from which the numbering will start, so "5" -> 5, 6, 7, etc.
+You can, however, use a comma or slash to modify the numbering some more.
+"8,3" or "8/3" will start numbering from 8, repeating each number 3 times, so 8, 8, 8, 9, 9, 9, 10, 10, 10, etc.
+This allows you to easily number lines that are typeset in layers etc.
+Additionally, you can set a limit in [], for example 1/3[2], which will start from 1, use each number 3 times,
+and only go up to 2 and then start again, so: 1 1 1 2 2 2 1 1 1 2 2 2
+2/3[4] would give you 2 2 2 3 3 3 4 4 4 2 2 2 3 3 3 4 4 4 ...
+
+"add to marker" uses the Left and Right fields to add stuff to the current content of actor/effect/text.
+If you number lines for the OP, you can set "OP-" in Left and "-eng" in Right to get "OP-01-eng".
+(Mod does nothing when adding markers.)]]
+
+help_d=[[
+- DO STUFF -
+
+- Save/Load -
+You can use this to save for example bits of text you need to paste frequently (like a multi-clipboard).
+Paste text in the data area to save it. If the data area is empty, the function will load your saved texts.
+
+- Lua Replacer -
+Use "Left" and "Right" for a lua regexp replace function.
+
+- Perl Replacer -
+Use "Left" and "Right" for a perl regexp replace function.
+
+- Lua Calc -
+Use "Left" and "Right" with lua regexp to perform calculations on captured numbers.
+Captures will be named a, b, c... up to p (16 captures max).
+Functions are +, -, *, /, and round(a), which rounds the number captured in a.
+> Example: (%d)(%d)(%d) -> a+1b*2c-3
+This will match 3-digit patterns, add 1 to first digit, multiply the second by 2, and subtract 3 from the 3rd.
+If you want to leave one of the captures as is, use .. to separate it from other letters: a+1b..c-3
+> Example: pos%(([%d%.]+),([%d%.]+) -> pos(a+50,b-100
+This will shift position right by 50 and up by 100.
+
+- Jump to Next -
+This is meant to get you to the "next sign" in the subtitle grid.
+When mocha-tracking 1000+ lines, it can be a pain in the ass to find where one sign ends and another begins.
+Select lines that belong to the current "sign", ie. different layers/masks/texts.
+The script will search for the first line in the grid that doesn't match any of the selected ones,
+based on the "Marker".
+
+- Alpha Shift -
+Shifts {\alpha&HFF&} by one letter for each line. Text thus appears letter by letter.
+It's an alternative to the script that spawns \ko, but this works with shadow too.
+Duplicate a line with {\alpha&HFF&} however many times you need and run the script on the whole selection.
+
+- Merge Inline Tags -
+Select lines with the same text but different tags,
+and they will be merged into one line with tags from all of them.
+For example:
+{\bord2}AB{\shad3}C\nA{\fs55}BC
+-> {\bord2}A{\fs55}B{\shad3}C
+
+- Add Comment -
+Text that you type here in this box will be added as a {comment} at the end of selected lines.
+
+- Make Comments Visible -
+Nukes { } from comments, thus making them part of the text visible on screen.
+
+- Switch Commented/Visible -
+Comments out what's visible and makes visible what's commented. Allows switching between two texts.
+
+- Reverse Text -
+Reverses text (character by character). Nukes comments and inline tags.
+
+- Reverse Words -
+Reverses text (word by word). Nukes comments and inline tags.
+
+- Reverse Transforms -
+\blur1\t(\blur3) becomes \blur3\t(\blur1). Only for initial tags. Only one transform for each tag.
+
+- Fake Capitals -
+Creates fake capitals by increasing font size for first letters.
+With all caps, for first letters of words. With mixed text, for uppercase letters.
+Set the \fs for the capitals in the Left field.
+Looks like this: {\fs60}F{\fs}AKE {\fs60}C{\fs}APITALS
+
+- Format Dates -
+Formats dates to one of 4 options. Has its own GUI. Only converts from the other 3 options in the GUI.
+
+- Split into Letters -
+Makes a line for each letter, making the other letters invisible with alpha.
+This lets you do things with each letter separately.
+
+- Explode -
+This splits the line into letters and makes each of them move in a different direction and fade out.
+
+- Dissolve Text -\nVarious modes of dissolving text. Has its own Help.
+
+- Randomized Transforms -
+Various modes of randomly transforming text. Has its own Help.
+
+- Clone Clip -
+Clones/replicates a clip you draw.
+Set how many rows/columns and distances between them, and you can make large patterns.
+
+- Time by Frames -
+Left = frames to shift start time by, each line (2 = each new line starts 2 frames later than previous)
+Right = frames to shift end time by, each line (4 = each new line ends 4 frames later than previous)
+
+- Honorificslaughterhouse -
+Comments out honorifics.
+
+- Convert Framerate -
+Converts framerate from a to b where a is the input from "Left" and b is input from "Right".]]
 
 
 
@@ -2000,7 +2221,7 @@ unconfig={
 	
 	-- stuff
 	{x=0,y=15,width=1,height=1,class="label",label="Stuff  "},
-	{x=1,y=15,width=2,height=1,class="dropdown",name="stuff",items={"save/load","lua replacer","perl replacer","lua calc","jump to next","alpha shift","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","reverse text","reverse words","reverse transforms","fake capitals","format dates","split into letters","explode","dissolve text","randomized transforms","clone clip","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"},value=dropstuff}, --dropstuff
+	{x=1,y=15,width=2,height=1,class="dropdown",name="stuff",items={"save/load","lua replacer","perl replacer","lua calc","jump to next","alpha shift","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","reverse text","reverse words","reverse transforms","fake capitals","format dates","split into letters","explode","dissolve text","randomized transforms","clone clip","time by frames","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"},value=dropstuff}, --dropstuff
 	{x=3,y=15,width=1,height=1,class="checkbox",name="log",label="log",value=logg,hint="replacers"},
 	{x=8,y=15,width=1,height=1,class="label",label="Marker:"},
 	
