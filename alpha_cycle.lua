@@ -3,7 +3,7 @@
 script_name="Alpha cycle"
 script_description="Add alpha tags to selected lines."
 script_author="unanimated"
-script_version="1.52"
+script_version="1.53"
 
 sequence={"FF","00","10","30","60","80","A0","C0","E0"}	-- you can modify this
 
@@ -15,10 +15,8 @@ function alpha(subs, sel)
 	    if text:match("^{\\[^}]-}") then
 	    tags,after=text:match("^({\\[^}]-})(.*)")
 		if tags:match("\\t") then 
-		    for t in tags:gmatch("(\\t%([^%(%)]-%))") do tf=tf..t end
-		    for t in tags:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","") do tf=tf..t end
-		    tags=tags:gsub("\\t%([^%(%)]+%)","")
-		    :gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","")
+		    for t in tags:gmatch("\\t%b()") do tf=tf..t end
+		    tags=tags:gsub("\\t%b()","")
 		    :gsub("{}","")
 		    text=tags..after
 		end
