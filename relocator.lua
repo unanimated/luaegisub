@@ -6,44 +6,38 @@ script_description="Makes things appear different from before"
 script_author="reanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/relocator.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/relocator.lua"
-script_version="2.9"
+script_version="3.0"
 
 include("utils.lua")
 re=require'aegisub.re'
 
-function warnopos()
-    aegisub.dialog.display({{class="label",label="Missing \\pos tag.",height=2}},{"OK"},{close='OK'}) aegisub.cancel()
-end
-
 function positron(subs,sel)
     ps=res.post
     shake={} shaker={}
-    if res.posi=="shadow layer" then table.sort(sel,function(a,b) return a>b end) end
+    count=0
+    if res.posi=="shadow layer" or res.posi=="space out letters" then table.sort(sel,function(a,b) return a>b end) end
     for x, i in ipairs(sel) do
-        aegisub.progress.title(string.format("Depositing line %d/%d",x,#sel))
+	progress("Depositing line: "..x.."/"..#sel)
 	line=subs[i]
 	text=line.text
 	
 	-- Align X
 	if res.posi=="Align X" then
-	    if x==1 and not text:match("\\pos") then warnopos() end
+	    if x==1 and not text:match("\\pos") then t_error("Missing \\pos tag.",true) end
 	    if x==1 and res.first then pxx=text:match("\\pos%(([%d%.%-]+),") ps=pxx end
 	    text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)%)","\\pos("..ps..",%2)")
 	end
 	
 	-- Align Y
 	if res.posi=="Align Y" then
-	    if x==1 and not text:match("\\pos") then warnopos() end
+	    if x==1 and not text:match("\\pos") then t_error("Missing \\pos tag.",true) end
 	    if x==1 and res.first then pyy=text:match("\\pos%([%d%.%-]+,([%d%.%-]+)") ps=pyy end
 	    text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)%)","\\pos(%1,"..ps..")")
 	end
 	
 	-- Mirrors
 	if res.posi:match"mirror" then
-	    if not text:match("\\pos") and not text:match("\\move") then 
-		aegisub.dialog.display({{class="label",label="Fail. Some lines are missing \\pos.",width=1,height=2}},{"OK"},{close='OK'})
-		aegisub.cancel() 
-	    end
+	    if not text:match("\\pos") and not text:match("\\move") then t_error("Fail. Some lines are missing \\pos.",true) end
 	    info(subs)
 	    if not text:match("^{[^}]-\\an%d") then sr=stylechk(subs,line.style) 
 		text=text:gsub("^","{\\an"..sr.align.."}") :gsub("({\\an%d)}{\\","%1\\")
@@ -77,11 +71,9 @@ function positron(subs,sel)
 	
 	-- org to fax
 	if res.posi=="org to fax" then
-	    if not text:match("\\pos") then warnopos() end
-	    if not text:match("\\org") then
-		aegisub.dialog.display({{class="label",label="Missing \\org.",width=1,height=2}},{"OK"},{close='OK'})
-		aegisub.cancel()
-	    end
+	    if text:match("\\move") then t_error("What's \\move doing there??",true) end
+	    if not text:match("\\pos") then text=getpos(subs,text) end
+	    if not text:match("\\org") then t_error("Missing \\org.",true) end
 	    pox,poy=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)")
 	    orx,ory=text:match("\\org%(([%d%.%-]+),([%d%.%-]+)")
 	    rota=text:match("\\frz([%d%.%-]+)")
@@ -101,10 +93,7 @@ function positron(subs,sel)
 	
 	-- clip to fax
 	if res.posi=="clip to fax" then
-	    if not text:match("\\clip") then
-		aegisub.dialog.display({{class="label",label="Missing \\clip.",width=1,height=2}},{"OK"},{close='OK'})
-		aegisub.cancel()
-	    end
+	    if not text:match("\\clip") then t_error("Missing \\clip.",true) end
 	    cx1,cy1,cx2,cy2,cx3,cy3,cx4,cy4=text:match("\\clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+)")
 	    if cx1==nil then cx1,cy1,cx2,cy2=text:match("\\clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+)") end
 	    rota=text:match("\\frz([%d%.%-]+)")
@@ -155,10 +144,7 @@ function positron(subs,sel)
 	
 	-- clip to frz
 	if res.posi=="clip to frz" then
-	    if not text:match("\\clip") then
-		aegisub.dialog.display({{class="label",label="Missing \\clip.",width=1,height=2}},{"OK"},{close='OK'})
-		aegisub.cancel()
-	    end
+	    if not text:match("\\clip") then t_error("Missing \\clip.",true) end
 	    cx1,cy1,cx2,cy2,cx3,cy3,cx4,cy4=text:match("\\clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+)")
 	    if cx1==nil then cx1,cy1,cx2,cy2=text:match("\\clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+)") end
 	    ad=cx2-cx1
@@ -175,6 +161,7 @@ function positron(subs,sel)
 		ang2=math.deg(math.atan(tang2))
 		rota2=round(ang2*100)/100
 		if ad2<0 then rota2=rota2-180 end
+	    else rota2=rota
 	    end
 	    rota3=(rota+rota2)/2
 	    
@@ -185,7 +172,8 @@ function positron(subs,sel)
 	
 	-- shake
 	if res.posi=="shake" then
-	    if not text:match("\\pos") then warnopos() end
+	    if text:match("\\move") then t_error("What's \\move doing there??",true) end
+	    if not text:match("\\pos") then text=getpos(subs,text) end
 	    s=line.start_time
 	    diam=res.post
 	    scax=res.eks*10+100	scax2=10000/scax
@@ -297,17 +285,104 @@ function positron(subs,sel)
 	    line.layer=line.layer+1
 	end
 
+	-- Space out letters
+	if res.posi=="space out letters" then
+	    sr=stylechk(subs,line.style)
+	    acalign=nil
+	    text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),.-%)","\\pos(%1,%2)") :gsub("%s?\\[Nn]%s?"," ")
+	    if not text:match"\\pos" then text=getpos(subs,text) end
+	    tags=text:match("^{\\[^}]-}") or ""
+	    after=text:gsub("^{\\[^}]-}","") :gsub("{[^\\}]-}","")
+	    local px,py=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)")
+	    local x1,width,w,wtotal,let,spacing,avgspac,ltrspac,xpos,lastxpos,spaces,prevlet,scx,k1,k2,k3,bord,off,inwidth,wdiff,pp,tpos
+	    scx=text:match("\\fscx([%d%.]+)") or sr.scale_x
+	    k1,k2,k3=text:match("clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),")
+	    bord=text:match("^{[^}]-\\bord([%d%.]+)") or sr.outline
+	    visible=text:gsub("{[^}]-}","")
+	    letters={}    wtotal=0
+	    	ltrmatches=re.find(visible,".")
+		  for l=1,#ltrmatches do
+		    w=aegisub.text_extents(sr,ltrmatches[l].str)
+		    table.insert(letters,{l=ltrmatches[l].str,w=w})
+		    wtotal=wtotal+w
+		  end
+	    intags={}    cnt=0
+		for chars,tag in after:gmatch("([^}]+)({\\[^}]+})") do
+		    pp=re.find(chars,".")
+		    tpos=#pp+1+cnt
+		    intags[tpos]=tag
+		    cnt=cnt+#pp
+		end
+	    spacing=ps
+	    avgspac=wtotal/#letters
+	    off=(letters[1].w-letters[#letters].w)/4*scx/100
+	    inwidth=(wtotal-letters[1].w/2-letters[#letters].w/2)*scx/100
+	    if spacing==1 then spacing=round(avgspac*scx)/100 end
+	    width=(#letters-1)*spacing	--off
+	    
+	    -- klip-based stuff
+	    if k1 then 
+		width=(k3-k1)-letters[1].w/2*scx/100-letters[#letters].w/2*scx/100-(2*bord)
+		spacing=(width+2*bord)/(#letters-1)
+		px=(k1+k3)/2-off
+		tags=tags:gsub("\\i?clip%b()","")
+	    end
+	    
+	    -- find starting x point based on alignment
+	    if not acalign then acalign=text:match("\\an(%d)") or sr.align end
+	    acalign=tostring(acalign)
+	    if acalign:match("[147]") then x1=round(px+2*off)
+		tags=tags:gsub("\\an%d","") :gsub("^{","{\\an"..acalign+1) 
+		if k1 then x1=x1-width/2-2*off end
+	    end
+	    if acalign:match("[258]") then x1=round(px-width/2) end
+	    if acalign:match("[369]") then x1=round(px-width-2*off)
+		tags=tags:gsub("\\an%d","") :gsub("^{","{\\an"..acalign-1) 
+		if k1 then x1=x1+width/2+2*off end
+	    end
+	    
+	    wdiff=(width-inwidth)/(#letters-1)
+	    lastxpos=x1
+	    spaces=0
+	    -- weird letter-width sorcery starts here
+	    for t=1,#letters do
+		let=letters[t]
+		if t>1 then
+		  prevlet=letters[t-1]
+		  ltrspac=(let.w+prevlet.w)/2*scx/100+wdiff
+		  ltrspac=round(ltrspac*100)/100
+		else
+		  fact1=spacing/(avgspac*scx/100)
+		  fact2=(let.w-letters[#letters].w)/4*scx/100
+		  ltrspac=round(fact1*fact2*100)/100
+		end
+		if intags[t] then tags=tags..intags[t] tags=tags:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") tags=duplikill(tags) end
+		t2=tags..let.l
+		xpos=lastxpos+ltrspac
+		t2=t2:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)%)","\\pos("..xpos..",%2)")
+		lastxpos=xpos
+		l2=line
+		l2.text=t2
+		if t==1 then text=t2 else
+		if let.l~=" " then subs.insert(i+t-1-spaces,l2) else count=count-1 spaces=spaces+1 end
+		end
+	    end
+	    count=count+#letters-1
+	end
+
 	line.text=text
         subs[i]=line
     end
     table.sort(sel)
     if res.posi=="shadow layer" then for s=1,#sel do sel[s]=sel[s]+s end end
+    if res.posi=="space out letters" then last=sel[#sel] for s=1,count do table.insert(sel,last+s) end end
     return sel
 end
 
-function bilocator(subs, sel)
+function bilocator(subs,sel)
+    xx=res.eks	yy=res.wai
     for i=#sel,1,-1 do
-        aegisub.progress.title(string.format("Moving through hyperspace... %d/%d",(#sel-i+1),#sel))
+        progress(string.format("Moving through hyperspace... %d/%d",(#sel-i+1),#sel))
 	line=subs[sel[i]]
 	text=line.text
 	
@@ -329,15 +404,10 @@ function bilocator(subs, sel)
 		movt2=endt2-start+tim		-- second timecode in \move
 		movt=movt1..","..movt2
 		
-		-- failcheck
-		if not text:match("\\pos") or not text2:match("\\pos") then 
-		aegisub.dialog.display({{class="label",label="Missing \\pos tags.",x=0,y=0,width=1,height=2}},{"OK"}) 
-		aegisub.cancel()
-		end
-		
 		-- move
 		p1=text:match("\\pos%(([^%)]+)%)")
 		p2=text2:match("\\pos%(([^%)]+)%)")
+		if p1==nil or p2==nil then t_error("Missing \\pos tag(s).",true) end
 		if p2~=p1 then text=text:gsub("\\pos%(([^%)]+)%)","\\move(%1,"..p2..","..movt..")") end
 		
 		-- transforms
@@ -399,14 +469,12 @@ function bilocator(subs, sel)
 	    end
 	    
 	    if res.move=="shiftmove" then
-		xx=res.eks	yy=res.wai
 		text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
 		function(a,b,c,d) return "\\move("..a..","..b..","..c+xx..","..d+yy end)
 		text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)",function(a,b) return "\\move("..a..","..b..","..a+xx..","..b+yy end)
 	    end
 	    
 	    if res.move=="shiftstart" then
-		xx=res.eks	yy=res.wai
 		text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
 		function(a,b,c,d) return "\\move("..a+xx..","..b+yy..","..c..","..d end)
 	    end
@@ -426,13 +494,13 @@ function bilocator(subs, sel)
     end
 end
 
-function multimove(subs, sel)
+function multimove(subs,sel)
     for x, i in ipairs(sel) do
-        aegisub.progress.title(string.format("Synchronizing movement... %d/%d",x,#sel))
+        progress(string.format("Synchronizing movement... %d/%d",x,#sel))
 	line=subs[i]
         text=subs[i].text
 	-- error if first line's missing \move tag
-	if x==1 and text:match("\\move")==nil then aegisub.dialog.display({{class="label",
+	if x==1 and text:match("\\move")==nil then ADD({{class="label",
 		    label="Missing \\move tag on line 1",x=0,y=0,width=1,height=2}},{"OK"})
 		    mc=1
 	else 
@@ -464,45 +532,18 @@ function multimove(subs, sel)
 	    line.text=text
 	    subs[i]=line
     end
-	if poscheck==1 then aegisub.dialog.display({{class="label",
-		label="Some lines are missing \\pos tags",x=0,y=0,width=1,height=2}},{"OK"}) end
+	if poscheck==1 then t_error("Some lines are missing \\pos tags") end
 	x1,y1,x2,y2,t,m1,m2=nil
 	poscheck=0 
 end
 
-function round4(a,b,c,d)
-	a=math.floor(a+0.5)
-	b=math.floor(b+0.5)
-	c=math.floor(c+0.5)
-	d=math.floor(d+0.5)
-	return a,b,c,d
-end
-
-function round(a)
-	a=math.floor(a+0.5)
-	return a
-end
-
-function modifier(subs, sel)
+function modifier(subs,sel)
     xx=res.eks yy=res.wai
     for x, i in ipairs(sel) do
-        aegisub.progress.title(string.format("Morphing... %d/%d",x,#sel))
+        progress(string.format("Morphing... %d/%d",x,#sel))
 	line=subs[i]
 	text=line.text
-	    
-	    if res.mod=="fullmovetimes" or res.mod=="fulltranstimes" then
-		start=line.start_time		-- start time
-		endt=line.end_time		-- end time
-		startf=ms2fr(start)		-- startframe
-		endf=ms2fr(endt)		-- endframe
-		start2=fr2ms(startf)
-		endt2=fr2ms(endf-1)
-		tim=fr2ms(1)
-		movt1=start2-start+tim		-- first timecode in \move
-		movt2=endt2-start+tim		-- second timecode in \move
-		movt=movt1..","..movt2
-	    end
-		
+
 	    if res.mod=="round numbers" then
 		if text:match("\\pos") and res.rnd=="all" or text:match("\\pos") and res.rnd=="pos" then
 		px,py=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)")
@@ -533,13 +574,26 @@ function modifier(subs, sel)
 		end
 	    end
 	    
+	    if res.mod=="fullmovetimes" or res.mod=="fulltranstimes" then
+		start=line.start_time		-- start time
+		endt=line.end_time		-- end time
+		startf=ms2fr(start)		-- startframe
+		endf=ms2fr(endt)		-- endframe
+		start2=fr2ms(startf)
+		endt2=fr2ms(endf-1)
+		tim=fr2ms(1)
+		movt1=start2-start+tim		-- first timecode in \move
+		movt2=endt2-start+tim		-- second timecode in \move
+		movt=movt1..","..movt2
+	    end
+	    
 	    if res.mod=="killmovetimes" then
-		text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)","\\move(%1,%2,%3,%4")
+		text=text:gsub("\\move%(([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^,%)]+)","\\move(%1,%2,%3,%4")
 	    end
 	    
 	    if res.mod=="fullmovetimes" then
-		text=text:gsub("\\move%(([%d%.%-]+,[%d%.%-]+,[%d%.%-]+,[%d%.%-]+),([%d%.%-]+),([%d%.%-]+)","\\move(%1,"..movt)
-		text=text:gsub("\\move%(([%d%.%-]+,[%d%.%-]+,[%d%.%-]+,[%d%.%-]+)%)","\\move(%1,"..movt..")")
+		text=text:gsub("\\move%(([^,]+,[^,]+,[^,]+,[^,]+),([%d%.%-]+),([%d%.%-]+)","\\move(%1,"..movt)
+		text=text:gsub("\\move%(([^,]+,[^,]+,[^,]+,[^,]+)%)","\\move(%1,"..movt..")")
 	    end
 	    
 	    if res.mod=="fulltranstimes" then
@@ -549,12 +603,11 @@ function modifier(subs, sel)
 	    
 	    if res.mod=="move v. clip" then
 		if x==1 then v1,v2=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)") 
-			if v1==nil then 
-			aegisub.dialog.display({{class="label",label="Error. No \\pos tag on line 1.",x=0,y=0,width=1,height=2}},
-			{"OK"},{close='OK'}) aegisub.cancel() end
+			if v1==nil then t_error("Error. No \\pos tag on line 1.",true) end
 		end
-		if x~=1 and text:match("\\pos") then v3,v4=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)") 
+		if x~=1 and text:match("\\pos") then v3,v4=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)")
 		  V1=v3-v1	V2=v4-v2
+		aegisub.log("\n V1 "..V1)
 		  if text:match("clip%(m [%d%a%s%-%.]+%)") then
 		    ctext=text:match("clip%(m ([%d%a%s%-%.]+)%)")
 		    ctext2=ctext:gsub("([%d%-%.]+)%s([%d%-%.]+)",function(a,b) return a+V1.." "..b+V2 end)
@@ -649,31 +702,22 @@ function modifier(subs, sel)
 	    if res.mod=="FReeZe" then
 		frz=res.freeze
 		if text:match("^{[^}]*\\frz") then
-		text=text:gsub("^({[^}]*\\frz)([%d%.%-]+)","%1"..frz) 
+		text=text:gsub("^({[^}]*\\frz)([%d%.%-]+)","%1"..frz)
 		else
 		text=addtag("\\frz"..frz,text)
 		end
 	    end
 	    
 	    if res.mod=="rotate 180" then
-		if text:match("\\frz") then rot="frz" text=flip(rot,text)
-		else
-		text=addtag("\\frz180",text)
-		end
+		if text:match("\\frz") then text=flip("frz",text) else text=addtag("\\frz180",text) end
 	    end
 	    
 	    if res.mod=="flip hor." then
-		if text:match("\\fry") then rot="fry" text=flip(rot,text)
-		else
-		text=addtag("\\fry180",text)
-		end
+		if text:match("\\fry") then text=flip("fry",text) else text=addtag("\\fry180",text) end
 	    end
 	    
 	    if res.mod=="flip vert." then
-		if text:match("\\frx") then rot="frx" text=flip(rot,text)
-		else
-		text=addtag("\\frx180",text)
-		end
+		if text:match("\\frx") then text=flip("frx",text) else text=addtag("\\frx180",text) end
 	    end
 
 	    if res.mod=="vector2rect." then
@@ -690,26 +734,16 @@ function modifier(subs, sel)
 		text=text:gsub("\\clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c,d) 
 		x=round(a/2+c/2) y=round(b/2+d/2) return "\\pos("..x..","..y..")" end)
 		if t2==text then 
-		aegisub.dialog.display({{class="label",label="Requires rectangular clip"}},{"OK"},{close='OK'})  aegisub.cancel() end
+		ADD({{class="label",label="Requires rectangular clip"}},{"OK"},{close='OK'})  ak() end
 	    end
 	    
 	    if res.mod=="extend mask" then
-		if xx==0 and yy==0 then aegisub.dialog.display({{class="label",label="Error. Both given values are 0.\nUse the Teleporter X and Y fields."}},{"OK"},{close='OK'}) aegisub.cancel() end
+		if xx==0 and yy==0 then ADD({{class="label",label="Error. Both given values are 0.\nUse the Teleporter X and Y fields."}},{"OK"},{close='OK'}) ak() end
 		draw=text:match("}m ([^{]+)")
 		draw2=draw:gsub("([%d%.%-]+) ([%d%.%-]+)",function(a,b) 
 		if tonumber(a)>0 then ax=xx elseif tonumber(a)<0 then ax=0-xx else ax=0 end
 		if tonumber(b)>0 then by=yy elseif tonumber(b)<0 then by=0-yy else by=0 end
 		return a+ax.." "..b+by end)
-		draw=esc(draw)
-		text=text:gsub("(}m )"..draw,"%1"..draw2)
-	    end
-	    
-	    if res.mod=="expand mask" then
-		if xx==0 and yy==0 then aegisub.dialog.display({{class="label",label="Error. Both given values are 0.\nUse the Teleporter X and Y fields."}},{"OK"},{close='OK'}) aegisub.cancel() end
-		if xx==0 then xx=1 end
-		if yy==0 then yy=1 end
-		draw=text:match("}m ([^{]+)")
-		draw2=draw:gsub("([%d%.%-]+) ([%d%.%-]+)",function(a,b) return round(a*xx).." "..round(b*yy) end)
 		draw=esc(draw)
 		text=text:gsub("(}m )"..draw,"%1"..draw2)
 	    end
@@ -722,7 +756,7 @@ function modifier(subs, sel)
 	    end
 	    
 	    if res.mod=="adjust drawing" then
-		if not text:match("\\p%d") then aegisub.cancel() end
+		if not text:match("\\p%d") then ak() end
 		-- drawing 2 clip
 		if not text:match("\\i?clip") then
 		  klip="\\clip("..text:match("\\p1[^}]-}(m [^{]*)")..")"
@@ -781,8 +815,8 @@ function modifier(subs, sel)
 		    {x=0,y=3,width=1,height=1,class="checkbox",name="ptag1",label="parenthesis tag x - \\",value=false,hint="\\tag(X,y)"},
 		    {x=0,y=4,width=1,height=1,class="checkbox",name="ptag2",label="parenthesis tag y - \\",value=false,hint="\\tag(x,Y)"},
 		  }
-		  press,rez=aegisub.dialog.display(randomgui,{"Randomize","Disintegrate"},{ok='Randomize',close='Disintegrate'})
-		  if press=="Disintegrate" then aegisub.cancel() end
+		  press,rez=ADD(randomgui,{"Randomize","Disintegrate"},{ok='Randomize',close='Disintegrate'})
+		  if press=="Disintegrate" then ak() end
 		  rt=rez.randomtag   rtx=rez.partag1   rty=rez.partag2
 		  deci=1/tonumber(rez.dec)    rnd=rez.random
 		end
@@ -850,19 +884,10 @@ function modifier(subs, sel)
     end
 end
 
-function flip(rot,text)
-    for rotation in text:gmatch("\\"..rot.."([%d%.%-]+)") do
-	rotation=tonumber(rotation)
-	if rotation<180 then newrot=rotation+180 end
-	if rotation>=180 then newrot=rotation-180 end
-	text=text:gsub(rot..rotation,rot..newrot)
-    end
-    return text
-end
-
-function movetofbf(subs, sel)
+function movetofbf(subs,sel)
     fra={}
     for i=#sel,1,-1 do
+    progress(string.format("Dissecting line... %d/%d",(#sel-i+1),#sel))
         line=subs[sel[i]]
         text=subs[sel[i]].text
 	styleref=stylechk(subs,line.style)
@@ -937,10 +962,11 @@ function movetofbf(subs, sel)
 			l2.text=l2.text:gsub("^({\\[^}]-})",function(tg) return cleantr(tg) end)
 			terraform(tags)
 			
-			l2.text=l2.text:gsub("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","")	:gsub("(\\t%([^%(%)]-%))","")
-			l2.text=l2.text:gsub("^({[^}]*)}","%1"..ftags.."}")
-			
-			l2.text=l2.text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
+			l2.text=l2.text
+			:gsub("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","")
+			:gsub("(\\t%([^%(%)]-%))","")
+			:gsub("^({[^}]*)}","%1"..ftags.."}")
+			:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 		    end
 		    
 		    l2.start_time=fr2ms(frm)
@@ -987,7 +1013,7 @@ function terraform(tags)
 	tlimit=tfendf-startf
 	tpart=frnum-toffset
 	twhole=tlimit-toffset
-	nontra=tags:gsub("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","")	:gsub("(\\t%([^%(%)]-%))","")
+	nontra=tags:gsub("\\t%b()","")
 	ftags=""
 	-- most tags
 	for tg, valt in tra:gmatch("\\(%a+)([%d%.%-]+)") do
@@ -1046,53 +1072,13 @@ function terraform(tags)
 	end
 end
 
-function cleantr(tags)
-	trnsfrm=""
-	for t in tags:gmatch("(\\t%([^%(%)]-%))") do trnsfrm=trnsfrm..t end
-	for t in tags:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))") do trnsfrm=trnsfrm..t end
-	tags=tags:gsub("(\\t%([^%(%)]+%))","")
-	tags=tags:gsub("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","")
-	tags=tags:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}")
-
-	cleant=""
-	for ct in tags:gmatch("\\t%((\\[^%(%)]-)%)") do cleant=cleant..ct end
-	for ct in tags:gmatch("\\t%((\\[^%(%)]-%([^%)]-%)[^%)]-)%)") do cleant=cleant..ct end
-	tags=tags:gsub("(\\t%(\\[^%(%)]+%))","")
-	tags=tags:gsub("(\\t%(\\[^%(%)]-%([^%)]-%)[^%)]-%))","")
-	if cleant~="" then tags=tags:gsub("^({\\[^}]*)}","%1\\t("..cleant..")}") end
-	return tags
-end
-
-function duplikill(tagz)
-	tf=""
-	if tagz:match("\\t") then 
-	    for t in tagz:gmatch("(\\t%([^%(%)]-%))") do tf=tf..t end
-	    for t in tagz:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","") do tf=tf..t end
-	    tagz=tagz:gsub("\\t%([^%(%)]+%)","")
-	    tagz=tagz:gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","")
-	end
-	tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
-	for i=1,#tags1 do
-	    tag=tags1[i]
-	    tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1")
-	end
-	tagz=tagz:gsub("\\1c&","\\c&")
-	tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
-	for i=1,#tags2 do
-	    tag=tags2[i]
-	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1")
-	end
-	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf.."}")
-	return tagz
-end
-
-function joinfbflines(subs, sel)
+function joinfbflines(subs,sel)
     -- dialog
 	joindialog={
 	    {x=0,y=0,width=1,height=1,class="label",label="How many lines?",},
 	    {x=0,y=1,width=1,height=1,class="intedit",name="join",value=2,step=1,min=2 },
 	}
-	pressed, res=aegisub.dialog.display(joindialog,{"OK"},{ok='OK'})
+	P,res=ADD(joindialog,{"OK"},{ok='OK'})
     -- number
     count=1
     for x, i in ipairs(sel) do
@@ -1115,14 +1101,14 @@ function joinfbflines(subs, sel)
     return sel
 end
 
-function negativerot(subs, sel)
+function negativerot(subs,sel)
 	negdialog={
 	{x=0,y=0,width=1,height=1,class="checkbox",name="frz",label="frz",value=true},
 	{x=1,y=0,width=1,height=1,class="checkbox",name="frx",label="frx"},
 	{x=2,y=0,width=1,height=1,class="checkbox",name="fry",label="fry"},
 	}
-	presst,rez=aegisub.dialog.display(negdialog,{"OK","Cancel"},{ok='OK',cancel='Cancel'})
-	if presst=="Cancel" then aegisub.cancel() end
+	presst,rez=ADD(negdialog,{"OK","Cancel"},{ok='OK',cancel='Cancel'})
+	if presst=="Cancel" then ak() end
     for x, i in ipairs(sel) do
         line=subs[i]
 	text=line.text
@@ -1137,8 +1123,7 @@ end
 function transclip(subs,sel,act)
     line=subs[act]
     text=line.text
-    if not text:match("\\i?clip%([%d%.%-]+,") then aegisub.dialog.display({{class="label",
-	label="Error: rectangular clip required on active line.",x=0,y=0,width=1,height=2}},{"OK"},{close='OK'}) aegisub.cancel() end
+    if not text:match("\\i?clip%([%d%.%-]+,") then t_error("Error: rectangular clip required on active line.",true) end
 
     ctype,cc1,cc2,cc3,cc4=text:match("(\\i?clip)%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)")
 
@@ -1158,27 +1143,26 @@ function transclip(subs,sel,act)
     {x=1,y=5,width=2,height=1,class="edit",name="accel",value="0,0,1," },
     {x=4,y=5,width=1,height=1,class="checkbox",name="two",label="use next line's clip",value=false,hint="use clip from the next line (line will be deleted)"},
     }
-	buttons={"Transform","Calculate coordinates","Cancel"}
-	pressed,res=aegisub.dialog.display(clipconfig,buttons,{ok='Transform',close='Cancel'})
-	if pressed=="Cancel" then aegisub.cancel() end
 
+	buttons={"Transform","Calculate coordinates","Cancel"}
 	repeat
-	    if pressed=="Calculate coordinates" then
+	    if P=="Calculate coordinates" then
 		xx=res.eks	yy=res.wai
 		for key,val in ipairs(clipconfig) do
 		    if val.name=="klip" then val.value=cc1+xx..","..cc2+yy..","..cc3+xx..","..cc4+yy end
 		    if val.name=="accel" then val.value=res.accel end
 		end	
-	pressed,res=aegisub.dialog.display(clipconfig,buttons,{ok='Transform',close='Cancel'})
 	    end
-	until pressed~="Calculate coordinates"
-	if pressed=="Transform" then newcoord=res.klip end
+	P,res=ADD(clipconfig,buttons,{ok='Transform',close='Cancel'})
+	if P=="Cancel" then ak() end
+	until P~="Calculate coordinates"
+	if P=="Transform" then newcoord=res.klip end
 	
     if res.two then
 	nextline=subs[act+1]
 	nextext=nextline.text
-      if not nextext:match("\\i?clip%([%d%.%-]+,") then aegisub.dialog.display({{class="label",
-	label="Error: second line must contain a rectangular clip.",x=0,y=0,width=1,height=2}},{"OK"},{close='OK'}) aegisub.cancel()
+      if not nextext:match("\\i?clip%([%d%.%-]+,") then ADD({{class="label",
+	label="Error: second line must contain a rectangular clip.",x=0,y=0,width=1,height=2}},{"OK"},{close='OK'}) ak()
 	else
 	nextclip=nextext:match("\\i?clip%(([%d%.%-,]+)%)")
 	text=text:gsub("^({\\[^}]*)}","%1\\t("..res.accel..ctype.."("..nextclip.."))}")
@@ -1193,34 +1177,34 @@ function transclip(subs,sel,act)
     if res.two then subs.delete(act+1) end
 end
 
-function clone(subs, sel)
+function clone(subs,sel)
     for x, i in ipairs(sel) do
-        aegisub.progress.title(string.format("Cloning... %d/%d",x,#sel))
+        progress(string.format("Cloning... %d/%d",x,#sel))
 	line=subs[i]
         text=subs[i].text
 	if not text:match("^{\\") then text=text:gsub("^","{\\}") end
 
 	if res.cpos then
 		if x==1 then posi=text:match("\\pos%(([^%)]-)%)") end
-		if x~=1 and text:match("\\pos") and posi~=nil	 then
+		if x>1 and text:match("\\pos") and posi~=nil	 then
 		text=text:gsub("\\pos%([^%)]-%)","\\pos%("..posi.."%)")
 		end
-		if x~=1 and not text:match("\\pos") and not text:match("\\move") and posi~=nil and res.cre then
+		if x>1 and not text:match("\\pos") and not text:match("\\move") and posi~=nil and res.cre then
 		text=text:gsub("^{\\","{\\pos%("..posi.."%)\\")
 		end
 	
 		if x==1 then move=text:match("\\move%(([^%)]-)%)") end
-		if x~=1 and text:match("\\move") and move~=nil then
+		if x>1 and text:match("\\move") and move~=nil then
 		text=text:gsub("\\move%([^%)]-%)","\\move%("..move.."%)")
 		end
-		if x~=1 and not text:match("\\move") and not text:match("\\pos") and move~=nil and res.cre then
+		if x>1 and not text:match("\\move") and not text:match("\\pos") and move~=nil and res.cre then
 		text=text:gsub("^{\\","{\\move%("..move.."%)\\")
 		end
 	end
 	
 	if res.corg then
 	    if x==1 then orig=text:match("\\org%(([^%)]-)%)") end
-	    if x~=1 and orig~=nil then
+	    if x>1 and orig then
 		if text:match("\\org") then text=text:gsub("\\org%([^%)]-%)","\\org%("..orig.."%)")
 		elseif res.cre then text=text:gsub("^({\\[^}]*)}","%1\\org%("..orig.."%)}")
 		end
@@ -1228,16 +1212,16 @@ function clone(subs, sel)
 	end
 	
 	if res.copyrot then
-	    if x==1 then rotz=text:match("\\frz([%d%.%-]+)") end
-	    if x==1 then rotx=text:match("\\frx([%d%.%-]+)") end
-	    if x==1 then roty=text:match("\\fry([%d%.%-]+)") end
-		
-	    if x~=1 and text:match("\\frz") and rotz~=nil then text=text:gsub("\\frz[%d%.%-]+","\\frz"..rotz) end
-	    if x~=1 and not text:match("\\frz") and rotz~=nil and res.cre then text=text:gsub("^({\\[^}]*)}","%1\\frz"..rotz.."}") end
-	    if x~=1 and text:match("\\frx") and rotx~=nil then text=text:gsub("\\frx[%d%.%-]+","\\frx"..rotx) end
-	    if x~=1 and not text:match("\\frx") and rotx~=nil and res.cre then text=text:gsub("^({\\[^}]*)}","%1\\frx"..rotx.."}") end
-	    if x~=1 and text:match("\\fry") and roty~=nil then text=text:gsub("\\fry[%d%.%-]+","\\fry"..roty) end
-	    if x~=1 and not text:match("\\fry") and roty~=nil and res.cre then text=text:gsub("^({\\[^}]*)}","%1\\fry"..roty.."}") end
+	    if x==1 then rotz=text:match("\\frz([%d%.%-]+)") rotx=text:match("\\frx([%d%.%-]+)") roty=text:match("\\fry([%d%.%-]+)") end
+
+	    if x>1 then
+	      if rotz and text:match("\\frz") then text=text:gsub("\\frz[%d%.%-]+","\\frz"..rotz)
+	      elseif rotz and not text:match("\\frz") and res.cre then text=addtag("\\frz"..rotz,text) end
+	      if rotx and text:match("\\frx") then text=text:gsub("\\frx[%d%.%-]+","\\frx"..rotx)
+	      elseif rotx and not text:match("\\frx") and res.cre then text=addtag("\\frx"..rotx,text) end
+	      if roty and text:match("\\fry") then text=text:gsub("\\fry[%d%.%-]+","\\fry"..roty)
+	      elseif roty and not text:match("\\fry") and res.cre then text=addtag("\\fry"..roty,text) end
+	    end
 	end
 	
 	if res.cclip then
@@ -1247,7 +1231,7 @@ function clone(subs, sel)
 		if klip:match("m") then type1="vector" else type1="normal" end
 	    end
 	    -- lines 2+ - paste / replace
-	    if x~=1 and text:match("\\i?clip") and klip~=nil then
+	    if x>1 and text:match("\\i?clip") and klip~=nil then
 		ik2,klip2=text:match("\\(i?)clip%(([^%)]-)%)")
 		if res.klipmatch then kmatch=ik else kmatch=ik2 end
 		if klip2:match("m") then type2="vector" klipv=klip2 else type2="normal" end
@@ -1267,7 +1251,7 @@ function clone(subs, sel)
 		end
 	    end
 	    -- lines 2+ / paste / create
-	    if x~=1 and not text:match("\\i?clip") and klip~=nil and res.cre then
+	    if x>1 and not text:match("\\i?clip") and klip~=nil and res.cre then
 		text=text:gsub("^({\\[^}]*)}","%1\\"..ik.."clip%("..klip.."%)}")
 	    end
 	end
@@ -1276,10 +1260,10 @@ function clone(subs, sel)
 		if x==1 and text:match("\\t%([%d%.,]*\\i?clip") then
 		tklip=text:match("\\t%([%d%.,]*\\i?clip%(([^%)]-)%)")
 		end
-		if x~=1 and text:match("\\i?clip") and tklip~=nil then
+		if x>1 and text:match("\\i?clip") and tklip~=nil then
 		text=text:gsub("\\t%(([%d%.,]*)\\(i?clip)%([^%)]-%)","\\t%(%1\\%2%("..tklip.."%)")
 		end
-		if x~=1 and not text:match("\\t%([%d%.,]*\\i?clip") and tklip~=nil and res.cre then
+		if x>1 and not text:match("\\t%([%d%.,]*\\i?clip") and tklip~=nil and res.cre then
 		text=text:gsub("^({\\[^}]*)}","%1\\t%(\\clip%("..tklip.."%)%)}")
 		end
 	end
@@ -1295,7 +1279,7 @@ function clone(subs, sel)
     posi, move, orig, klip, tklip=nil
 end
 
-function teleport(subs, sel)
+function teleport(subs,sel)
     tpfx=0    tpfy=0
     if res.tpmod then
 	telemod={
@@ -1303,13 +1287,13 @@ function teleport(subs, sel)
 	{x=2,y=1,width=3,height=1,class="floatedit",name="eggs",hint="X"},
 	{x=2,y=2,width=3,height=1,class="floatedit",name="why",hint="Y"},
 	}
-	press,rez=aegisub.dialog.display(telemod,
+	press,rez=ADD(telemod,
 	{"Warped Teleport","Disintegrate"},{close='Disintegrate'})
-	if press=="Disintegrate" then aegisub.cancel() end
+	if press=="Disintegrate" then ak() end
 	tpfx=rez.eggs	tpfy=rez.why
     end
     for x, i in ipairs(sel) do
-        aegisub.progress.title(string.format("Teleporting... %d/%d",x,#sel))
+        progress(string.format("Teleporting... %d/%d",x,#sel))
 	line=subs[i]
         text=line.text
 	style=line.style
@@ -1353,17 +1337,30 @@ function teleport(subs, sel)
 	    text=text:gsub(",m "..ctext,",m "..ctext2)
 	    end
 	end
-	
+
 	if res.tpmask then
-		draw=text:match("}m ([^{]+)")
-		draw2=draw:gsub("([%d%.%-]+) ([%d%.%-]+)",function(a,b) return round(a+xx+fx).." "..round(b+yy+fy) end)
-		draw=esc(draw)
-		text=text:gsub("(}m )"..draw,"%1"..draw2)
+	    draw=text:match("}m ([^{]+)")
+	    draw2=draw:gsub("([%d%.%-]+) ([%d%.%-]+)",function(a,b) return round(a+xx+fx).." "..round(b+yy+fy) end)
+	    draw=esc(draw)
+	    text=text:gsub("(}m )"..draw,"%1"..draw2)
 	end
 
 	line.text=text
 	subs[i]=line
     end
+end
+
+
+--	reanimatools	--
+
+function round(a) a=math.floor(a+0.5) return a end
+
+function round4(a,b,c,d)
+	a=math.floor(a+0.5)
+	b=math.floor(b+0.5)
+	c=math.floor(c+0.5)
+	d=math.floor(d+0.5)
+	return a,b,c,d
 end
 
 function getpos(subs, text)
@@ -1448,6 +1445,40 @@ function textmod(orig,text)
     return text
 end
 
+function cleantr(tags)
+	trnsfrm=""
+	for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
+	tags=tags:gsub("\\t%b()","")
+
+	cleant=""
+	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-)%)") do cleant=cleant..ct end
+	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-%b()[^%)]-)%)") do cleant=cleant..ct end
+	trnsfrm=trnsfrm:gsub("\\t%(\\[^%(%)]+%)","")
+	trnsfrm=trnsfrm:gsub("\\t%((\\[^%(%)]-%b()[^%)]-)%)","")
+	trnsfrm="\\t("..cleant..")"..trnsfrm
+	tags=tags:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}")
+	return tags
+end
+
+function duplikill(tagz)
+	tf=""
+	for t in tagz:gmatch("\\t%b()") do tf=tf..t end
+	tagz=tagz:gsub("\\t%b()","")
+	tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
+	for i=1,#tags1 do
+	    tag=tags1[i]
+	    tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1")
+	end
+	tagz=tagz:gsub("\\1c&","\\c&")
+	tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
+	for i=1,#tags2 do
+	    tag=tags2[i]
+	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1")
+	end
+	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf.."}")
+	return tagz
+end
+
 function esc(str)
 str=str
 :gsub("%%","%%%%")
@@ -1473,6 +1504,30 @@ function stylechk(subs,stylename)
   return styleref
 end
 
+function addtag(tag,text) text=text:gsub("^({\\[^}]-)}","%1"..tag.."}") return text end
+
+function flip(rot,text)
+    for rotation in text:gmatch("\\"..rot.."([%d%.%-]+)") do
+	rotation=tonumber(rotation)
+	if rotation<180 then newrot=rotation+180 end
+	if rotation>=180 then newrot=rotation-180 end
+	text=text:gsub(rot..rotation,rot..newrot)
+    end
+    return text
+end
+
+function progress(msg)
+  if aegisub.progress.is_cancelled() then ak() end
+  aegisub.progress.title(msg)
+end
+
+function t_error(message,cancel)
+  aegisub.dialog.display({{class="label",label=message}},{"OK"},{close='OK'})
+  if cancel then aegisub.cancel() end
+end
+
+function logg(m) aegisub.log("\n "..m) end
+
 function info(subs)
     for i=1,#subs do
       if subs[i].class=="info" then
@@ -1485,29 +1540,194 @@ function info(subs)
     end
 end
 
-function addtag(tag,text) text=text:gsub("^({\\[^}]-)}","%1"..tag.."}") return text end
-
 -- The Typesetter's Guide to the Hyperdimensional Relocator.
 function guide()
-intro="Introduction\n\nHyperdimensional Relocator offers a plethora of functions, \nfocusing primarily on \\pos, \\move, \\org, \\clip, and rotations.\nAnything related to positioning, movement, changing shape, etc., \nRelocator aims to make it happen."
+intro=[[
+Introduction
 
-cannon="'Align X' means all selected \\pos tags will have the same given X coordinate. Same with 'Align Y' for Y.\n   Useful for multiple signs on screen that need to be aligned horizontally/vertically\n   or mocha signs that should move horizontally/vertically.\n\n'align with first' uses X or Y from the first line.\n\nHorizontal Mirror: Duplicates the line and places it horizontally across the screen, mirrored around the middle.\n   If you input a number, it will mirror around that coordinate instead,\n   so if you have \\pos(300,200) and input is 400, the mirrored result will be \\pos(500,200).\nVertical Mirror is the logical vertical counetrpart. 'delete orig. line' will delete the original line.\n\nOrg to Fax: calculates \\fax from the line between \\pos and \\org coordinates.\nClip to Fax: calculates \\fax from the line between the first 2 points of a vectorial clip.\n   Both of these work with \\frz but not with \\frx and \\fry. Also, \\fscx must be the same as \\fscy.\n   If the clip has 4 points, points 3-4 are used to calculate fax for the last character (for grad-by-char).\n   See blog post for more info - http://unanimated.xtreemhost.com/itw/tsblok.htm#fax \n\nClip to Frz: calculates \\frz from the first 2 points of a vectorial clip. First point is start of text.\n   If the clip has 4 points, the frz is average from 1-2 and 3-4. (Both lines must be in the same direction.)\n\nShake: Apply to fbf lines with \\pos tags to create a shaking effect.\n   Input radius for how many pixels the sign may deflect from the original position.\n\nShake rotation: Adds shaking effect to rotations. Degrees for frz from Repositioning Field, x and y from Teleporter.\n\nShadow Layer: Creates shadow as a new layer. For offset it uses in this order of priority:\n   1. value from Positron or Teleporter (xshad, yshad). 2. shadow value from the line. 3. shadow from style.\n\n'rotate' will flip the text accordingly for the mirror functions. It also adds \\frz to 'shake'.\n'scaling' randomizes fscx/y with 'shake'. Value of 6 gives 0.625 to 1.6 times current value. (Teleporter input.)\n'layers' will keep position/rotations the same for all layers with 'shake'. (Same value for same start time.)\n'smooth' will make shaking smoother."
+Hyperdimensional Relocator offers a plethora of functions,
+focusing primarily on \pos, \move, \org, \clip, and rotations.
+Anything related to positioning, movement, changing shape, etc.,
+Relocator aims to make it happen.
 
-travel="'Horizontal' move means y2 will be the same as y1 so that the sign moves in a straight horizontal manner. \nSame principle for 'vertical.'\n\nTransmove: Main function: create \\move from two lines with \\pos.\n   Duplicate your line and position the second one where you want the \\move the end. \n   Script will create \\move from the two positions.\n   Second line will be deleted by default; it's there just so you can comfortably set the final position.\n   Extra function: to make this a lot more awesome, this can create transforms.\n   Not only is the second line used for \\move coordinates, but also for transforms.\n   Any tag on line 2 that's different from line 1 will be used to create a transform on line 1.\n   So for a \\move with transforms you can set the initial sign and then the final sign while everything is static.\n   You can time line 2 to just the last frame. The script only uses timecodes from line 1.\n   Text from line 2 is also ignored (assumed to be same as line 1).\n   You can time line 2 to start after line 1 and check 'keep both.'\n   That way line 1 transforms into line 2 and the sign stays like that for the duration of line 2.\n   'Rotation acceleration' - like with fbf-transform, this ensures that transforms of rotations will go the shortest way,\n   thus going only 4 degrees from 358 to 2 and not 356 degrees around.\n   If the \\pos is the same on both lines, only transforms will be applied.\n   Logically, you must NOT select 2 consecutive lines when you want to run this, \n   though you can select every other line.\n\nMultimove: when first line has \\move and the other lines have \\pos, \\move is calculated from the first line for the others.\n\nShiftmove: like teleporter, but only for the 2nd set of coordinates, ie x2, y2. Uses input from the Teleporter section.\n\nShiftstart: similarly, this only shifts the initial \\move coordinates.\n\nReverse Move: switches the coordinates, reversing the movement direction.\n\nMove Clip: moves regular clip along with \\move using \\t\\clip."
+]].."Current version: "..script_version.."\n\nUpdate locations:\n"..script_url1.."\n"..script_url2
 
-morph="Round Numbers: rounds coordinates for pos, move, org and clip depending on the 'Round' submenu.\n\nJoinfbflines: Select frame-by-frame lines, input numer X when asked, and each X lines will be joined into one.\n   (same way as with \"Join (keep first)\" from the right-click menu)\n      \nKillMoveTimes: nukes the timecodes from a \\move tag.\nFullMoveTimes: sets the timecodes for \\move to the first and last frame.\nFullTransTimes: sets the timecodes for \\t to the first and last frame.\n\nMove V. Clip: Moves vectorial clip on fbf lines based on \\pos tags.\n   Note: For decimals on v-clip coordinates: xy-vsfilter OK; libass rounds them; regular vsfilter fails completely.\n\nSet Origin: set \\org based off of \\pos using teleporter coordinates.\n\nFReeZe: adds \\frz with the value from the -frz- menu (the only point being that you get exact, round values).\n\nRotate/flip: rotates/flips by 180 dgrees from current value.\n\nNegative rot: keeps the same rotation, but changes to negative number, like 350 -> -10, which helps with transforms.\n\nVector2rect/Rect.2vector: converts between rectangular and vectorial clips.\n\nFind Centre: A useless function that sets \\pos in the centre of a rectangular clip.\n\nRandomize: randomizes values of given tags. With \\fs50 and value 4 you can get fs 46-54.\n\nLetterbreak: creates vertical text by putting a linebreak after each letter.\nWordbreak: replaces spaces with linebreaks."
+cannon=[[
+'Align X' means all selected \pos tags will have the same given X coordinate. Same with 'Align Y' for Y.
+   Useful for multiple signs on screen that need to be aligned horizontally/vertically
+   or mocha signs that should move horizontally/vertically.
 
-morph2fbf="Line2fbf:\n\nSplits a line frame by frame, ie. makes a line for each frame.\nIf there's \\move, it calculates \\pos tags for each line.\nIf there are transforms, it calculates values for each line.\nConditions: Only deals with initial block of tags. Works with only one set of transforms.\n   Move and transforms can have timecodes. \n   Missing timecodes will be counted as the ones you get with FullMoveTimes/FullTransTimes.\n   \\fad is now somewhat supported too, but avoid having any alpha transforms at the same time.\n   Timecodes must be exact (even for \\fad, for precision), or the start of the transform/move may be a frame off."
+'align with first' uses X or Y from the first line.
 
-morphorg="Calculate Origin:\n\nThis calculates \\org from a tetragonal vectorial clip you draw.\nDraw a vectorial clip with 4 points, aligned to a surface you need to put your sign on.\nThe script will calculate the vanishing points for X and Y and give you \\org.\nMake the clip as large as you can, since on a smaller one any inaccuracies will be more obvious.\nIf you draw it well enough, the accuracy of the \\org point should be pretty decent.\n(It won't work when both points on one side are lower than both points on the other side.)\nSee blog post from 2013-11-27 for more details: http://unanimated.xtreemhost.com/itw/tsblok.htm"
+Horizontal Mirror: Duplicates the line and places it horizontally across the screen, mirrored around the middle.
+   If you input a number, it will mirror around that coordinate instead,
+   so if you have \pos(300,200) and input is 400, the mirrored result will be \pos(500,200).
+Vertical Mirror is the logical vertical counetrpart. 'delete orig. line' will delete the original line.
 
-morphclip="Transform Clip:\n\nGo from \\clip(x1,y1,x2,y2) to \\clip(x1,y1,x2,y2)\\t(\\clip(x3,y3,x4,y4)).\nCoordinates are read from the line.\nYou can set by how much x and y should change, and new coordinates will be calculated.\n\n'use next line's clip' allows you to use clip from the next line.\n   Create a line after your current one (or just duplicate), set the clip you want to transform to on it,\n   and check \"use next line's clip\".\n   The clip from the next line will be used for the transform, and the line will be deleted."
+Org to Fax: calculates \fax from the line between \pos and \org coordinates.
+Clip to Fax: calculates \fax from the line between the first 2 points of a vectorial clip.
+   Both of these work with \frz but not with \frx and \fry. Also, \fscx must be the same as \fscy.
+   If the clip has 4 points, points 3-4 are used to calculate fax for the last character (for grad-by-char).
+   See blog post for more info - http://unanimated.xtreemhost.com/itw/tsblok.htm#fax
 
-morphmasks="Extend Mask: Use Teleporter X and Y fields to extend a mask in either or both directions.\n   This is mainly intended to easily convert something like a rounded square to another rounded rectangle.\n   Works optimally with 0,0 coordinate in the centre. May do weird things with curves.\n   When all coordinates are to one side from 0,0, then this works like shifting.\n\nExpand Mask: This works like Recalculator's 'Multiply', except 1 is the basic value (equals to 100%).\n   Not good for extending rounded squares, but good for turning a circle into an ellipsis.\n\nFlip mask: Flips a mask so that when used with its non-flipped counterpart, they create hollow space.\n   For example you have a rounded square. Duplicate it, extend one by 10 pixels in each direction, flip it,\n   and then merge them. You'll get a 10 px outline.\n\nAdjust Drawing: (You must not have an unrelated clip in the line.)\n   1. Creates a clip that copies the drawing.\n   2. You adjust points with clip tool.\n   3. Applies new coordinates to the drawing.\n\nRandomask: Moves points in a drawing, each in a random direction, by a factor taken from the positioning field."
+Clip to Frz: calculates \frz from the first 2 points of a vectorial clip. First point is start of text.\n   If the clip has 4 points, the frz is average from 1-2 and 3-4. (Both lines must be in the same direction.)
 
-cloan="This copies specified tags from first line to the others.\nOptions are position, move, origin point, clip, and rotations.\n\nreplicate missing tags: creates tags if they're not present\n\nstack clips: allows stacking of 1 normal and 1 vector clip in one line\n\nmatch type: if current clip/iclip doesn't match the first line, it will be switched to match\n\ncv (combine vectors): if the first line has a vector clip, then for all other lines with vector clips \n   the vectors will be combined into 1 clip\n\ncopyrot: copies all rotations"
+Shake: Apply to fbf lines with \pos tags to create a shaking effect.
+   Input radius for how many pixels the sign may deflect from the original position.
 
-port="Teleport shifts coordinates for selected tags (\\pos\\move\\org\\clip) by given X and Y values.\nIt's a simple but powerful tool that allows you to move whole gradients, mocha-tracked signs, etc.\n\nNote that the Teleporter fields are also used for some other functions, like Shiftstart and Shiftmove.\nThese functions don't use the 'Teleportation' button but the one for whatever part of HR they belong to.\n\n'mod' allows you to add an extra factor applied line by line.\nFor example if you set '5' for 'X', things will shift by extra 5 pixels for each new line."
+Shake rotation: Adds shaking effect to rotations. Degrees for frz from Repositioning Field, x and y from Teleporter.
+
+Shadow Layer: Creates shadow as a new layer. For offset it uses in this order of priority:
+   1. value from Positron or Teleporter (xshad, yshad). 2. shadow value from the line. 3. shadow from style.
+   
+Space out letters: Set a distance, and line will be split into letters with that distance between them.
+   Value 1 = regular distance (only split). You should expect about 1% inaccuracy. \an2/5/8 works best.
+   With a rectangular clip, the script tries to fit the text from side to side of the clip.
+   fscx is supported, fs isn't, nor are rotations, move, linebreaks, and other things. Inline tags should work.
+
+'rotate' will flip the text accordingly for the mirror functions. It also adds \frz to 'shake'.
+'scaling' randomizes fscx/y with 'shake'. Value of 6 gives 0.625 to 1.6 times current value. (Teleporter input.)
+'layers' will keep position/rotations the same for all layers with 'shake'. (Same value for same start time.)
+'smooth' will make shaking smoother.]]
+
+travel=[[
+'Horizontal' move means y2 will be the same as y1 so that the sign moves in a straight horizontal manner. \nSame principle for 'vertical.'
+
+Transmove: Main function: create \move from two lines with \pos.
+   Duplicate your line and position the second one where you want the \move the end. 
+   Script will create \move from the two positions.
+   Second line will be deleted by default; it's there just so you can comfortably set the final position.
+   Extra function: to make this a lot more awesome, this can create transforms.
+   Not only is the second line used for \move coordinates, but also for transforms.
+   Any tag on line 2 that's different from line 1 will be used to create a transform on line 1.
+   So for a \move with transforms you can set the initial sign and then the final sign while everything is static.
+   You can time line 2 to just the last frame. The script only uses timecodes from line 1.
+   Text from line 2 is also ignored (assumed to be same as line 1).
+   You can time line 2 to start after line 1 and check 'keep both.'
+   That way line 1 transforms into line 2 and the sign stays like that for the duration of line 2.
+   'Rotation acceleration' - like with fbf-transform, this ensures that transforms of rotations will go the shortest way,
+   thus going only 4 degrees from 358 to 2 and not 356 degrees around.
+   If the \pos is the same on both lines, only transforms will be applied.
+   Logically, you must NOT select 2 consecutive lines when you want to run this, 
+   though you can select every other line.
+
+Multimove: when first line has \move and the other lines have \pos, \move is calculated from the first line for the others.
+
+Shiftmove: like teleporter, but only for the 2nd set of coordinates, ie x2, y2. Uses input from the Teleporter section.
+
+Shiftstart: similarly, this only shifts the initial \move coordinates.
+
+Reverse Move: switches the coordinates, reversing the movement direction.
+
+Move Clip: moves regular clip along with \move using \t\clip.]]
+
+morph=[[
+Round Numbers: rounds coordinates for pos, move, org and clip depending on the 'Round' submenu.
+
+Joinfbflines: Select frame-by-frame lines, input numer X when asked, and each X lines will be joined into one.
+   (same way as with 'Join (keep first)' from the right-click menu)
+
+KillMoveTimes: nukes the timecodes from a \move tag.
+FullMoveTimes: sets the timecodes for \move to the first and last frame.
+FullTransTimes: sets the timecodes for \t to the first and last frame.
+
+Move V. Clip: Moves vectorial clip on fbf lines based on \pos tags.
+   Note: For decimals on v-clip coordinates: xy-vsfilter OK; libass rounds them; regular vsfilter fails completely.
+
+Set Origin: set \org based off of \pos using teleporter coordinates.
+
+FReeZe: adds \frz with the value from the -frz- menu (the only point being that you get exact, round values).
+
+Rotate/flip: rotates/flips by 180 dgrees from current value.
+
+Negative rot: keeps the same rotation, but changes to negative number, like 350 -> -10, which helps with transforms.
+
+Vector2rect/Rect.2vector: converts between rectangular and vectorial clips.
+
+Find Centre: A useless function that sets \pos in the centre of a rectangular clip.
+
+Randomize: randomizes values of given tags. With \fs50 and value 4 you can get fs 46-54.
+
+Letterbreak: creates vertical text by putting a linebreak after each letter.
+Wordbreak: replaces spaces with linebreaks.]]
+
+morph2fbf=[[
+Line2fbf:
+
+Splits a line frame by frame, ie. makes a line for each frame.
+If there's \move, it calculates \pos tags for each line.
+If there are transforms, it calculates values for each line.
+Conditions: Only deals with initial block of tags. Works with only one set of transforms.
+   Move and transforms can have timecodes. 
+   Missing timecodes will be counted as the ones you get with FullMoveTimes/FullTransTimes.
+   \fad is now somewhat supported too, but avoid having any alpha transforms at the same time.
+   Timecodes must be exact (even for \fad, for precision), or the start of the transform/move may be a frame off.]]
+
+morphorg=[[
+Calculate Origin:
+
+This calculates \org from a tetragonal vectorial clip you draw.
+Draw a vectorial clip with 4 points, aligned to a surface you need to put your sign on.
+The script will calculate the vanishing points for X and Y and give you \org.
+Make the clip as large as you can, since on a smaller one any inaccuracies will be more obvious.
+If you draw it well enough, the accuracy of the \org point should be pretty decent.
+(It won't work when both points on one side are lower than both points on the other side.)
+See blog post from 2013-11-27 for more details: http://unanimated.xtreemhost.com/itw/tsblok.htm
+]] 
+
+morphclip=[[
+Transform Clip:
+
+Go from \clip(x1,y1,x2,y2) to \clip(x1,y1,x2,y2)\t(\clip(x3,y3,x4,y4)).
+Coordinates are read from the line.
+You can set by how much x and y should change, and new coordinates will be calculated.
+
+'use next line's clip' allows you to use clip from the next line.
+   Create a line after your current one (or just duplicate), set the clip you want to transform to on it,
+   and check 'use next line's clip'.
+   The clip from the next line will be used for the transform, and the line will be deleted.]]
+
+morphmasks=[[
+Extend Mask: Use Teleporter X and Y fields to extend a mask in either or both directions.
+   This is mainly intended to easily convert something like a rounded square to another rounded rectangle.
+   Works optimally with 0,0 coordinate in the centre. May do weird things with curves.
+   When all coordinates are to one side from 0,0, then this works like shifting.
+   
+Flip mask: Flips a mask so that when used with its non-flipped counterpart, they create hollow space.
+   For example you have a rounded square. Duplicate it, extend one by 10 pixels in each direction, flip it,
+   and then merge them. You'll get a 10 px outline.
+
+Adjust Drawing: (You must not have an unrelated clip in the line.)
+   1. Creates a clip that copies the drawing.
+   2. You adjust points with clip tool.
+   3. Applies new coordinates to the drawing.
+
+Randomask: Moves points in a drawing, each in a random direction, by a factor taken from the positioning field.]]
+
+cloan=[[
+This copies specified tags from first line to the others.
+Options are position, move, origin point, clip, and rotations.
+
+replicate missing tags: creates tags if they're not present
+
+stack clips: allows stacking of 1 normal and 1 vector clip in one line
+
+match type: if current clip/iclip doesn't match the first line, it will be switched to match
+
+cv (combine vectors): if the first line has a vector clip, then for all other lines with vector clips 
+   the vectors will be combined into 1 clip
+
+copyrot: copies all rotations]]
+
+port=[[
+Teleport shifts coordinates for selected tags (\pos\move\org\clip) by given X and Y values.
+It's a simple but powerful tool that allows you to move whole gradients, mocha-tracked signs, etc.
+
+Note that the Teleporter fields are also used for some other functions, like Shiftstart and Shiftmove.
+These functions don't use the 'Teleportation' button but the one for whatever part of HR they belong to.
+
+'mod' allows you to add an extra factor applied line by line.
+For example if you set '5' for 'X', things will shift by extra 5 pixels for each new line.]]
 
 stg_top={x=0,y=0,width=1,height=1,class="label",
 label="The Typesetter's Guide to the Hyperdimensional Relocator.                                                           "}
@@ -1519,14 +1739,14 @@ stg_toporph={x=1,y=0,width=1,height=1,class="label",label="   Morphing Grounds"}
 stg_topseq={x=1,y=0,width=1,height=1,class="label",label="   Cloning Laboratory"}
 stg_toport={x=1,y=0,width=1,height=1,class="label",label="           Teleportation"}
 
-stg_intro={x=0,y=1,width=2,height=8,class="textbox",name="gd",value=intro}
-stg_cannon={x=0,y=1,width=2,height=19,class="textbox",name="gd",value=cannon}
+stg_intro={x=0,y=1,width=2,height=9,class="textbox",name="gd",value=intro}
+stg_cannon={x=0,y=1,width=2,height=22,class="textbox",name="gd",value=cannon}
 stg_travel={x=0,y=1,width=2,height=19,class="textbox",name="gd",value=travel}
 stg_morph={x=0,y=1,width=2,height=17,class="textbox",name="gd",value=morph}
 stg_morph2fbf={x=0,y=1,width=2,height=8,class="textbox",name="gd",value=morph2fbf}
 stg_morphorg={x=0,y=1,width=2,height=8,class="textbox",name="gd",value=morphorg}
 stg_morphclip={x=0,y=1,width=2,height=8,class="textbox",name="gd",value=morphclip}
-stg_morpmsk={x=0,y=1,width=2,height=11,class="textbox",name="gd",value=morphmasks}
+stg_morpmsk={x=0,y=1,width=2,height=10,class="textbox",name="gd",value=morphmasks}
 stg_cloan={x=0,y=1,width=2,height=9,class="textbox",name="gd",value=cloan}
 stg_port={x=0,y=1,width=2,height=8,class="textbox",name="gd",value=port}
 
@@ -1548,9 +1768,9 @@ repeat
 	if press=="Transform Clip" then 	stg={stg_top,stg_toporph,stg_morphclip} control_panel=cp_morph esk=esk2 end
 	if press=="Masks/drawings" then 		stg={stg_top,stg_toporph,stg_morpmsk} control_panel=cp_morph esk=esk2 end
 	if press=="Warp Back" then 		stg={stg_top,stg_toptop,stg_intro} control_panel=cp_main esk=esk1 end
-press,rez=aegisub.dialog.display(stg,control_panel,esk)
+press,rez=ADD(stg,control_panel,esk)
 until press=="Disintegrate"
-if press=="Disintegrate" then aegisub.cancel() end
+if press=="Disintegrate" then ak() end
 end
 
 --	Config Stuff	--
@@ -1564,15 +1784,15 @@ hrconf="Hyperconfigator\n\n"
       hrconf=hrconf..val.name..":"..tf(res[val.name]).."\n"
     end
   end
-hyperkonfig=aegisub.decode_path("?user").."\\relocator.conf"
+hyperkonfig=ADP("?user").."\\relocator.conf"
 file=io.open(hyperkonfig,"w")
 file:write(hrconf)
 file:close()
-aegisub.dialog.display({{class="label",label="Config saved to:\n"..hyperkonfig}},{"OK"},{close='OK'})
+ADD({{class="label",label="Config saved to:\n"..hyperkonfig}},{"OK"},{close='OK'})
 end
 
 function loadconfig()
-rconfig=aegisub.decode_path("?user").."\\relocator.conf"
+rconfig=ADP("?user").."\\relocator.conf"
 file=io.open(rconfig)
     if file~=nil then
 	konf=file:read("*all")
@@ -1598,6 +1818,12 @@ function detf(txt)
 end
 
 function relocator(subs,sel,act)
+ADD=aegisub.dialog.display
+ADP=aegisub.decode_path
+ak=aegisub.cancel
+ms2fr=aegisub.frame_from_ms
+fr2ms=aegisub.ms_from_frame
+keyframes=aegisub.keyframes()
 rin=subs[act]	tk=rin.text
 if tk:match"\\move" then 
 m1,m2,m3,m4=tk:match("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)") M1=m3-m1 M2=m4-m2 mlbl="mov: "..M1..","..M2
@@ -1609,7 +1835,7 @@ hyperconfig={
 
     {x=0,y=0,width=3,height=1,class="label",label="Repositioning Field",},
     {x=0,y=1,width=2,height=1,class="dropdown",name="posi",value=posdrop,
-        items={"Align X","Align Y","org to fax","clip to fax","clip to frz","horizontal mirror","vertical mirror","shake","shake rotation","shadow layer"}},
+        items={"Align X","Align Y","org to fax","clip to fax","clip to frz","horizontal mirror","vertical mirror","shake","shake rotation","shadow layer","space out letters"}},
     {x=0,y=2,width=2,height=1,class="floatedit",name="post",value=0},
     {x=0,y=3,width=1,height=1,class="checkbox",name="first",label="by first",value=true,hint="align with first line"},
     {x=1,y=3,width=1,height=1,class="checkbox",name="rota",label="rotate",value=false,},
@@ -1627,7 +1853,7 @@ hyperconfig={
     
     {x=5,y=0,width=2,height=1,class="label",label="Morphing Grounds",},
     {x=5,y=1,width=2,height=1,class="dropdown",name="mod",value=morphdrop,
-	items={"round numbers","line2fbf","join fbf lines","killmovetimes","fullmovetimes","fulltranstimes","move v. clip","set origin","calculate origin","transform clip","FReeZe","rotate 180","flip hor.","flip vert.","negative rot","vector2rect.","rect.2vector","find centre","extend mask","expand mask","flip mask","adjust drawing","randomask","randomize...","letterbreak","wordbreak"}},
+	items={"round numbers","line2fbf","join fbf lines","killmovetimes","fullmovetimes","fulltranstimes","move v. clip","set origin","calculate origin","transform clip","FReeZe","rotate 180","flip hor.","flip vert.","negative rot","vector2rect.","rect.2vector","find centre","extend mask","flip mask","adjust drawing","randomask","randomize...","letterbreak","wordbreak"}},
     {x=5,y=2,width=1,height=1,class="label",label="Round:",},
     {x=6,y=2,width=1,height=1,class="dropdown",name="rnd",items={"all","pos","move","org","clip","mask"},value="all"},
     {x=6,y=3,width=1,height=1,class="dropdown",name="freeze",
@@ -1665,33 +1891,30 @@ hyperconfig={
 	    if val.name=="mod" then val.value=lastmod end
 	  end
 	end
-	pressed,res=aegisub.dialog.display(hyperconfig,
+	P,res=ADD(hyperconfig,
 	{"Positron Cannon","Hyperspace Travel","Metamorphosis","Cloning Sequence","Teleportation","Disintegrate"},{cancel='Disintegrate'})
-	if pressed=="Disintegrate" then aegisub.cancel() end
+	if P=="Disintegrate" then ak() end
 	
-	ms2fr=aegisub.frame_from_ms
-	fr2ms=aegisub.ms_from_frame
-	keyframes=aegisub.keyframes()
 	remember=true
 	lastpos=res.posi	lastmove=res.move	lastmod=res.mod
 		
-	if pressed=="Positron Cannon" then if res.space then guide(subs,sel) else sel=positron(subs, sel) end end
-	if pressed=="Hyperspace Travel" then
-	    if res.move=="multimove" then multimove (subs, sel) else bilocator(subs, sel) end
+	if P=="Positron Cannon" then if res.space then guide(subs,sel) else sel=positron(subs,sel) end end
+	if P=="Hyperspace Travel" then
+	    if res.move=="multimove" then multimove (subs,sel) else bilocator(subs,sel) end
 	end
-	if pressed=="Metamorphosis" then
+	if P=="Metamorphosis" then
 	    aegisub.progress.title(string.format("Morphing..."))
 	    if res.save then saveconfig()
-	    elseif res.mod=="line2fbf" then sel=movetofbf(subs, sel) 
-	    elseif res.mod=="transform clip" then transclip(subs, sel, act)
-	    elseif res.mod=="join fbf lines" then joinfbflines(subs, sel)
-	    elseif res.mod=="negative rot" then negativerot(subs, sel)
-	    else modifier(subs, sel) end
+	    elseif res.mod=="line2fbf" then sel=movetofbf(subs,sel) 
+	    elseif res.mod=="transform clip" then transclip(subs,sel,act)
+	    elseif res.mod=="join fbf lines" then joinfbflines(subs,sel)
+	    elseif res.mod=="negative rot" then negativerot(subs,sel)
+	    else modifier(subs,sel) end
 	end
-	if pressed=="Cloning Sequence" then clone(subs, sel) end
-	if pressed=="Teleportation" then teleport(subs, sel) end
+	if P=="Cloning Sequence" then clone(subs,sel) end
+	if P=="Teleportation" then teleport(subs,sel) end
     aegisub.set_undo_point(script_name)
     return sel
 end
 
-aegisub.register_macro(script_name, script_description, relocator)
+aegisub.register_macro(script_name,script_description,relocator)
