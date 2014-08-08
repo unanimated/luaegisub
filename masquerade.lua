@@ -1,7 +1,7 @@
 script_name="Masquerade"
 script_description="Masquerade"
 script_author="unanimated"
-script_version="2.21"
+script_version="2.3"
 
 -- \ko has been removed. much improved version is in 'Apply fade'. alpha shift does a similar thing differently.
 
@@ -10,6 +10,7 @@ script_version="2.21"
 Masquerade
 	Creates a mask with the selected shape.
 	"create mask on a new line" does the obvious and raises the layer of the current line by 1.
+	"remask" only changes an existing mask for another shape without changing tags
 	"Save/delete mask" lets you save a mask from active line or delete one of your custom masks
 	  - to save a mask, type a name and the mask from your active line will be saved (appdata/masquerade.masks)
 	  - to delete a mask, type its name or type 'del' and select the name from the menu on the left
@@ -55,92 +56,91 @@ Strikealpha
 --]]
 
 function addmask(subs, sel)
-	for i=#sel,1,-1 do
-	    local l=subs[sel[i]]
-	    text=l.text
-	    l1=l
-	    l1.layer=l1.layer+1
-	    if res.masknew then
-		if res.mask=="from clip" then
-		if not text:match("\\clip") then
-		  aegisub.dialog.display({{class="label",label="No clip...",x=1,y=0,width=5,height=2}},{"OK"},{close='OK'}) aegisub.cancel()
-		end
-		l1.text=l1.text:gsub("\\clip%(([^%)]-)%)","") :gsub("{}","") end
-		subs.insert(sel[i]+1,l1) 
-	    end
-	    l.layer=l.layer-1
-	    if text:match("\\2c") then mcol="\\c"..text:match("\\2c(&H[%x]+&)") else mcol="" end
-		
-		if res.mask=="from clip" then
-		  text=text:gsub("\\clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)","\\clip(m %1 %2 l %3 %2 %3 %4 %1 %4)")
-		  if text:match("\\move") then text=text:gsub("\\move","\\pos") mp="\\move" else mp="\\pos" end
-		  ctext=text:match("clip%(m ([%d%.%a%s%-]+)")
-		  if text:match("\\pos") then
-		    pos=text:match("\\pos(%([^%)]+%))")
-		    local xx,yy=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)")
-		    xx=round(xx) yy=round(yy)
-		    ctext2=ctext:gsub("([%d%.%-]+)%s([%d%.%-]+)",function(a,b) return a-xx.." "..b-yy end)
-		  else pos="(0,0)" ctext2=ctext
-		  end
-		  ctext2=ctext2:gsub("([%d%.]+)",function(a) return round(a) end)
-		  l.text="{\\an7\\blur1\\bord0\\shad0\\fscx100\\fscy100"..mcol..mp..pos.."\\p1}m "..ctext2
-		  
-		else
-		atags=""
-		org=l.text:match("\\org%([%d%,%.%-]-%)")	if org~=nil then atags=atags..org end
-		frz=l.text:match("\\frz[%d%.%-]+")	if frz~=nil then atags=atags..frz end
-		frx=l.text:match("\\frx[%d%.%-]+")	if frx~=nil then atags=atags..frx end
-		fry=l.text:match("\\fry[%d%.%-]+")	if fry~=nil then atags=atags..fry end
-		
-		mmm=0
-		l.text=l.text:gsub(".*(\\pos%([%d%,%.%-]-%)).*","%1")
-		if l.text:match("\\pos")==nil then l.text="" end
-		
-		if res["mask"]=="square" then mmm=1
-		  l.text="{\\an5\\bord0\\blur1"..l.text..mcol.."\\p1}m 0 0 l 100 0 100 100 0 100"
-		end
-		if res["mask"]=="rounded square" then mmm=1
-		  l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}m -100 -25 b -100 -92 -92 -100 -25 -100 l 25 -100 b 92 -100 100 -92 100 -25 l 100 25 b 100 92 92 100 25 100 l -25 100 b -92 100 -100 92 -100 25 l -100 -25"
-		end
-		if res["mask"]=="rounded square 2" then mmm=1
-		  l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}m -100 -60 b -100 -92 -92 -100 -60 -100 l 60 -100 b 92 -100 100 -92 100 -60 l 100 60 b 100 92 92 100 60 100 l -60 100 b -92 100 -100 92 -100 60 l -100 -60"
-		end
-		if res["mask"]=="rounded square 3" then mmm=1
-		  l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}m -100 -85 b -100 -96 -96 -100 -85 -100 l 85 -100 b 96 -100 100 -96 100 -85 l 100 85 b 100 96 96 100 85 100 l -85 100 b -96 100 -100 96 -100 85 l -100 -85"
-		end
-		if res["mask"]=="circle" then mmm=1
-		  l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}m -100 -100 b -45 -155 45 -155 100 -100 b 155 -45 155 45 100 100 b 46 155 -45 155 -100 100 b -155 45 -155 -45 -100 -100"
-		end
-		if res["mask"]=="equilateral triangle" then mmm=1
-		  l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}m -122 70 l 122 70 l 0 -141"
-		end
-		if res["mask"]=="right-angled triangle" then mmm=1
-		  l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}m -70 50 l 180 50 l -70 -100"
-		end
-		if res["mask"]=="alignment grid" then mmm=1
-		  l.text="{\\an7\\bord0\\shad0\\blur0.6"..l.text..atags.."\\p1\\c&H000000&\\alpha&H80&}m -500 -199 l 500 -199 l 500 -201 l -500 -201 m -701 1 l 700 1 l 700 -1 l -701 -1 m -500 201 l 500 201 l 500 199 l -500 199 m -1 -500 l 1 -500 l 1 500 l -1 500 m -201 -500 l -199 -500 l -199 500 l -201 500 m 201 500 l 199 500 l 199 -500 l 201 -500 m -150 -25 l 150 -25 l 150 25 l -150 25"
-		end
-		if res["mask"]=="alignment grid 2" then mmm=1
-		  l.text="{\\an7\\bord0\\shad0\\blur0.6"..l.text..atags.."\\p1\\c&H000000&\\alpha&H80&}m -500 -199 l 500 -199 l 500 -201 l -500 -201 m -701 1 l 700 1 l 700 -1 l -701 -1 m -500 201 l 500 201 l 500 199 l -500 199 m -1 -500 l 1 -500 l 1 500 l -1 500 m -201 -500 l -199 -500 l -199 500 l -201 500 m 201 500 l 199 500 l 199 -500 l 201 -500 m -150 -25 l 150 -25 l 150 25 l -150 25 m -401 -401 l 401 -401 l 401 401 l -401 401 m -399 -399 l -399 399 l 399 399 l 399 -399"
-		end
-		if mmm==0 then
-		  for k=1,#moremasks do
-		    if moremasks[k].n==res.mask then
-		      l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}"..moremasks[k].m
-		    end
-		  end
-		end
-		if l.text:match("\\pos")==nil then l.text=l.text:gsub("\\p1","\\pos(640,360)\\p1") end
-		end
-		
-	    subs[sel[i]]=l
+  for i=#sel,1,-1 do
+    l=subs[sel[i]]
+    text=l.text
+    l.layer=l.layer+1
+    if res.masknew and not res.remask then
+	if res.mask=="from clip" then
+	if not text:match("\\clip") then
+	  aegisub.dialog.display({{class="label",label="No clip...",x=1,y=0,width=5,height=2}},{"OK"},{close='OK'}) aegisub.cancel()
 	end
+	l.text=nopar("clip",l.text) end
+	subs.insert(sel[i]+1,l) 
+    end
+    l.layer=l.layer-1
+    if text:match("\\2c") then mcol="\\c"..text:match("\\2c(&H[%x]+&)") else mcol="" end
+    
+    -- REMASK
+    if res.remask then
+	if res.mask=="from clip" then
+	  masklip()
+	  l.text=nopar("clip",l.text)
+	  nmask=ctext2 l.text=re_mask(l.text)
+	else
+	    for k=1,#allmasks do
+	      if allmasks[k].n==res.mask then
+		nmask=allmasks[k].m l.text=re_mask(l.text)
+	      end
+	    end
+	end
+    else
+	-- STANDARD MASK
+	if res.mask=="from clip" then
+	  masklip()
+	  l.text="{\\an7\\blur1\\bord0\\shad0\\fscx100\\fscy100"..mcol..mp..pos.."\\p1}"..ctext2
+	else
+	atags=""
+	org=l.text:match("\\org%([^%)]-%)")	if org then atags=atags..org end
+	frz=l.text:match("\\frz[%d%.%-]+")	if frz then atags=atags..frz end
+	frx=l.text:match("\\frx[%d%.%-]+")	if frx then atags=atags..frx end
+	fry=l.text:match("\\fry[%d%.%-]+")	if fry then atags=atags..fry end
+	
+	l.text=l.text:gsub(".*(\\pos%([%d%,%.%-]-%)).*","%1")
+	if not l.text:match("\\pos") then l.text="" end
+	  for k=1,#allmasks do
+	    if allmasks[k].n==res.mask then
+	      if res.mask:match("alignment grid") then
+		l.text="{\\an7\\bord0\\shad0\\blur0.6"..l.text..atags.."\\c&H000000&\\alpha&H80&\\p1}"..allmasks[k].m
+	      else
+		l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}"..allmasks[k].m
+	      end
+	      if res.mask=="square" then l.text=l.text:gsub("\\an7","\\an5") end
+	    end
+	  end
+	if not l.text:match("\\pos") then l.text=l.text:gsub("\\p1","\\pos(640,360)\\p1") end
+	end
+    end
+    subs[sel[i]]=l
+  end
+end
+
+function masklip()
+  text=text:gsub("\\clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)","\\clip(m %1 %2 l %3 %2 %3 %4 %1 %4)")
+  if text:match("\\move") then text=text:gsub("\\move","\\pos") mp="\\move" else mp="\\pos" end
+  ctext=text:match("clip%(m ([%d%.%a%s%-]+)")
+  if text:match("\\pos") then
+    pos=text:match("\\pos(%([^%)]+%))")
+    local xx,yy=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)")
+    xx=round(xx) yy=round(yy)
+    ctext2=ctext:gsub("([%d%.%-]+)%s([%d%.%-]+)",function(a,b) return a-xx.." "..b-yy end)
+  else pos="(0,0)" ctext2=ctext
+  end
+  ctext2="m "..ctext2:gsub("([%d%.]+)",function(a) return round(a) end)
+end
+
+function re_mask(text)
+  text=text
+  :gsub("\\fsc[xy][^}\\]+","")
+  :gsub("}m [^{]+","\\fscx100\\fscy100}"..nmask)
+  if res.mask=="square" then text=text:gsub("\\an7","\\an5") end
+  return text
 end
 
 function savemask(subs,sel,act)
 masker=aegisub.decode_path("?user").."\\masquerade.masks"
 file=io.open(masker)
-  if file~=nil then masx=file:read("*all") io.close(file) end
+  if file then masx=file:read("*all") io.close(file) end
   if masx==nil then masx="" end
   mask_name=res.maskname
   masx=masx:gsub(":\n$",":\n\n") :gsub(":$",":\n\n")
@@ -173,18 +173,16 @@ file=io.open(masker)
         end
       end
     end
-  new_mask="mask:"..mask_name..":"..newmask..":\n\n"
-  masx=masx..new_mask
+    new_mask="mask:"..mask_name..":"..newmask..":\n\n"
+    masx=masx..new_mask
   end
-  
   masx=masx:gsub(":\nmask",":\n\nmask")
-    
-file=io.open(masker,"w")
-file:write(masx)
-file:close()
-if deleted==0 then
-  aegisub.dialog.display({{class="label",label="Mask '"..mask_name.."' saved to:\n"..masker}},{"OK"},{close='OK'})
-end
+  file=io.open(masker,"w")
+  file:write(masx)
+  file:close()
+  if deleted==0 then
+    aegisub.dialog.display({{class="label",label="Mask '"..mask_name.."' saved to:\n"..masker}},{"OK"},{close='OK'})
+  end
 end
 
 function t_error(message,cancel)
@@ -193,46 +191,46 @@ function t_error(message,cancel)
 end
 
 function add_an8(subs, sel, act)
-	for z, i in ipairs(sel) do
-		line=subs[i]
-		text=subs[i].text
-		if line.text:match("\\an%d") and res.an8~="q2" then
-		text=text:gsub("\\(an%d)","\\"..res.an8)
-		end
-		if line.text:match("\\an%d")==nil and res.an8~="q2" then
-		text="{\\"..res.an8.."}" .. text
-		text=text:gsub("{\\(an%d)}{\\","{\\%1\\")
-		end
-		if res.an8=="q2" then
-		    if text:match("\\q2") then text=text:gsub("\\q2","")	text=text:gsub("{}","") else
-		    text="{\\q2}" .. text	text=text:gsub("{\\q2}{\\","{\\q2\\")
-		    end
-		end
-	line.text=text
-	subs[i]=line
+    for z, i in ipairs(sel) do
+    line=subs[i]
+    text=subs[i].text
+    if line.text:match("\\an%d") and res.an8~="q2" then
+	text=text:gsub("\\(an%d)","\\"..res.an8)
+    end
+    if line.text:match("\\an%d")==nil and res.an8~="q2" then
+	text="{\\"..res.an8.."}" .. text
+	text=text:gsub("{\\(an%d)}{\\","{\\%1\\")
+    end
+    if res.an8=="q2" then
+	if text:match("\\q2") then text=text:gsub("\\q2","")	text=text:gsub("{}","") else
+	text="{\\q2}" .. text	text=text:gsub("{\\q2}{\\","{\\q2\\")
 	end
+    end
+    line.text=text
+    subs[i]=line
+    end
 end
 
 function alfashift(subs, sel)
     count=1
     for x, i in ipairs(sel) do
-        line=subs[i]
-	text=line.text
-	if not text:match("{\\alpha&HFF&}[%w%p]") then aegisub.dialog.display({{class="label",
-		label="Line "..x.." does not \nappear to have alpha FF",x=0,y=0,width=1,height=2}},{"OK"}) aegisub.cancel() end
-	if count>1 then
-		switch=1
-		repeat 
-		text=text:gsub("({\\alpha&HFF&})([%w%p])","%2%1")
-		text=text:gsub("({\\alpha&HFF&})(%s)","%2%1")
-		text=text:gsub("({\\alpha&HFF&})(\\N)","%2%1")
-		text=text:gsub("({\\alpha&HFF&})$","")
-		switch=switch+1
-		until switch>=count
-	end
-	count=count+1
-	line.text=text
-        subs[i]=line
+    line=subs[i]
+    text=line.text
+    if not text:match("{\\alpha&HFF&}[%w%p]") then t_error("Line "..x.." does not \nappear to have \n\\alpha&&HFF&&",true) end
+    if count>1 then
+	switch=1
+	repeat 
+	text=text
+	:gsub("({\\alpha&HFF&})([%w%p])","%2%1")
+	:gsub("({\\alpha&HFF&})(%s)","%2%1")
+	:gsub("({\\alpha&HFF&})(\\N)","%2%1")
+	:gsub("({\\alpha&HFF&})$","")
+	switch=switch+1
+	until switch>=count
+    end
+    count=count+1
+    line.text=text
+    subs[i]=line
     end
 end
 
@@ -253,7 +251,7 @@ end
 
 function strikealpha(subs, sel)
     for x, i in ipairs(sel) do
-        local l=subs[i]
+        l=subs[i]
 	l.text=l.text
 	:gsub("\\s1","\\alpha&H00&")
 	:gsub("\\s0","\\alpha&HFF&")
@@ -268,38 +266,33 @@ end
 
 function scale(subs, sel)
     for z, i in ipairs(sel) do
-	local l=subs[i]
-	text=l.text
-	    sr=stylechk(subs,l.style)
-	    rf=res.fs
-	    if text:match("^{[^}]-\\fs%d") then fsize=text:match("^{[^}]-\\fs([%d]+)") else fsize=sr.fontsize end
-	    if text:match("^{[^}]-\\fscx%d") then scx=text:match("^{[^}]-\\fscx([%d%.]+)") else scx=sr.scale_x end
-	    if text:match("^{[^}]-\\fscy%d") then scy=text:match("^{[^}]-\\fscy([%d%.]+)") else scy=sr.scale_y end
-	    skale="{\\fs"..rf.."\\fscx"..round(fsize*scx/rf).."\\fscy"..round(fsize*scy/rf).."}"
-	    text=text:gsub("\\fsc?[xy]?[%d%.]+","") :gsub("{}","")
-	    text=skale..text
-		if res.mend then
-		  text=text:gsub("^({\\[^}]-)}{\\","%1\\")
-		else
-		  text=text:gsub("^{(\\[^}]-)}{(\\[^}]-)}","{%2%1}")
-		end
-	l.text=text
-	subs[i]=l
+    l=subs[i]
+    text=l.text
+    sr=stylechk(subs,l.style)
+    rf=res.fs
+    fsize=(text:match("^{[^}]-\\fs([%d]+)") or sr.fontsize)
+    scx=(text:match("^{[^}]-\\fscx([%d%.]+)") or sr.scale_x)
+    scy=(text:match("^{[^}]-\\fscy([%d%.]+)") or sr.scale_y)
+    skale="{\\fs"..rf.."\\fscx"..round(fsize*scx/rf).."\\fscy"..round(fsize*scy/rf).."}"
+    text=text:gsub("\\fsc?[xy]?[%d%.]+","") :gsub("{}","")
+    text=skale..text
+    if res.mend then
+	text=text:gsub("^({\\[^}]-)}{\\","%1\\")
+    else
+	text=text:gsub("^{(\\[^}]-)}{(\\[^}]-)}","{%2%1}")
+    end
+    l.text=text
+    subs[i]=l
     end
 end
 
 function shiftag(subs,sel,act)
     rine=subs[act]
-    tags=rine.text:match("^{\\[^}]-}")
-    ftags=rine.text:match("^{(\\[^}]-)}")
-    if tags==nil then tags="" end
-    if ftags==nil then ftags="" end
+    tags=(rine.text:match("^{\\[^}]-}") or "")
+    ftags=(rine.text:match("^{(\\[^}]-)}") or "")
     ftags=ftags:gsub("\\pos[^\\}]+","") :gsub("\\move[^\\}]+","") :gsub("\\org[^\\}]+","") 
-    :gsub("\\i?clip%([^%)]+%)","") :gsub("\\fad[^\\}]+","") :gsub("\\an?%d","")
+    :gsub("\\i?clip%([^%)]+%)","") :gsub("\\fad[^\\}]+","") :gsub("\\an?%d","") :gsub("\\t%b()","")
     cstext=rine.text:gsub("^{(\\[^}]-)}","")
-    -- remove transforms
-	ftags=ftags:gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","")
-	ftags=ftags:gsub("\\t%([^%(%)]+%)","")
     rept={"drept"}
     -- build GUI
     shiftab={
@@ -374,8 +367,6 @@ function shiftag(subs,sel,act)
 		:gsub(etag.."(%s?\\N%s?)","%1"..stag)
 		:gsub(etag.."(%s?{[^}]-}%s?)","%1"..stag)
 		:gsub(etag.."(%s?\\N%s?)","%1"..stag)
-		:gsub("{%*?(\\[^}]-)}{%*?(\\[^}]-)}","{%1%2}")
-		--aegisub.log("\n cstext "..cstext)
 		else
 		cstext=cstext
 		:gsub(etag.."(%s*[^%s]+%s*)","%1"..stag)
@@ -396,7 +387,8 @@ function shiftag(subs,sel,act)
 		cstext=cstext
 		:gsub("([%w%p]%s?)"..etag,stag.."%1")
 		:gsub("(\\N%s?)"..etag,stag.."%1")
-		:gsub("{%*?(\\[^}]-)}{%*?(\\[^}]-)}","{%1%2}")
+		:gsub("({[^}]-}%s?)"..etag,stag.."%1")
+		:gsub("(\\N%s?)"..etag,stag.."%1")
 		else
 		cstext=cstext
 		:gsub("([^%s]+%s*)"..etag,stag.."%1")
@@ -466,10 +458,7 @@ function alfatime(subs,sel)
 	text=subs[i].text
 	if x==1 then alfatext=text:gsub("^{\\[^}]-}","") end
 	if x~=1 then alfatext2=text:gsub("^{\\[^}]-}","") 
-	  if alfatext2~=alfatext then 
-	    aegisub.dialog.display({{class="label",label="Text must be the same for all selected lines",x=0,y=0,width=1,height=2}},{"OK"})
-	    aegisub.cancel()
-	  end
+	  if alfatext2~=alfatext then t_error("Text must be the same \nfor all selected lines",true) end
 	end
     end
     
@@ -506,7 +495,7 @@ function alfatime(subs,sel)
 	line=subs[i]
 	text=line.text
 	if altab[x]~=nil then
-	  tags=text:match("^{\\[^}]-}")
+	  tags=(text:match("^{\\[^}]-}") or "")
 	  text=data2
 	  :gsub("\n","")
 	  :gsub(esctxt,altxt.."{\\alpha&HFF&}")
@@ -515,7 +504,7 @@ function alfatime(subs,sel)
 	  :gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 	  :gsub("{%d+}","")
 	  :gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-	  if tags~=nil then text=tags..text end
+	  text=tags..text
 	end
 	line.text=text
 	subs[i]=line
@@ -535,7 +524,7 @@ function alfatime(subs,sel)
 	  esctxt=esc(altxt)
 	  line.text=line.text:gsub("@","")
 	  line2=line
-	  tags=line2.text:match("^{\\[^}]-}")
+	  tags=(line2.text:match("^{\\[^}]-}") or "")
 	  line2.text=data2
 	  :gsub("\n","")
 	  :gsub(esctxt,altxt.."{\\alpha&HFF&}")
@@ -543,7 +532,7 @@ function alfatime(subs,sel)
 	  :gsub("{\\alpha&HFF&}$","")
 	  :gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 	  :gsub("{%d+}","")
-	  if tags~=nil then line2.text=tags..line2.text end
+	  line2.text=tags..line2.text
 	  line2.start_time=start+f*(a-1)
 	  line2.end_time=start+f+f*(a-1)
 	  subs.insert(sel[1]+1,line2)
@@ -587,6 +576,11 @@ function duplikill(tagz)
 	return tagz
 end
 
+function nopar(tag,t)
+    t=t:gsub("\\"..tag.."%([^%)]-%)","") :gsub("{}","")
+    return t
+end
+
 function stylechk(subs,stylename)
     for i=1, #subs do
         if subs[i].class=="style" then
@@ -601,20 +595,24 @@ function stylechk(subs,stylename)
 end
 
 function masquerade(subs,sel,act)
-maasks={"from clip","square","rounded square","rounded square 2","rounded square 3","circle","equilateral triangle","right-angled triangle","alignment grid","alignment grid 2"}
-moremasks={}
+defmasks="mask:square:m 0 0 l 100 0 100 100 0 100:\n\nmask:rounded square:m -100 -25 b -100 -92 -92 -100 -25 -100 l 25 -100 b 92 -100 100 -92 100 -25 l 100 25 b 100 92 92 100 25 100 l -25 100 b -92 100 -100 92 -100 25 l -100 -25:\n\nmask:rounded square 2:m -100 -60 b -100 -92 -92 -100 -60 -100 l 60 -100 b 92 -100 100 -92 100 -60 l 100 60 b 100 92 92 100 60 100 l -60 100 b -92 100 -100 92 -100 60 l -100 -60:\n\nmask:rounded square 3:m -100 -85 b -100 -96 -96 -100 -85 -100 l 85 -100 b 96 -100 100 -96 100 -85 l 100 85 b 100 96 96 100 85 100 l -85 100 b -96 100 -100 96 -100 85 l -100 -85:\n\nmask:circle:m -100 -100 b -45 -155 45 -155 100 -100 b 155 -45 155 45 100 100 b 46 155 -45 155 -100 100 b -155 45 -155 -45 -100 -100:\n\nmask:equilateral triangle:m -122 70 l 122 70 l 0 -141:\n\nmask:right-angled triangle:m -70 50 l 180 50 l -70 -100:\n\nmask:alignment grid:m -500 -199 l 500 -199 l 500 -201 l -500 -201 m -701 1 l 700 1 l 700 -1 l -701 -1 m -500 201 l 500 201 l 500 199 l -500 199 m -1 -500 l 1 -500 l 1 500 l -1 500 m -201 -500 l -199 -500 l -199 500 l -201 500 m 201 500 l 199 500 l 199 -500 l 201 -500 m -150 -25 l 150 -25 l 150 25 l -150 25:\n\nmask:alignment grid 2:m -500 -199 l 500 -199 l 500 -201 l -500 -201 m -701 1 l 700 1 l 700 -1 l -701 -1 m -500 201 l 500 201 l 500 199 l -500 199 m -1 -500 l 1 -500 l 1 500 l -1 500 m -201 -500 l -199 -500 l -199 500 l -201 500 m 201 500 l 199 500 l 199 -500 l 201 -500 m -150 -25 l 150 -25 l 150 25 l -150 25 m -401 -401 l 401 -401 l 401 401 l -401 401 m -399 -399 l -399 399 l 399 399 l 399 -399:\n\n"
+maasks={"from clip"}
+allmasks={}
 masker=aegisub.decode_path("?user").."\\masquerade.masks"
 file=io.open(masker)
-    if file~=nil then
+    if file then
 	masx=file:read("*all")
 	io.close(file)
-	for nam,msk in masx:gmatch("mask:(.-):(.-):") do table.insert(maasks,nam) table.insert(moremasks,{n=nam,m=msk}) end
+    else masx=""
     end
+    masklist=defmasks..masx
+	for nam,msk in masklist:gmatch("mask:(.-):(.-):") do table.insert(maasks,nam) table.insert(allmasks,{n=nam,m=msk}) end
 	dialog_config=
 	{
 	    {x=0,y=0,width=1,height=1,class="label",label="Mask:",},
 	    {x=1,y=0,width=1,height=1,class="dropdown",name="mask",items=maasks,value="square"},
 	    {x=0,y=1,width=2,height=1,class="checkbox",name="masknew",label="create mask on a new line",value=true},
+	    {x=2,y=1,width=3,height=1,class="checkbox",name="remask",label="remask",value=false},
 	    
 	    {x=9,y=0,width=1,height=1,class="checkbox",name="save",label="Save/delete mask    ",value=false},
 	    {x=9,y=1,width=2,height=1,class="edit",name="maskname",value="mask name here",hint="Type name of the mask you want to save/delete"},
