@@ -1,7 +1,7 @@
 ﻿script_name="Colorize"
 script_description="Does things with colours"
 script_author="unanimated"
-script_version="3.9"
+script_version="3.92"
 
 --[[
 
@@ -64,33 +64,29 @@ re=require'aegisub.re'
 
 --	Colorize	--
 function colors(subs,sel)
+    local c={}
+    for k=1,5 do
+	c[k]=res["c"..k]:gsub("#(%x%x)(%x%x)(%x%x)","&H%3%2%1&")
+    end
     for x, i in ipairs(sel) do
         progress(string.format("Colorizing line %d/%d",x,#sel))
 	line=subs[i]
 	text=line.text
 	
-	    col1=res.c1:gsub("#(%x%x)(%x%x)(%x%x)","&H%3%2%1&")
-	    col2=res.c2:gsub("#(%x%x)(%x%x)(%x%x)","&H%3%2%1&")
-	    col3=res.c3:gsub("#(%x%x)(%x%x)(%x%x)","&H%3%2%1&")
-	    col4=res.c4:gsub("#(%x%x)(%x%x)(%x%x)","&H%3%2%1&")
-	    col5=res.c5:gsub("#(%x%x)(%x%x)(%x%x)","&H%3%2%1&")
-	    
 	    if res.kol=="primary" then k="\\c" text=text:gsub("\\1?c&H%x+&","") end
 	    if res.kol=="border" then k="\\3c" text=text:gsub("\\3c&H%x+&","") end
 	    if res.kol=="shadow" then k="\\4c" text=text:gsub("\\4c&H%x+&","") end
 	    if res.kol=="secondary" then k="\\2c" text=text:gsub("\\2c&H%x+&","") end
 	    
-	    k1=k..col1
-	    k2=k..col2
-	    k3=k..col3
-	    k4=k..col4
-	    k5=k..col5
+	    k1=k..c[1]
+	    k2=k..c[2]
+	    k3=k..c[3]
+	    k4=k..c[4]
+	    k5=k..c[5]
 
-	    tags=""
-	    if text:match("^{\\[^}]*}") then tags=text:match("^({\\[^}]*})") end
+	    tags=text:match("^{\\[^}]-}") or ""
 	    orig=text:gsub("^({\\[^}]*})","")
-	    text=text:gsub("{[^}]*}","")
-	    text=text:gsub("%s*$","")
+	    text=text:gsub("{[^}]*}","") :gsub("%s*$","")
 
 	    if res.clrs=="2" then
 	      if res.word then
@@ -152,52 +148,6 @@ function colors(subs,sel)
     end
 end
 
-function textmod(orig)
-    tk={}
-    tg={}
-	text=text:gsub("{\\\\k0}","")
-	repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
-	vis=text:gsub("{[^}]-}","")
-	ltrmatches=re.find(vis,".")
-	  for l=1,#ltrmatches do
-	    table.insert(tk,ltrmatches[l].str)
-	  end
-	stags=text:match("^{(\\[^}]-)}")
-	if stags==nil then stags="" end
-	text=text:gsub("^{\\[^}]-}","") :gsub("{[^\\}]-}","")
-	count=0
-	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
-	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
-	    pos=re.find(chars,".")
-	    if pos==nil then ps=0+count else ps=#pos+count end
-	    tgl={p=ps,t=tak,a=as}
-	    table.insert(tg,tgl)
-	    count=ps
-	end
-	count=0
-	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
-	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
-	    pos=re.find(chars,".")
-	    if pos==nil then ps=0+count else ps=#pos+count end
-	    tgl={p=ps,t=tak,a=as}
-	    table.insert(tg,tgl)
-	    count=ps
-	end
-    newline=""
-    for i=1,#tk do
-	newline=newline..tk[i]
-	newt=""
-	for n, t in ipairs(tg) do
-	    if t.p==i then newt=newt..t.a..t.t end
-	end
-	if newt~="" then newline=newline.."{"..newt.."}" end
-    end
-    newtext="{"..stags.."}"..newline
-    text=newtext
-    return text
-end
-
 
 --	Colours across line	--
 function gcolors(subs,sel)
@@ -217,8 +167,8 @@ for c=1,cn do
 end
 button={"This is a rather big button","Click this, and something might happen","What is this, I don't even","The do-not-cancel button","I accept the terms of this scam","Is this really the right button?","What do I do with all these colours?!","I sure hope nothing will break if I do this","Yeah, okay. Fine. I'm gonna click on this.","Is this button safe to click?","Anyone else feels like this is a bit random?","We interrupt your typesetting to bring you a button!","I assure you this script actually works (maybe)","No, but seriously, click me!"}
 ex=math.random(1,#button)
-if not res.rept then press,rez=aegisub.dialog.display(gc_config,{button[ex],"Cancel"},{close='Cancel'}) end
-if press=="Cancel" then aegisub.cancel() end
+if not res.rept then press,rez=ADD(gc_config,{button[ex],"Cancel"},{close='Cancel'}) end
+if press=="Cancel" then ak() end
 kt=rez.gctype
 -- colours table
 kolors={}
@@ -271,8 +221,8 @@ function shift(subs,sel)
 	text=line.text
 
 	    -- check if line looks colorized
-	    if not text:match("{(\\[1234]?c)&H%x+&}[%w%p]") then aegisub.dialog.display({{class="label",
-		label="Line "..x.." does not \nappear to be colorized",x=0,y=0,width=1,height=2}},{"OK"}) aegisub.cancel()
+	    if not text:match("{(\\[1234]?c)&H%x+&}[%w%p]") then ADD({{class="label",
+		label="Line "..x.." does not \nappear to be colorized",x=0,y=0,width=1,height=2}},{"OK"}) ak()
 	    end
 
 	    -- determine which colour has been used to colorize - 1c, 2c, 3c, 4c
@@ -347,19 +297,6 @@ function shift(subs,sel)
     end
 end
 
-function stylecolours()
-	stylecol={}
-	primary=styleref.color1:gsub("H%x%x","H")	sc1=primary	table.insert(stylecol,sc1)
-	pri=text:match("^{[^}]-\\c(&H%x+&)")		if pri~=nil then primary=pri end
-	secondary=styleref.color2:gsub("H%x%x","H")	sc2=secondary	table.insert(stylecol,sc2)
-	sec=text:match("^{[^}]-\\3c(&H%x+&)")		if sec~=nil then secondary=sec end
-	outline=styleref.color3:gsub("H%x%x","H")	sc3=outline	table.insert(stylecol,sc3)
-	out=text:match("^{[^}]-\\3c(&H%x+&)")		if out~=nil then outline=out end
-	shadow=styleref.color4:gsub("H%x%x","H")	sc4=shadow	table.insert(stylecol,sc4)
-	sha=text:match("^{[^}]-\\c(&H%x+&)")		if sha~=nil then shadow=sha end
-	return stylecol
-end
-
 
 --	Match colours	--
 function matchcolors(subs,sel)
@@ -367,8 +304,8 @@ function matchcolors(subs,sel)
         progress(string.format("Colorizing line %d/%d",x,#sel))
 	line=subs[i]
 	text=line.text
-	if defaref~=nil and line.style=="Default" then styleref=defaref
-	elseif lastref~=nil and laststyle==line.style then styleref=lastref
+	if defaref and line.style=="Default" then styleref=defaref
+	elseif lastref and laststyle==line.style then styleref=lastref
 	else styleref=stylechk(line.style) end
 	lastref=styleref	laststyle=line.style
 	
@@ -385,14 +322,14 @@ function matchcolors(subs,sel)
 	if pressed=="Match Colours" and res.match13 then
 	    for ctags in text:gmatch("({\\[^}]-})") do
 		ctags2=nil
-		if ctags:match("\\3c") and not ctags:match("\\1?c") then ctags2=ctags:gsub("\\3c&H%w+&","\\3c"..primary) end
-		if ctags:match("\\1?c") and ctags:match("\\3c") then 
-		  tempc=ctags:match("\\1?c(&H%w+&)") ctags2=ctags:gsub("\\3c&H%w+&","\\3c"..tempc) end
-		if ctags:match("\\1?c") and not ctags:match("\\3c") then
-		  ctags2=ctags:gsub("\\1?c(&H%w+&)","\\c%1\\3c%1") end
-		if ctags==text:match("^({\\[^}]-})") and not ctags:match("\\3c") and not ctags:match("\\1?c") then
+		if ctags:match("\\3c") and not ctags:match("\\c&") then ctags2=ctags:gsub("\\3c&H%w+&","\\3c"..primary) end
+		if ctags:match("\\c&") and ctags:match("\\3c") then 
+		  tempc=ctags:match("\\c(&H%w+&)") ctags2=ctags:gsub("\\3c&H%w+&","\\3c"..tempc) end
+		if ctags:match("\\c&") and not ctags:match("\\3c") then
+		  ctags2=ctags:gsub("\\c(&H%w+&)","\\c%1\\3c%1") end
+		if ctags==text:match("^({\\[^}]-})") and not ctags:match("\\3c") and not ctags:match("\\c&") then
 		  ctags2=ctags:gsub("^({\\[^}]-)}","%1\\3c"..primary.."}") end
-		if ctags2~=nil then ctags=esc(ctags) text=text:gsub(ctags,ctags2) end
+		if ctags2 then ctags=esc(ctags) text=text:gsub(ctags,ctags2) end
 	    end
 	end
 
@@ -400,14 +337,14 @@ function matchcolors(subs,sel)
 	if pressed=="Match Colours" and res.match31 then
 	    for ctags in text:gmatch("({\\[^}]-})") do
 		ctags2=nil
-		if ctags:match("\\1?c") and not ctags:match("\\3c") then ctags2=ctags:gsub("\\1?c&H%w+&","\\c"..outline) end
-		if ctags:match("\\1?c") and ctags:match("\\3c") then 
-		  tempc=ctags:match("\\3c(&H%w+&)") ctags2=ctags:gsub("\\1?c&H%w+&","\\c"..tempc) end
-		if ctags:match("\\3c") and not ctags:match("\\1?c") then
+		if ctags:match("\\c&") and not ctags:match("\\3c") then ctags2=ctags:gsub("\\c&H%w+&","\\c"..outline) end
+		if ctags:match("\\c&") and ctags:match("\\3c") then 
+		  tempc=ctags:match("\\3c(&H%w+&)") ctags2=ctags:gsub("\\c&H%w+&","\\c"..tempc) end
+		if ctags:match("\\3c") and not ctags:match("\\c&") then
 		  ctags2=ctags:gsub("\\3c(&H%w+&)","\\c%1\\3c%1") end
-		if ctags==text:match("^({\\[^}]-})") and not ctags:match("\\1?c") and not ctags:match("\\3c") then
+		if ctags==text:match("^({\\[^}]-})") and not ctags:match("\\c&") and not ctags:match("\\3c") then
 		  ctags2=ctags:gsub("^({\\[^}]-)}","%1\\c"..outline.."}") end
-		if ctags2~=nil then ctags=esc(ctags) text=text:gsub(ctags,ctags2) end
+		if ctags2 then ctags=esc(ctags) text=text:gsub(ctags,ctags2) end
 	    end
 	end
 	
@@ -422,7 +359,7 @@ function matchcolors(subs,sel)
 		  ctags2=ctags:gsub("\\c(&H%w+&)","\\c%1\\4c%1") end
 		if ctags==text:match("^({\\[^}]-})") and not ctags:match("\\4c") and not ctags:match("\\c") then
 		  ctags2=ctags:gsub("^({\\[^}]-)}","%1\\4c"..primary.."}") end
-		if ctags2~=nil then ctags=esc(ctags) text=text:gsub(ctags,ctags2) end
+		if ctags2 then ctags=esc(ctags) text=text:gsub(ctags,ctags2) end
 	    end
 	end
 	
@@ -437,7 +374,7 @@ function matchcolors(subs,sel)
 		  ctags2=ctags:gsub("\\3c(&H%w+&)","\\3c%1\\4c%1") end
 		if ctags==text:match("^({\\[^}]-})") and not ctags:match("\\4c") and not ctags:match("\\3c") then
 		  ctags2=ctags:gsub("^({\\[^}]-)}","%1\\4c"..outline.."}") end
-		if ctags2~=nil then ctags=esc(ctags) text=text:gsub(ctags,ctags2) end
+		if ctags2 then ctags=esc(ctags) text=text:gsub(ctags,ctags2) end
 	    end
 	end
 
@@ -445,20 +382,20 @@ function matchcolors(subs,sel)
 	if pressed=="Match Colours" and res.match131 then
 	    if text:match("^{\\") then
 		tags=text:match("^({\\[^}]-})")
-		if tags:match("\\1?c") then tags=tags:gsub("\\1?c","\\tempc")
+		if tags:match("\\c&") then tags=tags:gsub("\\c&","\\tempc")
 		else tags=tags:gsub("({\\[^}]-)}","%1\\tempc"..primary.."}") end
 		if tags:match("\\3c") then tags=tags:gsub("\\3c","\\c")
 		else tags=tags:gsub("({\\[^}]-)}","%1\\c"..outline.."}") end
 		tags=tags:gsub("\\tempc","\\3c")
 		after=text:match("^{\\[^}]-}(.*)")
-		after=after:gsub("\\1?c","\\tempc")
+		after=after:gsub("\\c&","\\tempc")
 		after=after:gsub("\\3c","\\c")
 		after=after:gsub("\\tempc","\\3c")
 		text=tags..after
 	    else
 		tags="{\\c"..outline.."\\3c"..primary.."}"
 		after=text
-		after=after:gsub("\\1?c","\\tempc")
+		after=after:gsub("\\c&","\\tempc")
 		after=after:gsub("\\3c","\\c")
 		after=after:gsub("\\tempc","\\3c")
 		text=tags..after
@@ -550,105 +487,6 @@ function matchcolors(subs,sel)
 	line.text=text
         subs[i]=line
     end
-end
-
-function RGB_to_HSL(Red,Green,Blue)
-    R=(tonumber(Red,16)/255)
-    G=(tonumber(Green,16)/255)
-    B=(tonumber(Blue,16)/255)
-    
-    Min=math.min(R,G,B)
-    Max=math.max(R,G,B)
-    del_Max=Max-Min
-    
-    L=(Max+Min)/2
-    
-    if del_Max==0 then H=0 S=0
-    else
-      if L<0.5 then S=del_Max/(Max+Min)
-      else S=del_Max/(2-Max-Min)
-      end
-      
-      del_R=(((Max-R)/6)+(del_Max/2))/del_Max
-      del_G=(((Max-G)/6)+(del_Max/2))/del_Max
-      del_B=(((Max-B)/6)+(del_Max/2))/del_Max
-		
-      if R==Max then H=del_B-del_G
-      elseif G==Max then H=(1/3)+del_R-del_B
-      elseif B==Max then H=(2/3)+del_G-del_R
-      end
-
-      if H<0 then H=H+1 end
-      if H>1 then H=H-1 end
-    end
-    return H,S,L
-end
-
-function HSL_to_RGB(H,S,L)
-    if S==0 then
-	R=L*255
-	G=L*255
-	B=L*255
-    else
-	if L<0.5 then var_2=L*(1+S)
-	else var_2=(L+S)-(S*L)
-	end
-	var_1=2*L-var_2
-	R=255*Hue_to_RGB(var_1,var_2,H+(1/3))
-	G=255*Hue_to_RGB(var_1,var_2,H)
-	B=255*Hue_to_RGB(var_1,var_2,H-(1/3))
-    end
-    return R,G,B
-end
-
-function Hue_to_RGB(v1,v2,vH)
-    if vH<0 then vH=vH+1 end
-    if vH>1 then vH=vH-1 end
-    if (6*vH)<1 then return(v1+(v2-v1)*6*vH) end
-    if (2*vH)<1 then return(v2) end
-    if (3*vH)<2 then return(v1+(v2-v1)*((2/3)-vH)*6) end
-    return(v1)
-end
-
-function HSLround(H,S,L)
-  if H>1 then H=H-1 end
-  if H<0 then H=H+1 end
-  if S>1 then S=1 end
-  if S<0 then S=0 end
-  if L>1 then L=1 end
-  if L<0 then L=0 end
-  return H,S,L
-end
-
-function brightness(klr,lvl)
-    klr=tonumber(klr,16)
-    if randomize then
-	rAn=math.random(klr-lvl,klr+lvl)
-	klr=round(rAn)
-    else
-	klr=klr+lvl
-    end
-    if klr<0 then klr=0 end
-    if klr<10 then klr="0"..klr else klr=tohex(klr) end
-return klr
-end
-
-function tohex(num)
-    n1=math.floor(num/16)
-    n2=num%16
-    num=tohex1(n1)..tohex1(n2)
-return num
-end
-
-function tohex1(num)
-    if num<1 then num="0"
-    elseif num>14 then num="F"
-    elseif num==10 then num="A"
-    elseif num==11 then num="B"
-    elseif num==12 then num="C"
-    elseif num==13 then num="D"
-    elseif num==14 then num="E" end
-return num
 end
 
 
@@ -772,6 +610,65 @@ function gradient(subs,sel)
     end
 end
 
+function stylecolours()
+	stylecol={}
+	primary=styleref.color1:gsub("H%x%x","H")	sc1=primary	table.insert(stylecol,sc1)
+	pri=text:match("^{[^}]-\\c(&H%x+&)")		if pri~=nil then primary=pri end
+	secondary=styleref.color2:gsub("H%x%x","H")	sc2=secondary	table.insert(stylecol,sc2)
+	sec=text:match("^{[^}]-\\3c(&H%x+&)")		if sec~=nil then secondary=sec end
+	outline=styleref.color3:gsub("H%x%x","H")	sc3=outline	table.insert(stylecol,sc3)
+	out=text:match("^{[^}]-\\3c(&H%x+&)")		if out~=nil then outline=out end
+	shadow=styleref.color4:gsub("H%x%x","H")	sc4=shadow	table.insert(stylecol,sc4)
+	sha=text:match("^{[^}]-\\c(&H%x+&)")		if sha~=nil then shadow=sha end
+	return stylecol
+end
+
+function textmod(orig)
+    tk={}
+    tg={}
+	text=text:gsub("{\\\\k0}","")
+	repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
+	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
+	vis=text:gsub("{[^}]-}","")
+	ltrmatches=re.find(vis,".")
+	  for l=1,#ltrmatches do
+	    table.insert(tk,ltrmatches[l].str)
+	  end
+	stags=text:match("^{(\\[^}]-)}")
+	if stags==nil then stags="" end
+	text=text:gsub("^{\\[^}]-}","") :gsub("{[^\\}]-}","")
+	count=0
+	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
+	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
+	    pos=re.find(chars,".")
+	    if pos==nil then ps=0+count else ps=#pos+count end
+	    tgl={p=ps,t=tak,a=as}
+	    table.insert(tg,tgl)
+	    count=ps
+	end
+	count=0
+	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
+	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
+	    pos=re.find(chars,".")
+	    if pos==nil then ps=0+count else ps=#pos+count end
+	    tgl={p=ps,t=tak,a=as}
+	    table.insert(tg,tgl)
+	    count=ps
+	end
+    newline=""
+    for i=1,#tk do
+	newline=newline..tk[i]
+	newt=""
+	for n, t in ipairs(tg) do
+	    if t.p==i then newt=newt..t.a..t.t end
+	end
+	if newt~="" then newline=newline.."{"..newt.."}" end
+    end
+    newtext="{"..stags.."}"..newline
+    text=newtext
+    return text
+end
+
 function colkill(tagz)
 	tagz=tagz:gsub("\\1c&","\\c&")
 	tags2={"c","2c","3c","4c"}
@@ -782,6 +679,104 @@ function colkill(tagz)
 	return tagz
 end
 
+function RGB_to_HSL(Red,Green,Blue)
+    R=(tonumber(Red,16)/255)
+    G=(tonumber(Green,16)/255)
+    B=(tonumber(Blue,16)/255)
+    
+    Min=math.min(R,G,B)
+    Max=math.max(R,G,B)
+    del_Max=Max-Min
+    
+    L=(Max+Min)/2
+    
+    if del_Max==0 then H=0 S=0
+    else
+      if L<0.5 then S=del_Max/(Max+Min)
+      else S=del_Max/(2-Max-Min)
+      end
+      
+      del_R=(((Max-R)/6)+(del_Max/2))/del_Max
+      del_G=(((Max-G)/6)+(del_Max/2))/del_Max
+      del_B=(((Max-B)/6)+(del_Max/2))/del_Max
+		
+      if R==Max then H=del_B-del_G
+      elseif G==Max then H=(1/3)+del_R-del_B
+      elseif B==Max then H=(2/3)+del_G-del_R
+      end
+
+      if H<0 then H=H+1 end
+      if H>1 then H=H-1 end
+    end
+    return H,S,L
+end
+
+function HSL_to_RGB(H,S,L)
+    if S==0 then
+	R=L*255
+	G=L*255
+	B=L*255
+    else
+	if L<0.5 then var_2=L*(1+S)
+	else var_2=(L+S)-(S*L)
+	end
+	var_1=2*L-var_2
+	R=255*Hue_to_RGB(var_1,var_2,H+(1/3))
+	G=255*Hue_to_RGB(var_1,var_2,H)
+	B=255*Hue_to_RGB(var_1,var_2,H-(1/3))
+    end
+    return R,G,B
+end
+
+function Hue_to_RGB(v1,v2,vH)
+    if vH<0 then vH=vH+1 end
+    if vH>1 then vH=vH-1 end
+    if (6*vH)<1 then return(v1+(v2-v1)*6*vH) end
+    if (2*vH)<1 then return(v2) end
+    if (3*vH)<2 then return(v1+(v2-v1)*((2/3)-vH)*6) end
+    return(v1)
+end
+
+function HSLround(H,S,L)
+  if H>1 then H=H-1 end
+  if H<0 then H=H+1 end
+  if S>1 then S=1 end
+  if S<0 then S=0 end
+  if L>1 then L=1 end
+  if L<0 then L=0 end
+  return H,S,L
+end
+
+function brightness(klr,lvl)
+    klr=tonumber(klr,16)
+    if randomize then
+	rAn=math.random(klr-lvl,klr+lvl)
+	klr=round(rAn)
+    else
+	klr=klr+lvl
+    end
+    if klr<0 then klr=0 end
+    if klr<10 then klr="0"..klr else klr=tohex(klr) end
+return klr
+end
+
+function tohex(num)
+    n1=math.floor(num/16)
+    n2=num%16
+    num=tohex1(n1)..tohex1(n2)
+return num
+end
+
+function tohex1(num)
+    if num<1 then num="0"
+    elseif num>14 then num="F"
+    elseif num==10 then num="A"
+    elseif num==11 then num="B"
+    elseif num==12 then num="C"
+    elseif num==13 then num="D"
+    elseif num==14 then num="E" end
+return num
+end
 
 function styleget(subs)
     styles={}
@@ -822,46 +817,12 @@ end
 function round(num) num=math.floor(num+0.5) return num end
 
 function progress(msg)
-  cancelled=aegisub.progress.is_cancelled()
-  if cancelled then aegisub.cancel() end
+  if aegisub.progress.is_cancelled() then ak() end
   aegisub.progress.title(msg)
 end
 
 function repetition()
-	if res.rept then
-	res.clrs=lastclrs
-	res.shit=lastshit
-	res.kol=lastkol
-	res.c1=lastc1
-	res.c2=lastc2
-	res.c3=lastc3
-	res.c4=lastc4
-	res.c5=lastc5
-	res.join=lastjoin
-	res.cont=lastcont
-	res.word=lastword
-	res.R=lastR
-	res.G=lastG
-	res.B=lastB
-	res.bright=lastbright
-	res.k1=lastk1
-	res.k2=lastk2
-	res.k3=lastk3
-	res.k4=lastk4
-	res.mktag=lastmktag
-	res.gclrs=lastgclrs
-	res.gcl=lastgcl
-	res.match13=lastmatch13
-	res.match31=lastmatch31
-	res.match14=lastmatch14
-	res.match34=lastmatch34
-	res.match131=lastmatch131
-	res.invert=lastinvert
-	res.grad=lastgrad
-	res.grtype=lastgrtype
-	res.hueshort=lasthueshort
-	res.double=lastdouble
-	end
+    if lastres and res.rept then res=lastres end
 end
 
 function tf(val)
@@ -877,47 +838,25 @@ function detf(txt)
 end
 
 function saveconfig()
-colconf=
-"Colorize Configutation\n"..
-"\nclrs:"..res.clrs..
-"\nshit:"..res.shit..
-"\nkol:"..res.kol..
-"\njoin:"..tf(res.join)..
-"\ncont:"..tf(res.cont)..
-"\nword:"..tf(res.word)..
-"\ngcl:"..tf(res.gcl)..
-"\ngclrs:"..res.gclrs..
-"\ngrad:"..tf(res.grad)..
-"\nhueshort:"..tf(res.hueshort)..
-"\ngrtype:"..res.grtype..
-"\ndouble:"..tf(res.double)..
-"\nast:"..tf(res.ast)..
-"\nk1:"..tf(res.k1)..
-"\nk2:"..tf(res.k2)..
-"\nk3:"..tf(res.k3)..
-"\nk4:"..tf(res.k4)..
-"\nmatch13:"..tf(res.match13)..
-"\nmatch31:"..tf(res.match31)..
-"\nmatch14:"..tf(res.match14)..
-"\nmatch34:"..tf(res.match34)..
-"\nmatch131:"..tf(res.match131)..
-"\nmktag:"..tf(res.mktag)..
-"\ninvert:"..tf(res.invert)..
-"\nrem:"..tf(res.rem).."\n"
-colorconfig=aegisub.decode_path("?user").."\\colorize.conf"
+colconf="Colorize Configutation\n\n"
+for key,val in ipairs(GUI) do
+    if val.class=="checkbox" and val.name~="save" then colconf=colconf..val.name..":"..tf(res[val.name]).."\n" end
+    if val.class=="dropdown" then colconf=colconf..val.name..":"..res[val.name].."\n" end
+end
+colorconfig=ADP("?user").."\\colorize.conf"
 file=io.open(colorconfig,"w")
 file:write(colconf)
 file:close()
-aegisub.dialog.display({{class="label",label="Config Saved to:\n"..colorconfig}},{"OK"},{close='OK'})
+ADD({{class="label",label="Config Saved to:\n"..colorconfig}},{"OK"},{close='OK'})
 end
 
 function loadconfig()
-colorconfig=aegisub.decode_path("?user").."\\colorize.conf"
+colorconfig=ADP("?user").."\\colorize.conf"
 file=io.open(colorconfig)
     if file~=nil then
 	konf=file:read("*all")
 	io.close(file)
-	  for key,val in ipairs(colorfiguration) do
+	  for key,val in ipairs(GUI) do
 	    if val.class=="checkbox" or val.class=="dropdown" then
 	      if konf:match(val.name) then val.value=detf(konf:match(val.name..":(.-)\n")) end
 	    end
@@ -926,7 +865,10 @@ file=io.open(colorconfig)
 end
 
 function colorize(subs,sel)
-	colorfiguration=
+ADD=aegisub.dialog.display
+ADP=aegisub.decode_path
+ak=aegisub.cancel
+	GUI=
 	{
 	{x=0,y=0,width=1,height=1,class="label",label="Colours"},
 	{x=1,y=0,width=2,height=1,class="dropdown",name="clrs",items={"2","3","4","5"},value="2"},
@@ -995,22 +937,22 @@ function colorize(subs,sel)
 	{x=0,y=9,width=3,height=1,class="checkbox",name="double",label="Double HSB gradient",value=false},
 	{x=3,y=9,width=3,height=1,class="checkbox",name="ast",label="Use asterisks",value=false},
 	
-	{x=3,y=6,width=3,height=1,class="checkbox",name="conf",label="Save config",value=false,hint="Saves current configuration\n(for most things)"},
+	{x=3,y=6,width=3,height=1,class="checkbox",name="save",label="Save config",value=false,hint="Saves current configuration\n(for most things)"},
 	{x=3,y=7,width=3,height=1,class="checkbox",name="rem",label="Remember last",value=false,hint="remember last settings"},
 	
 	}
 	loadconfig()
 	if colourblind and res.rem then
-	  for key,val in ipairs(colorfiguration) do
-	    if val.class=="checkbox" or val.class=="dropdown" then val.value=res[val.name] end
-	    if val.name=="conf" then val.value=false end
+	  for key,val in ipairs(GUI) do
+	    if val.class=="checkbox" or val.class=="dropdown" or val.class=="color" then val.value=res[val.name] end
+	    if val.name=="save" then val.value=false end
 	  end
 	end
-	pressed,res=aegisub.dialog.display(colorfiguration,{"Colorize","Shift","Match Colours","RGB","HSB","Cancel"},{ok='Colorize',close='Cancel'})
-	if pressed=="Cancel" then aegisub.cancel() end
+	pressed,res=ADD(GUI,{"Colorize","Shift","Match Colours","RGB","HSB","Cancel"},{ok='Colorize',close='Cancel'})
+	if pressed=="Cancel" then ak() end
 	randomize=res.randoom
 	if pressed=="Colorize" then repetition() 
-	    if res.conf then saveconfig()
+	    if res.save then saveconfig()
 	    elseif res.gcl then gcolors(subs,sel)
 	    elseif res.grad then gradient(subs,sel)
 	    else colors(subs,sel) end
@@ -1018,24 +960,9 @@ function colorize(subs,sel)
 	if pressed=="Shift" then repetition() shift(subs,sel) end
 	if pressed=="Match Colours" or pressed=="RGB" or pressed=="HSB" then repetition() styleget(subs) matchcolors(subs,sel) end
 	
-	lastclrs=res.clrs		lastshit=res.shit
-	lastkol=res.kol			lastc1=res.c1
-	lastc2=res.c2			lastc3=res.c3
-	lastc4=res.c4			lastc5=res.c5
-	lastjoin=res.join		lastcont=res.cont
-	lastword=res.word		lastR=res.R
-	lastG=res.G			lastB=res.B
-	lastbright=res.bright		lastmktag=res.mktag
-	lastk1=res.k1			lastk2=res.k2
-	lastk3=res.k3			lastk4=res.k4
-	lastgcl=res.gcl			lastgclrs=res.gclrs
-	lastmatch13=res.match13		lastmatch31=res.match31
-	lastmatch14=res.match14		lastmatch34=res.match34
-	lastmatch131=res.match131	lastinvert=res.invert
-	lastgrad=res.grad		lastgrtype=res.grtype
-	lasthueshort=res.hueshort	lastdouble=res.double
-    
 	colourblind=true
+	lastres=res
+	
 	aegisub.set_undo_point(script_name)
 	return sel
 end
