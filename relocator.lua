@@ -6,7 +6,7 @@ script_description="Makes things appear different from before"
 script_author="reanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/relocator.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/relocator.lua"
-script_version="3.0"
+script_version="3.1"
 
 include("utils.lua")
 re=require'aegisub.re'
@@ -140,6 +140,7 @@ function positron(subs,sel)
 	    text=text:gsub("\\clip%([^%)]+%)","")
 	    :gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 	    :gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
+	    :gsub("%**}","}")
 	end
 	
 	-- clip to frz
@@ -381,6 +382,7 @@ end
 
 function bilocator(subs,sel)
     xx=res.eks	yy=res.wai
+    if res.move=="transmove" and sel[#sel]==#subs then table.remove(sel,#sel) end
     for i=#sel,1,-1 do
         progress(string.format("Moving through hyperspace... %d/%d",(#sel-i+1),#sel))
 	line=subs[sel[i]]
@@ -538,7 +540,8 @@ function multimove(subs,sel)
 end
 
 function modifier(subs,sel)
-    xx=res.eks yy=res.wai
+    post=res.post xx=res.eks yy=res.wai
+    rr=1/res.rndec
     for x, i in ipairs(sel) do
         progress(string.format("Morphing... %d/%d",x,#sel))
 	line=subs[i]
@@ -546,31 +549,27 @@ function modifier(subs,sel)
 
 	    if res.mod=="round numbers" then
 		if text:match("\\pos") and res.rnd=="all" or text:match("\\pos") and res.rnd=="pos" then
-		px,py=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)")
-		px,py=round4(px,py,0,0)
-		text=text:gsub("\\pos%([%d%.%-]+,[%d%.%-]+%)","\\pos("..px..","..py..")")
+		  text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b) return "\\pos("..round(a,rr)..","..round(b,rr)..")" end)
 		end
 		if text:match("\\org") and res.rnd=="all" or text:match("\\org") and res.rnd=="org" then
-		ox,oy=text:match("\\org%(([%d%.%-]+),([%d%.%-]+)%)")
-		ox,oy=round4(ox,oy,0,0)
-		text=text:gsub("\\org%([%d%.%-]+,[%d%.%-]+%)","\\org("..ox..","..oy..")")
+		  text=text:gsub("\\org%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b) return "\\org("..round(a,rr)..","..round(b,rr)..")" end)
 		end
 		if text:match("\\move") and res.rnd=="all" or text:match("\\move") and res.rnd=="move" then
-		mo1,mo2,mo3,mo4=text:match("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)")
-		mo1,mo2,mo3,mo4=round4(mo1,mo2,mo3,mo4)
-		text=text:gsub("\\move%([%d%.%-]+,[%d%.%-]+,[%d%.%-]+,[%d%.%-]+","\\move("..mo1..","..mo2..","..mo3..","..mo4)
+		  text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",function(mo1,mo2,mo3,mo4,rr)
+		  return "\\move("..round(mo1,rr)..","..round(mo2,rr)..","..round(mo3,rr)..","..round(mo4,rr) end)
 		end
 		if text:match("\\i?clip") and res.rnd=="all" or text:match("\\i?clip") and res.rnd=="clip" then
-		 for klip in text:gmatch("\\i?clip%([^%)]+%)") do
-		 klip2=klip:gsub("([%d%.%-]+)",function(c) return round(c) end)
-		 klip=esc(klip)
-		 text=text:gsub(klip,klip2)
-		 end
+		  for klip in text:gmatch("\\i?clip%([^%)]+%)") do
+		    if klip:match("m") then rrr=1 else rrr=rr end
+		    klip2=klip:gsub("([%d%.%-]+)",function(c) return round(c,rrr) end)
+		    klip=esc(klip)
+		    text=text:gsub(klip,klip2)
+		  end
 		end
 		if text:match("\\p1") and res.rnd=="all" or text:match("\\p1") and res.rnd=="mask" then
-		tags=text:match("^{\\[^}]-}")
-		text=text:gsub("^{\\[^}]-}","") :gsub("([%d%.%-]+)",function(m) return round(m) end)
-		text=tags..text
+		  tags=text:match("^{\\[^}]-}")
+		  text=text:gsub("^{\\[^}]-}","") :gsub("([%d%.%-]+)",function(m) return round(m,rr) end)
+		  text=tags..text
 		end
 	    end
 	    
@@ -727,6 +726,17 @@ function modifier(subs,sel)
 	    if res.mod=="rect.2vector" then
 		text=text:gsub("\\(i?)clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(ii,a,b,c,d) 
 		a,b,c,d=round4(a,b,c,d) return string.format("\\"..ii.."clip(m %d %d l %d %d %d %d %d %d)",a,b,c,b,c,d,a,d) end)
+	    end
+	    
+	    if res.mod=="clip scale" and text:match("\\i?clip%(%d-,?m") then
+		oscf=text:match("\\i?clip%((%d+),m")
+		if oscf then fact1=2^(oscf-1) else fact1=1 end
+		if post<1 then post=1 end
+		fact2=2^(post-1)
+		
+		text=text:gsub("(\\i?clip%()(%d*,?)m ([^%)]+)%)",function(a,b,c) 
+		return a..post..",m "..c:gsub("([%d%.%-]+)",function(d) return round(d/fact1*fact2) end)..")" end)
+		:gsub("1,m","m")
 	    end
 	    
 	    if res.mod=="find centre" then
@@ -1353,13 +1363,14 @@ end
 
 --	reanimatools	--
 
-function round(a) a=math.floor(a+0.5) return a end
+function round(a,dec) if not dec then dec=1 end a=math.floor(a*dec+0.5)/dec return a end
 
-function round4(a,b,c,d)
-	a=math.floor(a+0.5)
-	b=math.floor(b+0.5)
-	c=math.floor(c+0.5)
-	d=math.floor(d+0.5)
+function round4(a,b,c,d,dec)
+	if not dec then dec=1 end
+	a=math.floor(a*dec+0.5)/dec
+	b=math.floor(b*dec+0.5)/dec
+	c=math.floor(c*dec+0.5)/dec
+	d=math.floor(d*dec+0.5)/dec
 	return a,b,c,d
 end
 
@@ -1644,6 +1655,8 @@ Negative rot: keeps the same rotation, but changes to negative number, like 350 
 
 Vector2rect/Rect.2vector: converts between rectangular and vectorial clips.
 
+Clip Scale: Use Positron input to set the X factor in "clip(X,m " and clip will be recalculated accordingly.
+
 Find Centre: A useless function that sets \pos in the centre of a rectangular clip.
 
 Randomize: randomizes values of given tags. With \fs50 and value 4 you can get fs 46-54.
@@ -1742,7 +1755,7 @@ stg_toport={x=1,y=0,width=1,height=1,class="label",label="           Teleportati
 stg_intro={x=0,y=1,width=2,height=9,class="textbox",name="gd",value=intro}
 stg_cannon={x=0,y=1,width=2,height=22,class="textbox",name="gd",value=cannon}
 stg_travel={x=0,y=1,width=2,height=19,class="textbox",name="gd",value=travel}
-stg_morph={x=0,y=1,width=2,height=17,class="textbox",name="gd",value=morph}
+stg_morph={x=0,y=1,width=2,height=19,class="textbox",name="gd",value=morph}
 stg_morph2fbf={x=0,y=1,width=2,height=8,class="textbox",name="gd",value=morph2fbf}
 stg_morphorg={x=0,y=1,width=2,height=8,class="textbox",name="gd",value=morphorg}
 stg_morphclip={x=0,y=1,width=2,height=8,class="textbox",name="gd",value=morphclip}
@@ -1828,59 +1841,64 @@ rin=subs[act]	tk=rin.text
 if tk:match"\\move" then 
 m1,m2,m3,m4=tk:match("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)") M1=m3-m1 M2=m4-m2 mlbl="mov: "..M1..","..M2
 else mlbl="" end
+
+Repositioning={"Align X","Align Y","org to fax","clip to fax","clip to frz","horizontal mirror","vertical mirror","shake","shake rotation","shadow layer","space out letters"}
+Bilocator={"transmove","horizontal","vertical","multimove","rvrs. move","shiftstart","shiftmove","move clip"}
+Morphing={"round numbers","line2fbf","join fbf lines","killmovetimes","fullmovetimes","fulltranstimes","move v. clip","set origin","calculate origin","transform clip","FReeZe","rotate 180","flip hor.","flip vert.","negative rot","vector2rect.","rect.2vector","clip scale","find centre","extend mask","flip mask","adjust drawing","randomask","randomize...","letterbreak","wordbreak"}
+Rounding={"all","pos","move","org","clip","mask"}
+Freezing={"-frz-","30","45","60","90","120","135","150","180","-30","-45","-60","-90","-120","-135","-150"}
+
 hyperconfig={
     {x=11,y=0,width=2,height=1,class="label",label="Teleportation"},
     {x=11,y=1,width=3,height=1,class="floatedit",name="eks",hint="X"},
     {x=11,y=2,width=3,height=1,class="floatedit",name="wai",hint="Y"},
 
     {x=0,y=0,width=3,height=1,class="label",label="Repositioning Field",},
-    {x=0,y=1,width=2,height=1,class="dropdown",name="posi",value=posdrop,
-        items={"Align X","Align Y","org to fax","clip to fax","clip to frz","horizontal mirror","vertical mirror","shake","shake rotation","shadow layer","space out letters"}},
+    {x=0,y=1,width=2,height=1,class="dropdown",name="posi",value=posdrop,items=Repositioning},
     {x=0,y=2,width=2,height=1,class="floatedit",name="post",value=0},
     {x=0,y=3,width=1,height=1,class="checkbox",name="first",label="by first",value=true,hint="align with first line"},
-    {x=1,y=3,width=1,height=1,class="checkbox",name="rota",label="rotate",value=false,},
+    {x=1,y=3,width=1,height=1,class="checkbox",name="rota",label="rotate",value=false,hint="shake rotation / rotate mirrors"},
     {x=0,y=4,width=1,height=1,class="checkbox",name="layers",label="layers",value=true,hint="synchronize shaking for all layers"},
     {x=1,y=4,width=1,height=1,class="checkbox",name="smo",label="smooth",value=false,hint="smoothen shaking"},
-    {x=3,y=4,width=1,height=1,class="checkbox",name="sca",label="scaling",value=false,hint="add scaling to shake"},
-    {x=0,y=5,width=2,height=1,class="checkbox",name="space",label="space travel guide",value=false,},
-    
+    {x=1,y=5,width=1,height=1,class="checkbox",name="sca",label="scaling",value=false,hint="add scaling to shake"},
+    {x=0,y=6,width=2,height=1,class="checkbox",name="space",label="space travel guide",value=false,
+	hint="The Typesetter's Guide to the Hyperdimensional Relocator."},
+
     {x=3,y=0,width=2,height=1,class="label",label="Soul Bilocator"},
-    {x=3,y=1,width=1,height=1,class="dropdown",name="move",value=movedrop,
-	items={"transmove","horizontal","vertical","multimove","rvrs. move","shiftstart","shiftmove","move clip"}},
+    {x=3,y=1,width=1,height=1,class="dropdown",name="move",value=movedrop,items=Bilocator},
     {x=3,y=2,width=1,height=1,class="checkbox",name="keep",label="keep both",value=false,hint="keeps both lines for transmove"},
     {x=3,y=3,width=3,height=1,class="checkbox",name="rotac",label="rotation acceleration",value=true,hint="transmove option"},
-    {x=3,y=5,width=3,height=1,class="label",name="moo",label=mlbl},
+    {x=3,y=4,width=3,height=1,class="label",name="moo",label=mlbl},
     
     {x=5,y=0,width=2,height=1,class="label",label="Morphing Grounds",},
-    {x=5,y=1,width=2,height=1,class="dropdown",name="mod",value=morphdrop,
-	items={"round numbers","line2fbf","join fbf lines","killmovetimes","fullmovetimes","fulltranstimes","move v. clip","set origin","calculate origin","transform clip","FReeZe","rotate 180","flip hor.","flip vert.","negative rot","vector2rect.","rect.2vector","find centre","extend mask","flip mask","adjust drawing","randomask","randomize...","letterbreak","wordbreak"}},
+    {x=5,y=1,width=2,height=1,class="dropdown",name="mod",value=morphdrop,items=Morphing},
     {x=5,y=2,width=1,height=1,class="label",label="Round:",},
-    {x=6,y=2,width=1,height=1,class="dropdown",name="rnd",items={"all","pos","move","org","clip","mask"},value="all"},
-    {x=6,y=3,width=1,height=1,class="dropdown",name="freeze",
-	items={"-frz-","30","45","60","90","120","135","150","180","-30","-45","-60","-90","-120","-135","-150"},value="-frz-"},
-    {x=5,y=4,width=2,height=1,class="checkbox",name="delfbf",label="delete orig. line",value=true,hint="delete the original line for line2fbf / mirror functions"},
-    
+    {x=6,y=2,width=1,height=1,class="dropdown",name="rnd",items=Rounding,value="all"},
+    {x=6,y=3,width=1,height=1,class="dropdown",name="rndec",items={"1","0.1","0.01","0.001"},value="0"},
+    {x=6,y=4,width=1,height=1,class="dropdown",name="freeze",items=Freezing,value="-frz-"},
+    {x=5,y=5,width=2,height=1,class="checkbox",name="delfbf",label="delete orig. line",value=true,hint="delete original line for line2fbf / mirror functions"},
+
     {x=7,y=0,width=3,height=1,class="label",label="Cloning Laboratory",},
     {x=7,y=1,width=2,height=1,class="checkbox",name="cpos",label="\\posimove",value=true },
     {x=9,y=1,width=1,height=1,class="checkbox",name="corg",label="\\org",value=true },
     {x=7,y=2,width=1,height=1,class="checkbox",name="cclip",label="\\[i]clip",value=true },
     {x=8,y=2,width=2,height=1,class="checkbox",name="ctclip",label="\\t(\\[i]clip)",value=true },
-    {x=7,y=5,width=4,height=1,class="checkbox",name="cre",label="replicate missing tags",value=true },
+    {x=7,y=6,width=4,height=1,class="checkbox",name="cre",label="replicate missing tags",value=true },
     {x=7,y=3,width=2,height=1,class="checkbox",name="stack",label="stack clips",value=false },
-    {x=7,y=4,width=1,height=1,class="checkbox",name="copyrot",label="copyrot",value=false,hint="Cloning - copy rotations" },
+    {x=7,y=5,width=3,height=1,class="checkbox",name="copyrot",label="copy rotations",value=false},
     {x=9,y=3,width=3,height=1,class="checkbox",name="klipmatch",label="match type    ",value=false },
-    {x=9,y=4,width=3,height=1,class="checkbox",name="combine",label="comb. vect.",value=false,hint="Cloning - combine vectors" },
-    
+    {x=7,y=4,width=3,height=1,class="checkbox",name="combine",label="combine vectors",value=false},
+
     {x=12,y=3,width=1,height=1,class="checkbox",name="tppos",label="pos",value=true },
     {x=12,y=4,width=1,height=1,class="checkbox",name="tpmov",label="move",value=true },
     {x=13,y=3,width=1,height=1,class="checkbox",name="tporg",label="org",value=true },
     {x=13,y=4,width=1,height=1,class="checkbox",name="tpclip",label="clip",value=true },
     {x=12,y=5,width=1,height=1,class="checkbox",name="tpmask",label="mask",value=false },
     {x=13,y=0,width=1,height=1,class="checkbox",name="tpmod",label="mod",value=false },
-    {x=11,y=5,width=1,height=1,class="checkbox",name="autopos",label="p",value=true,hint="Teleport position when \\pos tags missing" },
-    {x=13,y=5,width=1,height=1,class="label",label="  [v"..script_version.."]",},
-    
-    {x=6,y=5,width=1,height=1,class="checkbox",name="save",label="Save",value=false,hint="Save current configuration"},
+    {x=11,y=6,width=3,height=1,class="checkbox",name="autopos",label="pos with tags missing",value=true,hint="Teleport position when \\pos tags missing" },
+
+    {x=6,y=6,width=1,height=1,class="checkbox",name="save",label="Save",value=false,hint="Save current configuration"},
+    {x=3,y=6,width=3,height=1,class="label",label="      [Relocator v"..script_version.."]",},
 } 
 
 	loadconfig()
