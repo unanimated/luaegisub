@@ -22,7 +22,7 @@ N		-> "OP/ED in style" - includes any lines timed between the first and last lin
 script_name="Selectricks"
 script_description="Selectricks and Sortricks"
 script_author="unanimated"
-script_version="2.7"
+script_version="2.71"
 
 -- SETTINGS --				you can choose from the options below to change the default settings
 
@@ -183,7 +183,6 @@ end
 for i=#sel,1,-1 do	table.remove(sel,i) end
 opst=10000000	opet=0
 edst=10000000	edet=0
-
     for i=1,#subs do
 	if subs[i].class=="dialogue" then
 	local line=subs[i]
@@ -280,16 +279,17 @@ function presel(subs, sel)
 	sorttab={}
 	if res.pres=="move sel. up" then table.sort(sel,function(a,b) return a>b end) end
 	if res.match:match("^%d+$") then moveby=res.match:match("^(%d+)$") else moveby=1 end
+	edtr=0
     for i=#sel,1,-1 do
 	local line=subs[sel[i]]
 	local text=line.text
 	local st=line.style
-	    if res.pres=="no-blur signs" then
+	    if res.pres=="no-blur signs" then edtr=1
 		blur=text:match("\\blur([%d%.]+)")
 		if st:match("Defa") or st:match("Alt") or st:match("OP") or st:match("ED") or blur~=nil then table.remove(sel,i) end
 	    end
-	    if res.pres=="commented lines" and not line.comment then table.remove(sel,i) end
-	    if res.pres=="lines w/ comments 2" then 
+	    if res.pres=="commented lines" and not line.comment then edtr=1 table.remove(sel,i) end
+	    if res.pres=="lines w/ comments 2" then edtr=1
 		if res.nocom and line.comment or not text:match("{[^\\}]-}") then table.remove(sel,i) end
 	    end
 	    if res.pres=="move sel. to the top" or res.pres=="move sel. to bottom" then  line.ind=i
@@ -355,7 +355,8 @@ function konfig(subs, sel)
 	if lastcase==nil then lastcase=case_sensitive end
 	if lastregexp==nil then lastregexp=use_regexp end
 	if lastexact==nil then lastexact=exact_match end
-	dialog_config=
+	edtr=0
+	GUI=
 	{
 	    {x=0,y=0,width=1,height=1,class="label",label="Select/sort:"},
 	    {x=0,y=1,width=1,height=1,class="label",label="Used area:"},
@@ -390,19 +391,19 @@ function konfig(subs, sel)
 	    
 	}
 	buttons={"Set Selection","Preset","Sort","Cancel"}
-	pressed, res=aegisub.dialog.display(dialog_config,buttons,{ok='Set Selection',close='Cancel'})
+	pressed, res=aegisub.dialog.display(GUI,buttons,{ok='Set Selection',close='Cancel'})
 	if pressed=="Cancel" then aegisub.cancel() end
 	if pressed=="Preset" then 
 		if res.pres=="no-blur signs" or res.pres=="commented lines" or res.pres=="lines w/ comments 2" 
 		    or res.pres:match"move sel." or res.pres:match"sel:"
 		then sel=presel(subs, sel)
-		else preset(subs, sel) end
+		else edtr=1 preset(subs, sel) end
 	end
 	if pressed=="Sort" and res.selection=="current selection" then sorting(subs, sel) end
 	if pressed=="Sort" and res.selection=="all lines" then sel=selectall(subs, sel) sorting(subs, sel) end
 
-	if pressed=="Set Selection" and res.selection=="current selection" then slct(subs, sel) end
-	if pressed=="Set Selection" and res.selection=="all lines" then sel=selectall(subs, sel) slct(subs, sel) end
+	if pressed=="Set Selection" and res.selection=="current selection" then edtr=1 slct(subs, sel) end
+	if pressed=="Set Selection" and res.selection=="all lines" then edtr=1 sel=selectall(subs, sel) slct(subs, sel) end
 	if remember_last_search then lastmatch=res.match end
 	if remember_select_sort then lastmode=res.mode end
 	if remember_case then lastcase=res.case end
@@ -509,11 +510,13 @@ function editlines(subs, sel)
 	editext=""
 	dura=""
     for x, i in ipairs(sel) do
-        local line=subs[i]
-	local text=subs[i].text
+	if aegisub.progress.is_cancelled() then aegisub.cancel() end
+    	aegisub.progress.title(string.format("Reading line: %d/%d",x,#sel))
+        line=subs[i]
+	text=line.text
 	dur=line.end_time-line.start_time
 	dur=dur/1000
-	char=text:gsub("{[^}]-}","")	:gsub(" ","")	:gsub("[%.,\"]","")
+	char=text:gsub("{[^}]-}","")	:gsub("\\[Nn]","*")	:gsub("%s?%*+%s?"," ")	:gsub(" ","")	:gsub("[%.,%?!'\"—]","")
 	linelen=char:len()
 	cps=math.ceil(linelen/dur)
 	if tostring(dur):match("%.%d$") then dur=dur.."0" end
@@ -523,7 +526,6 @@ function editlines(subs, sel)
 	
 	      if x~=#sel then editext=editext..text.."\n" dura=dura..dur.." .. "..cps.." .. "..linelen.."\n" end
 	      if x==#sel then editext=editext..text dura=dura..dur.." .. "..cps.." .. "..linelen end
-	subs[i]=line
     end
     editbox(subs, sel)
     if failt==1 then editext=res.dat editbox(subs, sel) end
@@ -532,11 +534,14 @@ end
 
 --	EDITOR GUI
 function editbox(subs, sel)
-	if #sel<=4 then boxheight=6 end
+aegisub.progress.title("Loading Editor...")
+	if #sel<=4 then boxheight=7 end
 	if #sel>=5 and #sel<9 then boxheight=8 end
 	if #sel>=9 and #sel<15 then boxheight=math.ceil(#sel*0.8) end
 	if #sel>=15 and #sel<18 then boxheight=12 end
 	if #sel>=18 then boxheight=15 end
+	if editext:len()>1500 and boxheight==7 then boxheight=8 end
+	if editext:len()>1800 and boxheight==8 then boxheight=9 end
 	nocom=editext:gsub("{[^}]-}","")
 	words=0
 	plaintxt=nocom:gsub("%p","")
@@ -545,10 +550,10 @@ function editbox(subs, sel)
 	end
 	if lastrep1==nil then lastrep1="" end
 	if lastrep2==nil then lastrep2="" end
-	dialog=
+	GUI=
 	{
 	    {x=0,y=0,width=52,height=1,class="label",label="Text"},
-	    {x=52,y=0,width=5,height=1,class="label",label="Duration | CPS | chars"},
+	    {x=52,y=0,width=5,height=1,class="label",label="Duration | CPS | chrctrs"},
 	    
 	    {x=0,y=boxheight+1,width=1,height=1,class="label",label="Replace:"},
 	    {x=1,y=boxheight+1,width=15,height=1,class="edit",name="rep1",value=lastrep1},
@@ -559,26 +564,32 @@ function editbox(subs, sel)
 	    {x=52,y=1,width=5,height=boxheight,class="textbox",name="durr",value=dura,hint="This is informative only. \nCPS=Characters Per Second"},
 	    
 	    {x=32,y=boxheight+1,width=20,height=1,class="edit",name="info",value="Lines loaded: "..#sel..", Characters: "..editext:len()..", Words: "..words },
-
+	    {x=52,y=boxheight+1,width=5,height=1,class="label",label="Multi-Line Editor v1.33"},
 	}
-	buttons={"Save","Replace","Remove tags","Rm. comments","Remove \"- \"","Remove \\N","Add italics","Add \\an8","Reload text","Cancel"}
+	buttons={"Save","Replace","Remove tags","Rm. comments","Remove \"- \"","Remove \\N","Add italics","Add \\an8","Reload text","Taller GUI","Cancel"}
 	repeat
 	if pressed=="Replace" or pressed=="Add italics" or pressed=="Add \\an8" or pressed=="Remove \\N" or pressed=="Reload text"
-		or pressed=="Remove tags" or pressed=="Rm. comments" or pressed=="Remove \"- \"" then
+		or pressed=="Remove tags" or pressed=="Rm. comments" or pressed=="Remove \"- \"" or pressed=="Taller GUI" then
 		
 		if pressed=="Add italics" then
 		res.dat=res.dat	:gsub("$","\n") :gsub("(.-)\n","{\\i1}%1\n") :gsub("{\\i1}{\\","{\\i1\\") :gsub("\n$","") end
 		if pressed=="Add \\an8" then
 		res.dat=res.dat	:gsub("$","\n") :gsub("(.-)\n","{\\an8}%1\n") :gsub("{\\an8}{\\","{\\an8\\") :gsub("\n$","") end
 		if pressed=="Remove \\N" then res.dat=res.dat	:gsub("%s?\\N%s?"," ") end
-		if pressed=="Remove tags" then res.dat=res.dat:gsub("{\\[^}]-}","") end
+		if pressed=="Remove tags" then res.dat=res.dat:gsub("{%*?\\[^}]-}","") end
 		if pressed=="Rm. comments" then res.dat=res.dat:gsub("{[^\\}]-}","") :gsub("{[^\\}]-\\N[^\\}]-}","") end
 		if pressed=="Remove \"- \"" then res.dat=res.dat:gsub("%- ","") end
 		if pressed=="Replace" then rep1=esc(res.rep1)
 		res.dat=res.dat:gsub(rep1,res.rep2)
 		end
+		if pressed=="Taller GUI" then boxheight=boxheight+1 
+		  for key,val in ipairs(GUI) do
+		    if val.y==1 then val.height=val.height+1 end
+		    if val.y>1 then val.y=val.y+1 end
+		  end
+		end
 		
-		for key,val in ipairs(dialog) do
+		for key,val in ipairs(GUI) do
 		  if pressed~="Reload text" then
 		    if val.name=="dat" then val.value=res.dat end
 		    if val.name=="durr" then val.value=res.durr end
@@ -591,9 +602,8 @@ function editbox(subs, sel)
 		  end
 		end
 	end
-	pressed, res=aegisub.dialog.display(dialog,buttons,{save='Save',cancel='Cancel'})
-	until pressed~="Add italics" and pressed~="Add \\an8" and pressed~="Remove \\N" and pressed~="Reload text"
-		and pressed~="Remove tags"and pressed~="Rm. comments" and pressed~="Remove \"- \"" and pressed~="Replace"
+	pressed, res=aegisub.dialog.display(GUI,buttons,{save='Save',close='Cancel'})
+	until pressed=="Save" or pressed=="Cancel"
 
 	if pressed=="Cancel" then aegisub.cancel() end
 	if pressed=="Save" then savelines(subs, sel) end
@@ -604,16 +614,15 @@ end
 
 --	EDITOR SAVE
 function savelines(subs, sel)
+aegisub.progress.title("Saving...")
     local data={}	raw=res.dat.."\n"
     if #sel==1 then raw=raw:gsub("\n(.)","\\N%1") raw=raw:gsub("\\N "," \\N") end
     for dataline in raw:gmatch("(.-)\n") do table.insert(data,dataline) end
     failt=0    
     if #sel~=#data and #sel>1 then failt=1 else
 	for x, i in ipairs(sel) do
-        local line=subs[i]
-	local text=subs[i].text
-	text=data[x]
-	line.text=text
+        line=subs[i]
+	line.text=data[x]
 	subs[i]=line
 	end
     end
@@ -626,7 +635,7 @@ end
 
 function selector(subs,sel,act)
     sel=konfig(subs,sel,act)
-    if pressed=="Set Selection" and res.editor then editlines(subs,sel,act) end
+    if edtr==1 and res.editor then editlines(subs,sel,act) end
     aegisub.set_undo_point(script_name)
     if res.nomatch=="doesn't match" and pressed=="Set Selection" then return sel2, act else return sel, act end
 end
