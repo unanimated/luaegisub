@@ -4,7 +4,7 @@
 script_name="Time signs from timecodes"
 script_description="Rough-times signs from TS timecodes"
 script_author="unanimated"
-script_version="2.5"
+script_version="2.6"
 
 function signtime(subs, sel)
     for i=#sel,1,-1 do
@@ -12,26 +12,26 @@ function signtime(subs, sel)
 	text=line.text
 	-- format timecodes
 	text=text
+	:gsub("(%d+):(%d%d):(%d%d)",
+		function(a,b,c) return a*60+b..":"..c end)	-- hours
 	:gsub("^(%d%d%d%d)%s%s*","{TS %1}")			-- ^1234  text
 	:gsub("(%d%d)ish","%1")				-- 1:23ish
 	:gsub("^([%d%s:,%-]+)","{%1}")				-- ^1:23, 2:34, 4:56
-	:gsub("^(%d%d?:%d%d)%s%-%s","{TS %1}")			-- ^12?:34 -
-	:gsub("^(%d%d?:%d%d%s*)","{TS %1}")			-- ^12?:34
-	:gsub("^{(%d%d?:%d%d)","{TS %1")			-- ^{12?:34
-	:gsub("^%[(%d%d?:%d%d)%]:?%s*","{TS %1}")		-- ^[12?:34]:?
-	:gsub("{TS,%s?(%d)","{TS %1")				-- {TS,
-	:gsub("{TS[%s%p]+(%d%d?:%d%d)","{TS %1")		-- {TS ~12:34
-	:gsub("({[^}]-)(%d+)[%;%.,]?(%d%d)([^}]-})","%1%2:%3%4")	-- {1;23 / 1.23 / 1,23 123}
-	:gsub("{TS%s([^%d\\}]+)%s(%d%d?:%d%d)","{TS %2 %1")	-- {TS comment 12:34}
+	:gsub("^(%d+:%d%d)%s%-%s","{TS %1}")			-- ^12?:34 -
+	:gsub("^(%d+:%d%d%s*)","{TS %1}")			-- ^12?:34
+	:gsub("^{(%d+:%d%d)","{TS %1")				-- ^{12?:34
+	:gsub("^%[(%d+:%d%d)%]:?%s*","{TS %1}")		-- ^[12?:34]:?
+	:gsub("{TS[%s%p]+(%d)","{TS %1")			-- {TS ~12:34
+	:gsub("({[^}]-)(%d+)[%;%.,]?(%d%d)([^:][^}]-})","%1%2:%3%4")	-- {1;23 / 1.23 / 1,23 123}
+	:gsub("{TS%s([^%d\\}]+)%s(%d+:%d%d)","{TS %2 %1")	-- {TS comment 12:34}
 	:gsub(":%s?}","}")					-- {TS 12:34: }
 	:gsub("|","\\N")
-	tc=text:match("^{[^}]-}")
-	tc=tc:gsub("(%d%d)(%d%d)","%1:%2")
+	tc=text:match("^{[^}]-}") or ""
+	tc=tc:gsub("(%d+)(%d%d)([^:])","%1:%2%3")
 	text=text:gsub("^{[^}]-}%s*",tc)
 	line.text=text
 
-	tstags=text:match("{TS[^}]-}")
-	if tstags==nil then tstags="" end
+	tstags=text:match("{TS[^}]-}") or ""
 
 	times={}	-- collect times if there are more
 	for tag in tstags:gmatch("%d+:%d+") do table.insert(times,tag) end
@@ -39,11 +39,10 @@ function signtime(subs, sel)
 	for t=#times,1,-1 do
 	    tim=times[t]
 	    -- convert to start time
-	    tstid1,tstid2=tim:match("(%d%d?):(%d%d)")
-	    if tstid1~=nil then
-	    tid=(tstid1*60000+tstid2*1000-500) end
+	    tstid1,tstid2=tim:match("(%d+):(%d%d)")
+	    if tstid1 then tid=(tstid1*60000+tstid2*1000-500) end
 		-- shifting times
-	    if tid~=nil then
+	    if tid then
 		if res.shift then tid=tid+res.secs*1000 end
 		-- set start and end time [500ms before and after the timecode]
 		line.start_time=tid line.end_time=(tid+1000)
@@ -99,24 +98,24 @@ end
 function timesigns(subs, sel)
 dialog_config=
 {
-    {x=0,y=0,width=4,height=1,class="label",label="Check this if all your timecodes are too late or early:", },
-    {x=0,y=1,width=1,height=1,class="checkbox",name="shift",label="Shift timecodes by ",value=false },
-    {x=1,y=1,width=2,height=1,class="intedit",name="secs",value=-10,hint="Negative=backward / positive=forward" },
-    {x=3,y=1,width=1,height=1,class="label",label=" seconds", },
-    {x=0,y=2,width=4,height=1,class="checkbox",name="copy",label="For lines without timecodes, copy them from the previous line",value=false},
-    {x=0,y=3,width=2,height=1,class="checkbox",name="snap",label="Snapping to keyframes:",value=true },
-    {x=0,y=4,width=2,height=1,class="label",label="Number of frames to search back", },
-    {x=0,y=5,width=2,height=1,class="label",label="Number of frames to search forward", },
-    {x=2,y=4,width=2,height=1,class="intedit",name="kfs",value="24",step=1,min=1,max=250 },	-- default search back [24]
-    {x=2,y=5,width=2,height=1,class="intedit",name="kfe",value="24",step=1,min=1,max=250 },	-- default search forward [24]
+    {x=0,y=0,width=4,class="label",label="Check this if all your timecodes are too late or early:", },
+    {x=0,y=1,width=1,class="checkbox",name="shift",label="Shift timecodes by ",value=false },
+    {x=1,y=1,width=2,class="intedit",name="secs",value=-10,hint="Negative=backward / positive=forward" },
+    {x=3,y=1,width=1,class="label",label=" sec.", },
+    {x=0,y=2,width=4,class="checkbox",name="copy",label="For lines without timecodes, copy from the previous line",value=false},
+    {x=0,y=3,width=2,class="checkbox",name="snap",label="Snapping to keyframes:",value=true },
+    {x=0,y=4,width=2,class="label",label="Frames to search back:", },
+    {x=0,y=5,width=2,class="label",label="Frames to search forward:", },
+    {x=2,y=4,width=2,class="intedit",name="kfs",value="24",step=1,min=1,max=250 },	-- default search back [24]
+    {x=2,y=5,width=2,class="intedit",name="kfe",value="24",step=1,min=1,max=250 },	-- default search forward [24]
 }
     buttons={"No more suffering with SHAFT signs!","Exit"}
-    pressed, res=aegisub.dialog.display(dialog_config,buttons,{ok='No more suffering with SHAFT signs!',cancel='Exit'})
-    if pressed=="Exit" then aegisub.cancel() end
+    P,res=aegisub.dialog.display(dialog_config,buttons,{ok='No more suffering with SHAFT signs!',cancel='Exit'})
+    if P=="Exit" then aegisub.cancel() end
 	ms2fr=aegisub.frame_from_ms
 	fr2ms=aegisub.ms_from_frame
 	keyframes=aegisub.keyframes()
-    if pressed=="No more suffering with SHAFT signs!" then sel=signtime(subs,sel) end
+    if P=="No more suffering with SHAFT signs!" then sel=signtime(subs,sel) end
     aegisub.set_undo_point(script_name)
     return sel
 end
