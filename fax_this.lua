@@ -242,12 +242,12 @@ function copystuff(subs, sel)
 	    else
 		text=text:gsub("^({\\[^}]-)}","%1"..kopytags.."}")
 	    end
-	if trnsfrm then aegisub.log("\n i "..i) aegisub.log("\n kopytags "..kopytags) aegisub.log("\n trnsfrm1 "..trnsfrm) end
+
 	    text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	    text=extrakill(text)
 	    -- add transforms
 	
-	    if trnsfrm then	aegisub.log("\n trnsfrm "..trnsfrm) text=text:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}") end
+	    if trnsfrm then text=text:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}") end
 	    trnsfrm=nil
 	    text=text:gsub("^({\\[^}]-})",function(tags) return cleantr(tags) end)
 	    text=text:gsub("\\stuff","") :gsub("{}","")
