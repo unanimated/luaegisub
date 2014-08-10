@@ -6,7 +6,7 @@ script_description="Makes things appear different from before"
 script_author="reanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/relocator.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/relocator.lua"
-script_version="3.1"
+script_version="3.11"
 
 include("utils.lua")
 re=require'aegisub.re'
@@ -1466,7 +1466,7 @@ function cleantr(tags)
 	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-%b()[^%)]-)%)") do cleant=cleant..ct end
 	trnsfrm=trnsfrm:gsub("\\t%(\\[^%(%)]+%)","")
 	trnsfrm=trnsfrm:gsub("\\t%((\\[^%(%)]-%b()[^%)]-)%)","")
-	trnsfrm="\\t("..cleant..")"..trnsfrm
+	if cleant~="" then trnsfrm="\\t("..cleant..")"..trnsfrm end	
 	tags=tags:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}")
 	return tags
 end
