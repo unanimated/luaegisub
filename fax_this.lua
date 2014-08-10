@@ -1,7 +1,7 @@
 ﻿script_name="Copyfax This"
 script_description="Copyfax This"
 script_author="unanimated"
-script_version="2.7"
+script_version="2.71"
 
 -- all the "copy" things copy things from first selected line and paste them to the other lines
 -- clip shift coordinates will shift the clip by that amount each line
@@ -114,6 +114,7 @@ function fucks(subs, sel)
 		t=t:gsub("\\clip%([^%)]+%)","")
 		:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 		:gsub("(\\fax[%d%.%-]+)([^}]-)(\\fax[%d%.%-]+)","%3%2")
+		:gsub("%**}","}")
 	    end	
 	    l.text=t
 	    subs[i]=l
@@ -241,10 +242,12 @@ function copystuff(subs, sel)
 	    else
 		text=text:gsub("^({\\[^}]-)}","%1"..kopytags.."}")
 	    end
+	if trnsfrm then aegisub.log("\n i "..i) aegisub.log("\n kopytags "..kopytags) aegisub.log("\n trnsfrm1 "..trnsfrm) end
 	    text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	    text=extrakill(text)
 	    -- add transforms
-	    if trnsfrm~=nil then text=text:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}") end
+	
+	    if trnsfrm then	aegisub.log("\n trnsfrm "..trnsfrm) text=text:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}") end
 	    trnsfrm=nil
 	    text=text:gsub("^({\\[^}]-})",function(tags) return cleantr(tags) end)
 	    text=text:gsub("\\stuff","") :gsub("{}","")
@@ -603,7 +606,7 @@ function cleantr(tags)
 	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-%b()[^%)]-)%)") do cleant=cleant..ct end
 	trnsfrm=trnsfrm:gsub("\\t%(\\[^%(%)]+%)","")
 	trnsfrm=trnsfrm:gsub("\\t%((\\[^%(%)]-%b()[^%)]-)%)","")
-	trnsfrm="\\t("..cleant..")"..trnsfrm
+	if cleant~="" then trnsfrm="\\t("..cleant..")"..trnsfrm end	
 	tags=tags:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}")
 	return tags
 end
