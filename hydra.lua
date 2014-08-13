@@ -3,7 +3,7 @@ script_description="A multi-headed typesetting tool"
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/hydra.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/hydra.lua"
-script_version="3.81"
+script_version="3.9"
 
 -- SETTINGS - feel free to change these
 
@@ -32,8 +32,7 @@ function hh9(subs, sel)
 	getcolours()
 	
     for z, i in ipairs(sel) do
-    cancelled=aegisub.progress.is_cancelled()
-    if cancelled then aegisub.cancel() end
+    if aegisub.progress.is_cancelled() then aegisub.cancel() end
     progress(string.format("Hydralizing line: %d/%d",z,#sel))
     prog=math.floor((z+0.5)/#sel*100)
     aegisub.progress.set(prog)
@@ -73,7 +72,10 @@ function hh9(subs, sel)
 	    :gsub("(\\clip%([^\\%)]+)(\\alltagsgohere)%)([^%)]-)%)","%1)%3%2)")
 	end
 	if tmode==3 then
-	    text=text:gsub("(\\t%([^%)]+)%)","%1alltagsgohere)")
+	    text=text:gsub("(\\t%([^%)]+)%)","%1\\alltagsgohere)")
+	end
+	if tmode==4 then
+	    text=text:gsub("({\\[^}]*)}","%1\\t("..tin..","..tout..","..res.accel..",\\alltagsgohere)}")
 	end
 	if tmode==1 then
 	  if text:match("^{[^}]-\\t%(\\") and tin==0 and tout==0 and res.accel==1 then
@@ -86,7 +88,7 @@ function hh9(subs, sel)
 	transform=""
 	transform=gettags(transform)
 	if res.relative then
-	    stags=text:match("^{\\[^}]-}") if stags==nil then stags="" end
+	    stags=text:match("^{\\[^}]-}") or ""
 	    for tag,val in transform:gmatch("(\\%a+)([%d%.%-]+)") do
 		if stags:match(tag) then oldval=stags:match(tag.."([%d%.%-]+)")
 		    newval=oldval+val
@@ -97,6 +99,7 @@ function hh9(subs, sel)
 	end
 	text=text:gsub("\\alltagsgohere",transform)
 	text=text:gsub("\\t%(0,0,1,","\\t(")
+	if tmode==4 then text=text:gsub("^({\\[^}]-})",function(tg) return cleantr(tg) end) end
 	for tranz in text:gmatch("\\t(%([^%(%)]+%))") do
 		tranz2=duplikill(tranz)
 		tranz=esc(tranz)
@@ -559,43 +562,36 @@ function selover(subs,sel)
   return sel
 end
 
+
+--	reanimatools	--
 function round(num) num=math.floor(num+0.5) return num end
 
 function trem(tags)
 	trnsfrm=""
-	for t in tags:gmatch("(\\t%([^%(%)]-%))") do trnsfrm=trnsfrm..t end
-	for t in tags:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))") do trnsfrm=trnsfrm..t end
-	tags=tags:gsub("(\\t%([^%(%)]+%))","")
-	tags=tags:gsub("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","")
+	for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
+	tags=tags:gsub("\\t%b()","")
 	return tags
 end
 
 function cleantr(tags)
 	trnsfrm=""
-	for t in tags:gmatch("(\\t%([^%(%)]-%))") do trnsfrm=trnsfrm..t end
-	for t in tags:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))") do trnsfrm=trnsfrm..t end
-	tags=tags:gsub("(\\t%([^%(%)]+%))","")
-	tags=tags:gsub("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","")
-	tags=tags:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}")
+	for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
+	tags=tags:gsub("\\t%b()","")
 
 	cleant=""
-	for ct in tags:gmatch("\\t%((\\[^%(%)]-)%)") do cleant=cleant..ct end
-	for ct in tags:gmatch("\\t%((\\[^%(%)]-%([^%)]-%)[^%)]-)%)") do cleant=cleant..ct end
-	tags=tags:gsub("(\\t%(\\[^%(%)]+%))","")
-	tags=tags:gsub("(\\t%(\\[^%(%)]-%([^%)]-%)[^%)]-%))","")
-	if cleant~="" then tags=tags:gsub("^({\\[^}]*)}","%1\\t("..cleant..")}") end
-	tags=tags:gsub("(\\clip%([^%)]+%))([^%(%)]-)(\\c&H%x+&)","%2%3%1")
+	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-)%)") do cleant=cleant..ct end
+	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-%b()[^%)]-)%)") do cleant=cleant..ct end
+	trnsfrm=trnsfrm:gsub("\\t%(\\[^%(%)]+%)","")
+	trnsfrm=trnsfrm:gsub("\\t%((\\[^%(%)]-%b()[^%)]-)%)","")
+	if cleant~="" then trnsfrm="\\t("..cleant..")"..trnsfrm end	
+	tags=tags:gsub("^({[^}]*)}","%1"..trnsfrm.."}")
 	return tags
 end
 
 function duplikill(tagz)
 	tf=""
-	if tagz:match("\\t") then 
-	    for t in tagz:gmatch("(\\t%([^%(%)]-%))") do tf=tf..t end
-	    for t in tagz:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","") do tf=tf..t end
-	    tagz=tagz:gsub("\\t%([^%(%)]+%)","")
-	    tagz=tagz:gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","")
-	end
+	for t in tagz:gmatch("\\t%b()") do tf=tf..t end
+	tagz=tagz:gsub("\\t%b()","")
 	tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
 	for i=1,#tags1 do
 	    tag=tags1[i]
@@ -673,10 +669,11 @@ return str
 end
 
 function progress(msg)
-  cancelled=aegisub.progress.is_cancelled()
-  if cancelled then aegisub.cancel() end
+  if aegisub.progress.is_cancelled() then aegisub.cancel() end
   aegisub.progress.title(msg)
 end
+
+function logg(m) aegisub.log("\n "..m) end
 
 function styleget(subs)
     styles={}
@@ -743,7 +740,7 @@ for x,i in ipairs(sel) do
 end
 sm=startup_mode
 heads=sm*2+1
-aegisub.progress.title(string.format("Loading Hydra Heads 1-"..heads))
+progress(string.format("Loading Hydra Heads 1-"..heads))
 hr=math.random(1,#hydraulics)
 oneline=subs[sel[1]]
 linetext=oneline.text:gsub("{[^}]-}","")
@@ -832,7 +829,7 @@ hh2={
 
 hh3={
     {x=0,y=9,width=1,height=1,class="label",label="Transform mode:"},
-    {x=1,y=9,width=2,height=1,class="dropdown",name="tmode",items={"normal","add2first","add2all"},value="normal",hint="new \\t  |  add to first \\t  |  add to all \\t"},
+    {x=1,y=9,width=2,height=1,class="dropdown",name="tmode",items={"normal","add2first","add2all","all tag blocks"},value="normal",hint="new \\t  |  add to first \\t  |  add to all \\t"},
     {x=3,y=9,width=2,height=1,class="checkbox",name="tend",label="times from end",value=false,hint="Count times from end"},
     {x=0,y=10,width=1,height=1,class="label",label="Transform t1,t2:"},
     {x=1,y=10,width=2,height=1,class="floatedit",name="trin" },
@@ -878,26 +875,27 @@ hh3={
 	hh_buttons=buttons[sm]
 	pressed,res=aegisub.dialog.display(hh_gui,hh_buttons,{ok='Apply',cancel='Cancel'})
 	
-	if pressed=="Load Medium" then aegisub.progress.title(string.format("Loading Heads 4-5"))
+	if pressed=="Load Medium" then progress(string.format("Loading Heads 4-5"))
 	    for key,val in ipairs(hh_gui) do val.value=res[val.name] end
 	    for i=1,#hh2 do l=hh2[i] table.insert(hh_gui,l) end loaded=2
 	    pressed,res=aegisub.dialog.display(hh_gui,buttons[2],{ok='Apply',cancel='Cancel'})
 	end
 	
-	if pressed=="Load Full" then aegisub.progress.title(string.format("Loading Heads "..(loaded+1)*2 .."-7"))
+	if pressed=="Load Full" then progress(string.format("Loading Heads "..(loaded+1)*2 .."-7"))
 	    for key,val in ipairs(hh_gui) do val.value=res[val.name] end
 	    if loaded<2 then  for i=1,#hh2 do l=hh2[i] table.insert(hh_gui,l) end  end
 	    for i=1,#hh3 do l=hh3[i] table.insert(hh_gui,l) end loaded=3
 	    pressed,res=aegisub.dialog.display(hh_gui,buttons[3],{ok='Apply',cancel='Cancel'})
 	end
 	
-	if pressed=="Help" then aegisub.progress.title(string.format("Loading Head 8"))
+	if pressed=="Help" then progress(string.format("Loading Head 8"))
 	for key,val in ipairs(hh_gui) do val.value=res[val.name] end
 	hhh={x=0,y=14,width=10,height=1,class="dropdown",name="herp",items={"HELP (scroll/click to read)",
 	"Standard mode: check tags, set values, click 'Apply'.",
 	"Transform mode normal: check tags, set values, set t1/t2/accel if needed, click 'Transform'.",
 	"Transform mode add2first: the transforms will be added to the first existing transform in the line.",
 	"Transform mode add2all: the transforms will be added to all existing transforms in the line.",
+	"Transform mode 'all tag blocks': the transforms will be added to all tag blocks, whether they have transforms or not.",
 	"Relative transform: If you have frz30 and set transform to frz60, you get \\t(\\frz90), or transform BY 60.",
 	"Relative transform: This allows you to keep layers with different frz in sync. (No effect on alpha/colours.)",
 	"Additional tags: type any extra tags you want to add.",
@@ -915,6 +913,7 @@ hh3={
 	if res.tmode=="normal" then tmode=1 end
 	if res.tmode=="add2first" then tmode=2 end
 	if res.tmode=="add2all" then tmode=3 end
+	if res.tmode=="all tag blocks" then tmode=4 end
 	if res.tagpres=="in the middle" then fak=0.5 end
 	if sm==3 and res.tagpres:match("of text") then fa,fb=res.tagpres:match("(%d)/(%d)") fak=fa/fb end
 	if res.aonly then res.alfas=true end
@@ -923,30 +922,9 @@ hh3={
 	if pressed=="Transform" then trans=1 hh9(subs, sel) end
 	if pressed=="Special" then sel=special(subs, sel) end
 	
-	if pressed~="Repeat Last" then
-	    last_set={}
-	    for key,val in ipairs(hh_gui) do
-		if val.name==nil then name="" result="n/a" else
-		local name=val.name
-		result=res[name]
-		if result==nil then result="n/a" end
-		if result==true then result="true" end
-		if result==false then result="false" end
-		end
-		table.insert(last_set,result)
-	    end
-	end
-	if pressed=="Repeat Last" then
-	    for key,val in ipairs(hh_gui) do
-		local name=val.name
-		if last_set[key]=="true" then res[name]=true
-		elseif last_set[key]=="false" then res[name]=false
-		elseif last_set[key]~="n/a" then res[name]=last_set[key]
-		else
-		end
-	    end
-	    hh9(subs, sel)
-	end
+	if pressed~="Repeat Last" then hydralast=res end
+	if pressed=="Repeat Last" then res=hydralast hh9(subs, sel)end
+	
 	return sel
 end
 
