@@ -1,7 +1,7 @@
 ﻿script_name="Colorize"
 script_description="Does things with colours"
 script_author="unanimated"
-script_version="3.92"
+script_version="4.0"
 
 --[[
 
@@ -15,14 +15,17 @@ script_version="3.92"
  You have to set the right number of colours for it to work correctly!
  If shift base is "line", then it takes the colour for the first character from the last character.
  
+   "Colorize by word"
+ Colorizes by word instead of by letter.
+ 
    "Don't join with other tags" will keep {initial tags}{colour} separated (ie won't nuke the "}{"). 
  This helps some other scripts to keep the colour as part of the "text" without initial tags.
  
    "Continuous shift line by line" - If you select a bunch of the same colorized lines, this shifts the colours line by line.
  This kind of requires that no additional weird crap is done to the lines, otherwise malfunctioning can be expected.
  
-   "Colorize by word"
- Colorizes by word instead of by letter.
+   "Tune colours"
+ Loads all colours from a line into a GUI and lets you change them from there.
  
    "Set colours across whole line"
  This is like a preparation for gradient-by-character. Select number of colours.
@@ -145,6 +148,55 @@ function colors(subs,sel)
 	if orig:match("{%*?\\") then text=textmod(orig) end
 	line.text=text
         subs[i]=line
+    end
+end
+
+
+--	Tune Colours	--
+function ctune(subs,sel)
+    for i=1,#sel do
+        progress("Processing... "..i.."/"..#sel)
+	line=subs[sel[i]]
+        text=line.text
+	if text:match("c&H%x+&") then
+	  text=text:gsub("\\c&","\\1c&")
+	  wai={1,1,1,1}
+	  chk={0,0,0,0}
+	  lbls={{label="primary"},{label="2ndary"},{label="border"},{label="shadow"}}
+	  for l=1,4 do lbls[l].class="label" lbls[l].x=l end
+	  tekst={}
+	  colortunegui={{class="label",label="#"..i}}
+	  for t,col in text:gmatch("(.-)(\\[1234]c&H%x%x%x%x%x%x&)") do
+	    cType,B,G,R=col:match("\\([1234])c&H(%x%x)(%x%x)(%x%x)&")
+	    ctNo=tonumber(cType)
+	    C="#"..R..G..B
+	    if chk[ctNo]==0 then table.insert(colortunegui,lbls[ctNo]) chk[ctNo]=1 end
+	    table.insert(colortunegui,{x=cType,y=wai[ctNo],class="color",name=cType..wai[ctNo],value=C})
+	    table.insert(tekst,t..col)
+	    wai[ctNo]=wai[ctNo]+1
+	  end
+	  final=text:match(".*\\[1234]c&H%x%x%x%x%x%x&(.-)$")
+	  
+  	  pressed,rez=ADD(colortunegui,{"OK","Cancel"},{ok='OK',close='Cancel'})
+	  if pressed=="Cancel" then ak() end
+	  
+	  text=""
+	  rezlt={1,1,1,1}
+	  for c=1,#tekst do
+	    nt=tekst[c]
+	    col=tekst[c]:match("\\[1234]c&H%x%x%x%x%x%x&")
+	    cType,B,G,R=col:match("\\([1234])c&H(%x%x)(%x%x)(%x%x)&")
+	    ctNo=tonumber(cType)
+	    cor=esc(col)
+	    crep="\\"..cType.."c"..rez[cType..rezlt[ctNo]]:gsub("#(%x%x)(%x%x)(%x%x)","&H%3%2%1&")
+	    text=text..nt:gsub(cor,crep)
+	    rezlt[ctNo]=rezlt[ctNo]+1
+	  end
+	  text=text..final
+	  text=text:gsub("\\1c&","\\c&")
+	end
+	line.text=text
+	subs[sel[i]]=line
     end
 end
 
@@ -885,18 +937,18 @@ ak=aegisub.cancel
 	{x=4,y=3,width=1,height=1,class="label",label="  4 "},
 	{x=4,y=4,width=1,height=1,class="label",label="  5 "},
 	
-	{x=5,y=0,width=1,height=1,class="color",name="c1" },
-	{x=5,y=1,width=1,height=1,class="color",name="c2" },
-	{x=5,y=2,width=1,height=1,class="color",name="c3" },
-	{x=5,y=3,width=1,height=1,class="color",name="c4" },
-	{x=5,y=4,width=1,height=1,class="color",name="c5" },
+	{x=5,y=0,width=1,height=1,class="color",name="c1"},
+	{x=5,y=1,width=1,height=1,class="color",name="c2"},
+	{x=5,y=2,width=1,height=1,class="color",name="c3"},
+	{x=5,y=3,width=1,height=1,class="color",name="c4"},
+	{x=5,y=4,width=1,height=1,class="color",name="c5"},
 	
-	{x=0,y=3,width=3,height=1,class="checkbox",name="join",label="Don't join with other tags",value=false },
-	{x=0,y=4,width=4,height=1,class="checkbox",name="cont",label="Continuous shift line by line",value=false },
-	{x=0,y=5,width=5,height=1,class="checkbox",name="gcl",label="Set colours across whole line:",value=false },
-	{x=5,y=5,width=1,height=1,class="dropdown",name="gclrs",items={"2","3","4","5","6","7","8","9","10"},value="3"},
-	{x=0,y=6,width=3,height=1,class="checkbox",name="word",label="Colorize by word",value=false },
-	{x=0,y=7,width=3,height=1,class="checkbox",name="rept",label="Repeat with last settings",value=false },
+	{x=0,y=3,width=3,height=1,class="checkbox",name="word",label="Colorize by word",value=false },
+	{x=0,y=4,width=3,height=1,class="checkbox",name="join",label="Don't join with other tags",value=false },
+	{x=0,y=5,width=4,height=1,class="checkbox",name="cont",label="Continuous shift line by line",value=false },
+	{x=0,y=6,width=3,height=1,class="checkbox",name="tune",label="Tune colours",value=false },
+	{x=0,y=7,width=5,height=1,class="checkbox",name="gcl",label="Set colours across whole line:",value=false },
+	{x=5,y=7,width=1,height=1,class="dropdown",name="gclrs",items={"2","3","4","5","6","7","8","9","10"},value="3"},
 		
 	{x=6,y=0,width=1,height=1,class="label",label=" "},
 		
@@ -937,8 +989,9 @@ ak=aegisub.cancel
 	{x=0,y=9,width=3,height=1,class="checkbox",name="double",label="Double HSB gradient",value=false},
 	{x=3,y=9,width=3,height=1,class="checkbox",name="ast",label="Use asterisks",value=false},
 	
-	{x=3,y=6,width=3,height=1,class="checkbox",name="save",label="Save config",value=false,hint="Saves current configuration\n(for most things)"},
-	{x=3,y=7,width=3,height=1,class="checkbox",name="rem",label="Remember last",value=false,hint="remember last settings"},
+	{x=0,y=10,width=3,height=1,class="checkbox",name="save",label="Save configuration",value=false,hint="Saves current configuration\n(for most things)"},
+	{x=3,y=10,width=3,height=1,class="checkbox",name="rem",label="Remember last",value=false,hint="remember last settings"},
+	{x=7,y=10,width=3,height=1,class="checkbox",name="rept",label="Repeat with last settings",value=false },
 	
 	}
 	loadconfig()
@@ -955,6 +1008,7 @@ ak=aegisub.cancel
 	    if res.save then saveconfig()
 	    elseif res.gcl then gcolors(subs,sel)
 	    elseif res.grad then gradient(subs,sel)
+	    elseif res.tune then ctune(subs,sel)
 	    else colors(subs,sel) end
 	end
 	if pressed=="Shift" then repetition() shift(subs,sel) end
