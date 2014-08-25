@@ -1,7 +1,7 @@
 ﻿script_name="Colorize"
 script_description="Does things with colours"
 script_author="unanimated"
-script_version="4.0"
+script_version="4.1"
 
 --[[
 
@@ -319,6 +319,7 @@ function shift(subs,sel)
 		text=re.sub(text, "(\\{\\*?\\\\[1234]?c&H[A-Fa-f0-9]+&\\})(\\s)", "\\2\\1")
 		text=re.sub(text, "(\\{\\*?\\\\[1234]?c&H[A-Fa-f0-9]+&\\})(\\\\N)", "\\2\\1")
 		text=re.sub(text, "(\\{\\*?\\\\[1234]?c&H[A-Fa-f0-9]+&\\})$", "")
+		text=text:gsub("{}","")
 		text=first..text
 		switch=switch+1
 		if not sline then
@@ -326,7 +327,8 @@ function shift(subs,sel)
 		  if switch==3 then first=third end
 		  if switch==4 then first=fourth end
 		else
-		  matches=re.find(text,"\\{\\\\[1234]?c&H[A-Fa-f0-9]+&\\}[^\\{]*$")
+		  matches=re.find(text,"\\{\\*?\\\\[1234]?c&H[A-Fa-f0-9]+&\\}[^\\{]*$")
+		  cms=matches[1].str
 		  ctype,shc=cms:match("{%*?(\\[1234]?c)(&H%x+&)}[^{]*$")
 		  first="{"..ctype..shc.."}"
 		end
@@ -337,7 +339,7 @@ function shift(subs,sel)
 		  end
 		until switch>=count
 
-		if tags~=nil then text=tags..text end
+		if tags then text=tags..text end
 		if res.join==false then text=text:gsub("}{","") end
 	    end
 
@@ -551,7 +553,7 @@ function gradient(subs,sel)
         progress(string.format("Colorizing line %d/%d",x,#sel))
 	line=subs[i]
 	text=line.text
-	text=text:gsub("\\c&","\\1c&")
+	text=text:gsub("\\c&","\\1c&") :gsub("\\N","{\\N}") :gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 	after=text:gsub("^{\\[^}]-}","")
 	if text:match("{\\[^}]-}$") then text=text.."wtfwhywouldyoudothis" end
 	
@@ -570,9 +572,9 @@ function gradient(subs,sel)
 	  sc=stylecol[ac]
 	  -- backup original text + save tags
 	  orig=text
-	  tags=text:match("^{\\[^}]-}") if tags==nil then tags="" end
+	  tags=text:match("^{\\[^}]-}") or ""
 	  -- leave only releavant colour tags, nuke all other ones, add colour from style if missing at the start
-	  ctext=text:gsub("\\[^1234][^c][^\\}]+","") :gsub("{%*?}","") :gsub("\\[^"..ac.."]c[^\\}]+","") :gsub("{%*?}","")
+	  ctext=text:gsub("\\N","") :gsub("\\[^1234][^c][^\\}]+","") :gsub("\\[^"..ac.."]c[^\\}]+","") :gsub("{%*?}","")
 	  if not ctext:match("^{\\") then ctext="{\\kolor}"..ctext end
 	  if not ctext:match("^{[^}]-\\"..ac.."c") then 
 		ctext=ctext:gsub("^({\\[^}]-)}","%1\\"..ac.."c"..sc.."}") end
@@ -655,6 +657,9 @@ function gradient(subs,sel)
 	
 	text=text:gsub("({%*?\\[^}]-})",function(tg) return colkill(tg) end)
 	:gsub("wtfwhywouldyoudothis","")
+	:gsub("{\\N\\","\\N{\\")
+	:gsub("{\\N}","\\N")
+	:gsub("\\N}","}\\N")
 	:gsub("([^{])%*\\","%1\\")
 	
 	line.text=text
