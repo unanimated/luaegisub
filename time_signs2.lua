@@ -4,7 +4,7 @@
 script_name="Time signs from timecodes"
 script_description="Rough-times signs from TS timecodes"
 script_author="unanimated"
-script_version="2.6"
+script_version="2.61"
 
 function signtime(subs, sel)
     for i=#sel,1,-1 do
@@ -22,7 +22,7 @@ function signtime(subs, sel)
 	:gsub("^{(%d+:%d%d)","{TS %1")				-- ^{12?:34
 	:gsub("^%[(%d+:%d%d)%]:?%s*","{TS %1}")		-- ^[12?:34]:?
 	:gsub("{TS[%s%p]+(%d)","{TS %1")			-- {TS ~12:34
-	:gsub("({[^}]-)(%d+)[%;%.,]?(%d%d)([^:][^}]-})","%1%2:%3%4")	-- {1;23 / 1.23 / 1,23 123}
+	:gsub("({[^}]-)(%d+)[%;%.,]?(%d%d)([^:%d][^}]-})","%1%2:%3%4")	-- {1;23 / 1.23 / 1,23 123}
 	:gsub("{TS%s([^%d\\}]+)%s(%d+:%d%d)","{TS %2 %1")	-- {TS comment 12:34}
 	:gsub(":%s?}","}")					-- {TS 12:34: }
 	:gsub("|","\\N")
