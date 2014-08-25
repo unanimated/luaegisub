@@ -1,9 +1,7 @@
 script_name="Masquerade"
 script_description="Masquerade"
 script_author="unanimated"
-script_version="2.3"
-
--- \ko has been removed. much improved version is in 'Apply fade'. alpha shift does a similar thing differently.
+script_version="2.31"
 
 --[[
 
@@ -103,7 +101,7 @@ function addmask(subs, sel)
 	      if res.mask:match("alignment grid") then
 		l.text="{\\an7\\bord0\\shad0\\blur0.6"..l.text..atags.."\\c&H000000&\\alpha&H80&\\p1}"..allmasks[k].m
 	      else
-		l.text="{\\an7\\bord0\\blur1"..l.text..mcol.."\\p1}"..allmasks[k].m
+		l.text="{\\an7\\bord0\\shad0\\blur1"..l.text..mcol.."\\p1}"..allmasks[k].m
 	      end
 	      if res.mask=="square" then l.text=l.text:gsub("\\an7","\\an5") end
 	    end
