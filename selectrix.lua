@@ -17,12 +17,13 @@ N		-> "OP/ED in style" - includes any lines timed between the first and last lin
 	same text (contin.) - reads texts of selected lines and selects all following lines with the same texts until it reaches new text
 	same text (all lines) - selects all lines in the script with the same texts as the current selection (clean text - no tags/comments)
 	move sel. up/down - moves the selection by 1 unless given a different number in the match field
+	range of lines - set a range of lines to be selected, like "1530-2460"
 --]]
 
 script_name="Selectricks"
 script_description="Selectricks and Sortricks"
 script_author="unanimated"
-script_version="2.71"
+script_version="2.8"
 
 -- SETTINGS --				you can choose from the options below to change the default settings
 
@@ -180,6 +181,13 @@ if res.pres:match("same text") then
     lm=mark
   end
 end
+if res.pres=="range of lines" then
+  range_st,range_end=res.match:match("(%d+)%-(%d+)")
+  if range_st==nil then range_st=res.match:match("%d+") range_end=range_st end
+  if range_st==nil then aegisub.dialog.display({{class="label",label="Error: No numbers given."}},{"OK"},{close='OK'})
+	if cancel then aegisub.cancel() end
+  end
+end
 for i=#sel,1,-1 do	table.remove(sel,i) end
 opst=10000000	opet=0
 edst=10000000	edet=0
@@ -251,6 +259,11 @@ edst=10000000	edet=0
 		end
 	      end
 	    end
+	    if res.pres=="range of lines" then
+	      if startline==nil then startline=i end
+	      ind=i-startline+1
+	      if ind>=tonumber(range_st) and ind<=tonumber(range_end) then table.insert(sel,i) end
+	    end
 	end
     end
     -- OP/ED mod
@@ -271,6 +284,7 @@ edst=10000000	edet=0
 	end
       end
     end
+    startline=nil
     return sel
 end
 
@@ -348,7 +362,7 @@ function presel(subs, sel)
     return sel
 end
 
---	SELECTRIX GUI
+--	SELECTRIX GUI		--
 function konfig(subs, sel)
 	if lastmatch==nil then lastmatch="" end
 	if lastmode==nil then lastmode=search_sort end
@@ -356,38 +370,34 @@ function konfig(subs, sel)
 	if lastregexp==nil then lastregexp=use_regexp end
 	if lastexact==nil then lastexact=exact_match end
 	edtr=0
+	main_mode=
+	{"--------text--------","style","actor","effect","text","visible text (no tags)","------numbers------","layer","duration","word count","character count","char. per second","blur","left margin","right margin","vertical margin","------sorting only------","sort by time","reverse","width of text","dialogue first","dialogue last","ts/dialogue/oped","{TS} to the top","masks to the bottom","by comments"}
+	presetses={"Default style - All","nonDefault - All","OP in style","ED in style","layer 0","lines w/ comments 1","same text (contin.)","same text (all lines)","skiddiks, your their?","its/id/ill/were/wont","range of lines","----from selection----","no-blur signs","commented lines","lines w/ comments 2","move sel. up","move sel. down","------sorting------","move sel. to the top","move sel. to bottom","sel: first to bottom","sel: last to top"}
 	GUI=
 	{
-	    {x=0,y=0,width=1,height=1,class="label",label="Select/sort:"},
-	    {x=0,y=1,width=1,height=1,class="label",label="Used area:"},
-	    {x=0,y=2,width=1,height=1,class="label",label="Numbers:"},
+	    {x=0,y=0,class="label",label="Select/sort:"},
+	    {x=0,y=1,class="label",label="Used area:"},
+	    {x=0,y=2,class="label",label="Numbers:"},
 	    -- MAIN MODE
-	    {x=1,y=0,width=1,height=1,class="dropdown",name="mode",value=lastmode,
-		items={"--------text--------","style","actor","effect","text","visible text (no tags)","------numbers------","layer","duration","word count","character count","char. per second","blur","left margin","right margin","vertical margin","------sorting only------","sort by time","reverse","width of text","dialogue first","dialogue last","ts/dialogue/oped","{TS} to the top","masks to the bottom","by comments"}},
-	    {x=1,y=1,width=1,height=1,class="dropdown",name="selection",value=select_from,items={"current selection","all lines"}},
-	    {x=1,y=2,width=1,height=1,class="dropdown",name="equal",value=numbers_option,items={"==",">=","<="},
-							hint="options for layer/duration"},
-	    {x=1,y=3,width=1,height=1,class="dropdown",name="nomatch",value=matches_or_not,items={"matches","doesn't match"}},
-	    
-	    {x=0,y=4,width=1,height=1,class="label",label="Match this:"},
-	    {x=1,y=4,width=3,height=1,class="edit",name="match",value=lastmatch},
+	    {x=1,y=0,class="dropdown",name="mode",value=lastmode,items=main_mode},
+	    {x=1,y=1,class="dropdown",name="selection",value=select_from,items={"current selection","all lines"}},
+	    {x=1,y=2,class="dropdown",name="equal",value=numbers_option,items={"==",">=","<="},hint="options for layer/duration"},
+	    {x=1,y=3,class="dropdown",name="nomatch",value=matches_or_not,items={"matches","doesn't match"}},
+	    {x=0,y=4,class="label",label="Match this:"},
+	    {x=1,y=4,width=3,class="edit",name="match",value=lastmatch},
 	    
 	    -- PRESETS
-	    {x=0,y=5,width=1,height=1,class="label",label="Sel. preset:"},
-	    {x=1,y=5,width=1,height=1,class="dropdown",name="pres",value="Default style - All",
-	    items={"Default style - All","nonDefault - All","OP in style","ED in style","layer 0","lines w/ comments 1","same text (contin.)","same text (all lines)","skiddiks, your their?","its/id/ill/were/wont","----from selection----","no-blur signs","commented lines","lines w/ comments 2","move sel. up","move sel. down","------sorting------","move sel. to the top","move sel. to bottom","sel: first to bottom","sel: last to top"}},
-	    
-	    {x=2,y=0,width=1,height=1,class="label",label="Text:  "},
-	    {x=3,y=0,width=1,height=1,class="checkbox",name="case",label="case sensitive",value=lastcase},
-	    {x=3,y=1,width=1,height=1,class="checkbox",name="exact",label="exact match",value=lastexact},
-	    {x=2,y=1,width=1,height=1,class="checkbox",name="regexp",label="regexp",value=lastregexp},
-	    {x=2,y=2,width=2,height=1,class="checkbox",name="nocom",label="exclude commented lines",value=exclude_commented},
-	    
-	    {x=2,y=3,width=1,height=1,class="label",label="Sorting:"},
-	    {x=3,y=3,width=1,height=1,class="checkbox",name="rev",label="reversed",value=false},
-	    
-	    {x=2,y=5,width=1,height=1,class="checkbox",name="mod",label="mod",value=false},
-	    {x=3,y=5,width=1,height=1,class="checkbox",name="editor",label="load in editor",value=load_in_editor},
+	    {x=0,y=5,class="label",label="Sel. preset:"},
+	    {x=1,y=5,class="dropdown",name="pres",value="Default style - All",items=presetses},
+	    {x=2,y=0,class="label",label="Text:  "},
+	    {x=3,y=0,class="checkbox",name="case",label="case sensitive",value=lastcase},
+	    {x=3,y=1,class="checkbox",name="exact",label="exact match",value=lastexact},
+	    {x=2,y=1,class="checkbox",name="regexp",label="regexp",value=lastregexp},
+	    {x=2,y=2,width=2,class="checkbox",name="nocom",label="exclude commented lines",value=exclude_commented},
+	    {x=2,y=3,class="label",label="Sorting:"},
+	    {x=3,y=3,class="checkbox",name="rev",label="reversed",value=false},
+	    {x=2,y=5,class="checkbox",name="mod",label="mod",value=false},
+	    {x=3,y=5,class="checkbox",name="editor",label="load in editor",value=load_in_editor},
 	    
 	}
 	buttons={"Set Selection","Preset","Sort","Cancel"}
@@ -555,9 +565,9 @@ aegisub.progress.title("Loading Editor...")
 	    {x=0,y=0,width=52,height=1,class="label",label="Text"},
 	    {x=52,y=0,width=5,height=1,class="label",label="Duration | CPS | chrctrs"},
 	    
-	    {x=0,y=boxheight+1,width=1,height=1,class="label",label="Replace:"},
+	    {x=0,y=boxheight+1,class="label",label="Replace:"},
 	    {x=1,y=boxheight+1,width=15,height=1,class="edit",name="rep1",value=lastrep1},
-	    {x=16,y=boxheight+1,width=1,height=1,class="label",label="with"},
+	    {x=16,y=boxheight+1,class="label",label="with"},
 	    {x=17,y=boxheight+1,width=15,height=1,class="edit",name="rep2",value=lastrep2},
 	    
 	    {x=0,y=1,width=52,height=boxheight,class="textbox",name="dat",value=editext},
