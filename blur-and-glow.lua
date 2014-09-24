@@ -28,7 +28,7 @@ script_description="Add blur and/or glow to signs"
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/blur-and-glow.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/blur-and-glow.lua"
-script_version="2.2"
+script_version="2.3"
 
 default_blur="0.6"
 
@@ -69,8 +69,8 @@ function glow(subs,sel)
 	    line2=line
 	    line2.text=text
 	    line2.text=borderline(line2.text)
-	    if shadow~="0" then line2.text=line2.text:gsub("^({\\[^}]+)}","%1\\shad0}") end
-	    line2.text=line2.text:gsub("\\shad[%d%.]+","\\shad0")
+	    if shadow~="0" then line2.text=line2.text:gsub("^({\\[^}]+)}","%1\\shad"..shadow.."}") end
+	    line2.text=line2.text:gsub("^({\\[^}]-)}","%1\\4a&HFF&}")
 	    line2.layer=line2.layer+1
 	    subs.insert(sel[i]+2,line2)
 
@@ -164,7 +164,7 @@ function layerblur(subs,sel)
 	    if not res.onlyb then
 	    line2.text=text
 	    line2.text=borderline(line2.text)
-	    line2.text=line2.text:gsub("(\\[xy]?shad)[%d%.%-]+","%10")
+	    line2.text=line2.text:gsub("^({\\[^}]-)}","%1\\4a&HFF&}")
 	    end
 	    line2.layer=line2.layer+1
 	    subs.insert(sel[i]+1,line2)
@@ -217,10 +217,10 @@ function topline(txt)
     :gsub("\\bord[%d%.]+","\\bord0") 
     :gsub("(\\r[^}]-)}","%1\\bord0}")
     txt=txt:gsub("(\\[xy]bord)[%d%.]+","")    :gsub("(\\[xy]shad)[%d%.%-]+","")    :gsub("\\3c&H%x+&","")
-    if shadow~="0" then txt=txt:gsub("^({\\[^}]+)}","%1\\shad0}") end
+    if shadow~="0" then txt=txt:gsub("^({\\[^}]+)}","%1\\shad"..shadow.."}") end
     txt=txt
-    :gsub("\\shad[%d%.]+","\\shad0")
-    :gsub("(\\r[^}]-)}","%1\\shad0}")
+    :gsub("^({\\[^}]-)}","%1\\4a&HFF&}")
+    :gsub("(\\r[^}]-)}","%1\\shad"..shadow.."\\4a&HFF&}")
     :gsub("\\bord[%d%.%-]+([^}]-)(\\bord[%d%.%-]+)","%1%2")
     :gsub("\\shad[%d%.%-]+([^}]-)(\\shad[%d%.%-]+)","%1%2")
     :gsub("{}","")
@@ -308,26 +308,14 @@ function botalfa(txt)
 end
 
 function stylinfo(text)
-    	startags=text:match("^{\\[^}]-}")
-    	if startags==nil then startags="" end
-    	startags=startags:gsub("\\t%([^%(%)]+%)","") :gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","")
+    	startags=text:match("^{\\[^}]-}") or ""
+    	startags=startags:gsub("\\t%b()","")
     	
-    	primary=styleref.color1:gsub("H%x%x","H")
-    	pri=startags:match("^{[^}]-\\c(&H%x+&)")
-    	if pri~=nil then primary=pri end
-    	
+    	primary=startags:match("^{[^}]-\\c(&H%x+&)") or styleref.color1:gsub("H%x%x","H")
     	soutline=styleref.color3:gsub("H%x%x","H")
-    	outline=soutline
-    	out=startags:match("^{[^}]-\\3c(&H%x+&)")
-    	if out~=nil then outline=out end
-    	
-    	border=tostring(styleref.outline)
-    	bord=startags:match("^{[^}]-\\bord([%d%.]+)")
-    	if bord~=nil then border=bord end
-    	
-    	shadow=tostring(styleref.shadow)
-    	shad=startags:match("^{[^}]-\\shad([%d%.]+)")
-    	if shad~=nil then shadow=shad end
+    	outline=startags:match("^{[^}]-\\3c(&H%x+&)") or soutline
+    	border=startags:match("^{[^}]-\\bord([%d%.]+)") or tostring(styleref.outline)
+    	shadow=startags:match("^{[^}]-\\shad([%d%.]+)") or tostring(styleref.shadow)
     	
     	if text:match("\\r%a") then 
     	rstyle=text:match("\\r([^\\}]+)")
