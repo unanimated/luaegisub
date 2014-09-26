@@ -28,7 +28,7 @@ script_description="Add blur and/or glow to signs"
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/blur-and-glow.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/blur-and-glow.lua"
-script_version="2.3"
+script_version="2.4"
 
 default_blur="0.6"
 
@@ -70,7 +70,7 @@ function glow(subs,sel)
 	    line2.text=text
 	    line2.text=borderline(line2.text)
 	    if shadow~="0" then line2.text=line2.text:gsub("^({\\[^}]+)}","%1\\shad"..shadow.."}") end
-	    line2.text=line2.text:gsub("^({\\[^}]-)}","%1\\4a&HFF&}")
+	    if not res.s_mid then line2.text=line2.text:gsub("^({\\[^}]-)}","%1\\4a&HFF&}") end
 	    line2.layer=line2.layer+1
 	    subs.insert(sel[i]+2,line2)
 
@@ -164,7 +164,7 @@ function layerblur(subs,sel)
 	    if not res.onlyb then
 	    line2.text=text
 	    line2.text=borderline(line2.text)
-	    line2.text=line2.text:gsub("^({\\[^}]-)}","%1\\4a&HFF&}")
+	    if not res.s_mid then line2.text=line2.text:gsub("^({\\[^}]-)}","%1\\4a&HFF&}") end
 	    end
 	    line2.layer=line2.layer+1
 	    subs.insert(sel[i]+1,line2)
@@ -223,7 +223,8 @@ function topline(txt)
     :gsub("(\\r[^}]-)}","%1\\shad"..shadow.."\\4a&HFF&}")
     :gsub("\\bord[%d%.%-]+([^}]-)(\\bord[%d%.%-]+)","%1%2")
     :gsub("\\shad[%d%.%-]+([^}]-)(\\shad[%d%.%-]+)","%1%2")
-    :gsub("{}","")
+    if res.s_top then txt=txt:gsub("\\4a&HFF&","") end
+    txt=txt:gsub("{}","")
     return txt
 end
 
@@ -454,12 +455,14 @@ GUI={
     {x=0,y=3,width=1,class="checkbox",name="glowcol",label="glow c.:",value=false,hint="glow colour"},
     {x=1,y=3,width=2,class="color",name="glc" },
     
-    {x=0,y=4,width=5,class="checkbox",name="botalpha",label="fix \\1a for layers with border and fade --> transition:",
-			value=true,hint="uses \\1a&HFF& for bottom layer during fade"},
-    {x=5,y=4,width=1,class="dropdown",name="alphade",items={0,45,80,120,160,200,"max"},value=45 },
-    {x=6,y=4,width=1,class="label",label="ms" },
+    {x=0,y=4,width=2,class="checkbox",name="s_top",label="keep shadow on top layer",value=false},
     
-    {x=0,y=5,width=4,class="checkbox",name="onlyg",label="only add glow (layers w/ border)",value=false},
+    {x=0,y=5,width=5,class="checkbox",name="botalpha",label="fix \\1a for layers with border and fade --> transition:",
+			value=true,hint="uses \\1a&HFF& for bottom layer during fade"},
+    {x=5,y=5,width=1,class="dropdown",name="alphade",items={0,45,80,120,160,200,"max"},value=45 },
+    {x=6,y=5,width=1,class="label",label="ms" },
+    
+    {x=0,y=6,width=4,class="checkbox",name="onlyg",label="only add glow (layers w/ border)",value=false},
     
     -- right
     {x=4,y=0,width=1,class="checkbox",name="double",label="double border",value=false },
@@ -476,14 +479,16 @@ GUI={
     {x=4,y=3,width=1,class="checkbox",name="clr",label="2nd b. colour:",hint="Colour for 2nd border \nif different from primary." },
     {x=5,y=3,width=2,class="color",name="c3" },
     
-    {x=4,y=5,width=1,class="label",label="     Change layer:", },
-    {x=5,y=5,width=1,class="dropdown",name="layer",
+    {x=4,y=4,width=3,class="checkbox",name="s_mid",label="keep shadow on middle layer",value=false},
+    
+    {x=4,y=6,width=1,class="label",label="     Change layer:", },
+    {x=5,y=6,width=1,class="dropdown",name="layer",
 	items={"-5","-4","-3","-2","-1","+1","+2","+3","+4","+5"},value="+1" },
     
-    {x=0,y=6,width=2,class="checkbox",name="rep",label="repeat with last settings",value=false},
-    {x=4,y=6,width=1,class="checkbox",name="autod",label="auto double",value=true,
+    {x=0,y=7,width=2,class="checkbox",name="rep",label="repeat with last settings",value=false},
+    {x=4,y=7,width=1,class="checkbox",name="autod",label="auto double",value=true,
 	hint="automatically use double border\nif 2nd colour or 2nd border size is checked"},
-    {x=5,y=6,width=2,class="checkbox",name="save",label="save configuration",value=false},
+    {x=5,y=7,width=2,class="checkbox",name="save",label="save configuration",value=false},
 } 
     loadconfig()
     buttons={"Blur / Layers","Blur + Glow","Fix fades","Change layer","cancel"}
