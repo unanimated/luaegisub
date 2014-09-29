@@ -3,7 +3,7 @@ script_description="Import stuff, number stuff, chapter stuff, replace stuff, do
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/import.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/import.lua"
-script_version="2.3"
+script_version="2.4"
 
 require "clipboard"
 re=require'aegisub.re'
@@ -38,7 +38,7 @@ function important(subs,sel,act)
 	songcheck=0
 	
 	-- paths
-	scriptpath=aegisub.decode_path("?script")
+	scriptpath=ADP("?script")
 	if script_path=="relative" then path=scriptpath.."\\"..relative_path end
 	if script_path=="absolute" then path=absolute_path end
 
@@ -49,7 +49,7 @@ function important(subs,sel,act)
 	    
 	    -- import-single-sign GUI
 	    if res.mega=="import sign" then
-		press,reslt=aegisub.dialog.display({
+		press,reslt=ADD({
 		{x=0,y=0,width=1,height=1,class="label",label="File name:"},
 		{x=0,y=1,width=2,height=1,class="edit",name="signame"},
 		{x=1,y=0,width=2,height=1,class="dropdown",name="signs",items={"title","eptitle","custom","eyecatch"},value="custom"},
@@ -61,7 +61,7 @@ function important(subs,sel,act)
 		{x=0,y=6,width=3,height=1,class="checkbox",name="noshift",label="don't shift times (import as is)",value=false,},
 		{x=0,y=7,width=3,height=1,class="checkbox",name="deline",label="delete original line",value=false,},
 		},{"OK","Cancel"},{ok='OK',close='Cancel'})
-		if press=="Cancel" then aegisub.cancel() end
+		if press=="Cancel" then ak() end
 		if reslt.signs=="custom" then signame=reslt.signame else signame=reslt.signs end
 		noshift=reslt.noshift		keeptxt=reslt.keeptext	deline=reslt.deline
 		keeptags=reslt.keeptags		addtags=reslt.addtags
@@ -70,7 +70,7 @@ function important(subs,sel,act)
 	    -- read signs.ass
 	    if res.mega=="import signs" then
 		file=io.open(path.."signs.ass")
-		if file==nil then aegisub.dialog.display({{x=0,y=0,width=1,height=1,class="label",label=path.."signs.ass\nNo such file."}},{"ok"},{cancel='ok'}) aegisub.cancel() end
+		if file==nil then ADD({{x=0,y=0,width=1,height=1,class="label",label=path.."signs.ass\nNo such file."}},{"ok"},{cancel='ok'}) ak() end
 		signs=file:read("*all")
 		io.close(file)
 	    end
@@ -113,7 +113,7 @@ function important(subs,sel,act)
 		end
 		for sn in signlistxt:gmatch(",([^,]-),") do table.insert(signlist,sn) end
 		-- import-signs GUI
-		button,reslt=aegisub.dialog.display({
+		button,reslt=ADD({
 		{x=0,y=0,width=1,height=1,class="label",label="Choose a sign to import:"},
 		{x=0,y=1,width=1,height=1,class="dropdown",name="impsign",items=signlist,value=signlist[1]},
 		{x=0,y=2,width=1,height=1,class="checkbox",name="matchtime",label="keep current line's times",value=true,},
@@ -124,7 +124,7 @@ function important(subs,sel,act)
 		{x=0,y=7,width=1,height=1,class="checkbox",name="defect",label="delete 'effect'",value=false,},
 		{x=0,y=8,width=1,height=1,class="checkbox",name="deline",label="delete original line",value=false,},
 		},{"OK","Cancel"},{ok='OK',close='Cancel'})
-		if button=="Cancel" then aegisub.cancel() end
+		if button=="Cancel" then ak() end
 		if button=="OK" then whatsign=reslt.impsign end
 		noshift=reslt.noshift		defect=reslt.defect	keeptxt=reslt.keeptext	deline=reslt.deline
 		keeptags=reslt.keeptags		addtags=reslt.addtags
@@ -199,12 +199,12 @@ function important(subs,sel,act)
 	    if x==1 then snam=line.effect end
 	    exportsign=exportsign..line.raw.."\n"
 	    end
-	    press,reslt=aegisub.dialog.display({
+	    press,reslt=ADD({
 		{x=0,y=0,width=2,height=1,class="dropdown",name="addsign",
 			items={"Add to signs.ass","Save to new file:"},value="Add to signs.ass"},
 		{x=0,y=1,width=2,height=1,class="edit",name="newsign",value=snam},
 		},{"OK","Cancel"},{ok='OK',close='Cancel'})
-	    if press=="Cancel" then aegisub.cancel() end
+	    if press=="Cancel" then ak() end
 	    if press=="OK" then
 	    newsgn=reslt.newsign:gsub("%.ass$","")
 	    if reslt.addsign=="Add to signs.ass" then file=io.open(path.."signs.ass","a") exportsign="\n"..exportsign end
@@ -250,7 +250,7 @@ function important(subs,sel,act)
 	  end
 	end
     
-    if res.mega=="update lyrics" and songcheck==0 then press,reslt=aegisub.dialog.display({{x=0,y=0,width=1,height=1,class="label",label="The "..res.field.." field of selected lines doesn't match given pattern \""..sub1.."#"..sub2.."\".\n(Or style pattern wasn't matched if restriction enabled.)\n#=number sequence"}},{"ok"},{cancel='ok'}) end
+    if res.mega=="update lyrics" and songcheck==0 then press,reslt=ADD({{x=0,y=0,width=1,height=1,class="label",label="The "..res.field.." field of selected lines doesn't match given pattern \""..sub1.."#"..sub2.."\".\n(Or style pattern wasn't matched if restriction enabled.)\n#=number sequence"}},{"ok"},{cancel='ok'}) end
     
     noshift=nil		defect=nil	keeptxt=nil	deline=nil	keeptags=nil	addtags=nil
 end
@@ -434,10 +434,10 @@ function chopters(subs,sel)
 	{x=0,y=1,width=35,height=20,class="textbox",name="copytext",value=chapters},
 	{x=0,y=21,width=35,height=1,class="label",label="File will be saved in the same folder as the .ass file."},}
 	
-    pressed,reslt=aegisub.dialog.display(chdialog,{"Save xml file","Cancel","Copy to clipboard",},{cancel='Cancel'})
+    pressed,reslt=ADD(chdialog,{"Save xml file","Cancel","Copy to clipboard",},{cancel='Cancel'})
     if pressed=="Copy to clipboard" then    clipboard.set(chapters) end
     if pressed=="Save xml file" then    
-	scriptpath=aegisub.decode_path("?script")
+	scriptpath=ADP("?script")
 	scriptname=aegisub.file_name()
 	scriptname=scriptname:gsub("%.ass","")
 	
@@ -466,8 +466,8 @@ function stuff(subs,sel)
 	dategui=
 	{{x=0,y=0,class="dropdown",name="date",value="January 1st",items={"January 1","January 1st","1st of January","1st January"}},
 	{x=1,y=0,class="checkbox",name="log",label="log",value=false,}}
-	pres,rez=aegisub.dialog.display(dategui,{"OK","Cancel"},{ok='OK',close='Cancel'})
-	if pres=="Cancel" then aegisub.cancel() end
+	pres,rez=ADD(dategui,{"OK","Cancel"},{ok='OK',close='Cancel'})
+	if pres=="Cancel" then ak() end
 	datelog=""
     end
     
@@ -509,8 +509,8 @@ function stuff(subs,sel)
 	  {x=1,y=3,class="checkbox",name="rem",label="Same for all lines",value=rmmbr,hint="use only for layered lines with the same text"},
 	  {x=3,y=3,class="checkbox",name="excom",label="Leave original line commented out",value=exkom,width=3},
 	}
-	pres,rez=aegisub.dialog.display(explodegui,{"OK","Cancel"},{ok='OK',close='Cancel'})
-	if pres=="Cancel" then aegisub.cancel() end
+	pres,rez=ADD(explodegui,{"OK","Cancel"},{ok='OK',close='Cancel'})
+	if pres=="Cancel" then ak() end
     	expl_dist_x=rez.edistx	expl_dist_y=rez.edisty
 	exfad=rez.exfad		cfade=rez.ecfo
 	ex_hor=rez.hortype	ex_ver=rez.vertype
@@ -577,13 +577,13 @@ function stuff(subs,sel)
 	end
 	rtchoice={"Fade/Duration","Number Transform","Colour Transform","Help","Cancel"}
 	rthlp={"Fade/Duration","Number Transform","Colour Transform","Cancel"}
-	pres,rez=aegisub.dialog.display(rtgui,rtchoice,{ok='Fade/Duration',close='Cancel'})
+	pres,rez=ADD(rtgui,rtchoice,{ok='Fade/Duration',close='Cancel'})
 	if pres=="Help" then
 	    rthelp={x=0,y=8,width=8,height=4,class="textbox",value="This is supposed to be used after 'split into letters' or with gradients.\n\nFade/Duration Example:  Min: 500, Max: 2000.\nA random number between those is generated for each line, let's say 850.\nThis line's duration will be 850ms, and it will have a 850ms fade out.\n\nNumber Transform Example:  Blur, Min: 0.6, Max: 2.5\nRandom number generated: 1.7. Line will have: \\t(\\blur1.7)\n\nRandom Colour Transform creates transforms to random colours. \nMax % transform limits how much the colour can change.\n\nAccel works with either transform function.\n\nRandom Move works as an additional option with any function.\nIt can be used on its own if you uncheck other stuff. Works with Fade In."}
 	    table.insert(rtgui,rthelp)
-	    pres,rez=aegisub.dialog.display(rtgui,rthlp,{ok='Fade/Duration',close='Cancel'})
+	    pres,rez=ADD(rtgui,rthlp,{ok='Fade/Duration',close='Cancel'})
 	end
-	if pres=="Cancel" then aegisub.cancel() end
+	if pres=="Cancel" then ak() end
 	if pres=="Fade/Duration" then RTM="FD" end
 	if pres=="Number Transform" then RTM="NT" end
 	if pres=="Colour Transform" then RTM="CT" end
@@ -620,8 +620,8 @@ function stuff(subs,sel)
 	  {x=0,y=4,class="label",label="Shift even rows by:"},
 	  {x=1,y=4,class="intedit",name="ccshift",value=ccsh,min=0},
 	}
-	pres,rez=aegisub.dialog.display(ccgui,{"OK","Cancel"},{ok='OK',close='Cancel'})
-	if pres=="Cancel" then aegisub.cancel() end
+	pres,rez=ADD(ccgui,{"OK","Cancel"},{ok='OK',close='Cancel'})
+	if pres=="Cancel" then ak() end
 	clone_h=rez.hclone	dist_h=rez.hdist
 	clone_v=rez.vclone	dist_v=rez.vdist
 	ccshift=rez.ccshift
@@ -644,13 +644,13 @@ function stuff(subs,sel)
 	  {x=0,y=5,class="label",label="      Dissolve v2:   Dissolve"},
 	  {x=1,y=5,class="dropdown",name="v2dir",items={"randomly","from top","from bottom","from left","from right"},value=v2direction},
 	}
-	pres,rez=aegisub.dialog.display(dissgui,{"OK","What Is This","Cancel"},{ok='OK',close='Cancel'})
+	pres,rez=ADD(dissgui,{"OK","What Is This","Cancel"},{ok='OK',close='Cancel'})
 	if pres=="What Is This" then
 	    dishelp={x=0,y=6,width=10,height=8,class="textbox",value="The script can either automatically draw a clip around the text,\nor you can make your own clip.\nThe automation only considers position, alignment, and scaling,\nso for anything more complex, make your own.\nYou can just try it without a clip,\nand if the result isn't right, draw a clip first. (Only 4 points!)\n\n'Distance between points' will be the distance between the\nstarting points of all the little iclips.\nLess Distance = more clips = more lag,\nso use the lowest values only for smaller text.\nYou can run this on one line or fbf lines.\nThe ideal 'fade' is as many frames as the given Distance.\nThat way the clips grow by 1 pixel per frame.\nAny other way doesn't look too good,\nbut you can apply Distance 10 over 20 lines\nand have each 2 consecutive lines identical.\nMore Distance than lines doesn't look so bad, and the effect is 'faster'.\nIf you apply this to 1 line, the line will be split to have the effect applied to as many frames as the Distance is. (This is preferred.)\nFor hexagon, the actual distance is twice the input. (It grows faster.)\n\nThe shapes should be self-explanatory, so just experiment.\n\n'Shift even rows' means that even rows will have an offset\nfrom odd rows by half of the given Distance.\nNot checking this will have a slightly different and less regular effect,\nthough it also depends on the shape. Again, experiment.\n\nIf you need to apply this to several layers, you have to do it one by one. The GUI remembers last values. But more layers = more lag.\n\nAll kinds of things can make this lag, so use carefully.\nLines are less laggy than other shapes.\nHorizontal lines are the least laggy. (Unless you have vertical text.)\n\nFor longer fades, use more Distance.\nThis works great with vertical lines but is pretty useless with horizontal.\n\n'Reverse effect' is like fade in while the default is fade out.\nWith one line selected, it applies to the first frames.\n\n'Dissolve v2' is a different kind of dissolve\nand only works with square, diamond, and vertical lines.\nLine count for this is independent on distance between points.\nIt's the only effect that allows Distance 4.\n'Shift even rows' has no effect here.\n\nYou can set a direction of Dissolve v2.\nObviously top and bottom is nonsense for vertical lines.\n'Reverse effect' reverses the direction too, so choose the opposite.\n\nThere may be weird results with some combinations of settings.\nThere may be some malfunctions, as the script is pretty complex.\nSome of them -might- be fixed by reloading automation scripts.\nMakes no sense with \\move. Nukes \\fad.\n\nThere are some fun side effects.\nFor example with 'square 2' and 'Shift even rows',\nyou get a brick wall on the last frame."}
 	    table.insert(dissgui,dishelp)
-	    pres,rez=aegisub.dialog.display(dissgui,{"OK","Cancel"},{ok='OK',close='Cancel'})
+	    pres,rez=ADD(dissgui,{"OK","Cancel"},{ok='OK',close='Cancel'})
 	end
-	if pres=="Cancel" then aegisub.cancel() end
+	if pres=="Cancel" then ak() end
 	dlast=true
 	v_dist=rez.ddist
 	shape=rez.shape
@@ -840,6 +840,42 @@ function stuff(subs,sel)
     -- DISSOLVE END --------------------------------------------------------------------
     end
     
+    -- What is the Matrix --
+    if res.stuff=="what is the Matrix?" then
+        matrixgui={
+	  {x=0,y=0,class="label",label="Max. transformations per letter: "},
+	  {x=1,y=0,class="intedit",name="tpl",value=4,min=2},
+	  {x=0,y=1,class="label",label="Frames to stay the same: "},
+	  {x=1,y=1,class="intedit",name="fts",value=2,min=1},
+	  {x=0,y=2,class="label",label="Character set: "},
+	  {x=1,y=2,class="dropdown",name="charset",items={"UPPERCASE","lowercase","Both","More","Everything"},value="Both"},
+	  {x=0,y=3,class="label",label="Chance to keep letter (0-10):"},
+	  {x=1,y=3,class="intedit",name="mkeep",value=5,min=0,max=10},
+	  {x=0,y=4,width=2,class="checkbox",name="showall",label="Show all letters from the start",value=true,},
+	  {x=0,y=5,width=2,class="label",label="Monospace fonts are optimal. For others, use left alignment."},
+	}
+	if matrixres then
+	  for key,val in ipairs(matrixgui) do
+	    if val.class=="checkbox" or val.class=="dropdown" or val.class=="intedit" then val.value=rez[val.name] end
+	  end
+	end
+	pres,rez=ADD(matrixgui,{"What Is the Matrix?","Cancel"},{ok='What Is the Matrix?',close='Cancel'})
+	if pres=="Cancel" then ak() end
+	AB="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	ab="abcdefghijklmnopqrstuvwxyz"
+	Ab="!?()$&+-="
+	aB="@#%^*/[]';:,.|"
+	if rez.charset=="UPPERCASE" then chset=AB.." "
+	elseif rez.charset=="lowercase" then chset=ab.." "
+	elseif rez.charset=="Both" then chset=AB..ab.." "
+	elseif rez.charset=="More" then chset=AB..ab..Ab.." "
+	else chset=AB..ab..Ab..aB.." " end
+	ABC=chset:len()
+	mframes=rez.tpl
+	fpl=rez.fts
+	matrixres=rez
+    end
+    
     if res.stuff=="time by frames" then frs=res.rep1:match("%-?%d+") or 0 fre=res.rep2:match("%-?%d+") or 0
 	rine=subs[sel[1]]
 	fstart=ms2fr(rine.start_time)
@@ -858,6 +894,70 @@ function stuff(subs,sel)
         text=line.text
 	style=line.style
 	
+	-- What is the Matrix --
+	if res.stuff=="what is the Matrix?" then
+	    start=line.start_time endt=line.end_time
+	    startf=ms2fr(start)
+	    tags=text:match("^{\\[^}]-}") or ""
+	    visible=text:gsub("{[^}]-}","")
+	    ltrs={}
+	    ltrs2={}
+	    matches=re.find(visible,".")
+	      for l=1,#matches do
+	        table.insert(ltrs,matches[l].str)
+		r=math.random(1,ABC)
+	        table.insert(ltrs2,chset:sub(r,r))
+	      end
+	    base=""
+	    lines={}
+	    for l=1,#ltrs do
+	      for f=1,mframes do
+		if f<mframes then
+		    x=math.random(1,ABC)
+		    letter=chset:sub(x,x)
+		    z=math.random(0,9)
+		    if z<rez.mkeep and f>1 then letter=lastletter end
+		    if l==1 and letter==" " then letter="e" end
+		    if l==#ltrs and letter==" " then letter="s" end
+		    txt=base..letter
+		    lastletter=letter
+		else letter=ltrs[l] txt=base..letter base=txt
+		end
+		if not rez.showall then txt=txt.."{\\alpha&HFF&}" end
+		for n=l+1,#ltrs do
+		  if rez.showall then
+		    y=math.random(1,ABC)
+		    letter=chset:sub(y,y)
+		    z=math.random(0,9)
+		    if z<rez.mkeep and n>l then letter=ltrs2[n] end
+		    ltrs2[n]=letter
+		    if n==#ltrs and letter==" " then letter="k" end
+		    txt=txt..letter
+		  else
+		    txt=txt..ltrs[n]
+		  end
+		end
+		txt=tags..txt
+		fact=l*mframes+f-mframes-1
+		startfr=startf+fact*fpl
+		st=fr2ms(startfr)
+		et=fr2ms(startfr+fpl)
+		l2={txt,st,et}
+		table.insert(lines,l2)
+	      end
+	      lastletter=nil
+	    end
+	    for ln=#lines,1,-1 do
+	      lin=lines[ln]
+	      line.text=lin[1]
+	      line.start_time=lin[2]
+	      line.end_time=lin[3]
+	      if ln==#lines and endt>lin[3] then line.end_time=endt end
+	      subs.insert(sel[i]+1,line)
+	    end
+	    line.comment=true
+	end
+	
 	if res.stuff=="save/load" and i==1 then
 	    if savedata==nil then savedata="" end
 	    if res.dat~="" then
@@ -865,19 +965,20 @@ function stuff(subs,sel)
 		savedata=savedata
 		:gsub("^\n\n","")
 		:gsub("\n\n\n","\n\n")
-		aegisub.dialog.display({{class="label",label="Data saved.",x=0,y=0,width=20,height=2}},{"OK"},{close='OK'})
+		ADD({{class="label",label="Data saved.",x=0,y=0,width=20,height=2}},{"OK"},{close='OK'})
 	    else
-		aegisub.dialog.display({{x=0,y=0,width=50,height=18,class="textbox",name="savetxt",value=savedata},},{"OK"},{close='OK'})
+		ADD({{x=0,y=0,width=50,height=18,class="textbox",name="savetxt",value=savedata},},{"OK"},{close='OK'})
 	    end
 	end
 	
-	if res.stuff=="lua replacer" then
-	    lim=sub3:match("^%d+")
-	    if lim==nil then limit=1 else limit=tonumber(lim) end
-	    replicant1=sub1:gsub("\\","\\"):gsub("\\\\","\\")
-	    replicant2=sub2:gsub("\\","\\"):gsub("\\\\","\\")
-	    tk=text
-	    count=0
+	if res.stuff=="replacer" then
+	  lim=sub3:match("^%d+")
+	  if lim==nil then limit=1 else limit=tonumber(lim) end
+	  replicant1=sub1:gsub("\\","\\"):gsub("\\\\","\\")
+	  replicant2=sub2:gsub("\\","\\"):gsub("\\\\","\\")
+	  tk=text
+	  count=0
+	  if res.regex=="lua patterns" then
 	    repeat 
 	    text=text:gsub(replicant1,replicant2) count=count+1
 	    until count==limit
@@ -891,15 +992,7 @@ function stuff(subs,sel)
 		end
 	      end
 	    end
-	end
-	
-	if res.stuff=="perl replacer" then
-	    lim=sub3:match("^%d+")
-	    if lim==nil then limit=1 else limit=tonumber(lim) end
-	    replicant1=sub1:gsub("\\","\\"):gsub("\\\\","\\")
-	    replicant2=sub2:gsub("\\","\\"):gsub("\\\\","\\")
-	    tk=text
-	    count=0
+	  else
 	    repeat
 	    text=re.sub(text,replicant1,replicant2) count=count+1
 	    until count==limit
@@ -912,6 +1005,8 @@ function stuff(subs,sel)
 		end
 	      end
 	    end
+	  
+	  end
 	end
 	
 	if res.stuff=="lua calc" then
@@ -1350,10 +1445,11 @@ function stuff(subs,sel)
 	line.text=text
 	subs[sel[i]]=line
 	if res.stuff=="split into letters" or res.stuff=="explode" and not rez.excom then subs.delete(sel[i]) table.remove(sel,#sel) end
+	if res.stuff=="what is the Matrix?" then subs.delete(sel[i]) end
     end
     if res.stuff:match"replacer" then aegisub.progress.task("All stuff has been finished.")
 	if repl==1 then rp=" modified line" else rp=" modified lines" end
-	press,reslt=aegisub.dialog.display({},{repl..rp},{cancel=repl..rp})
+	press,reslt=ADD({},{repl..rp},{cancel=repl..rp})
     end
     if res.stuff=="format dates" and rez.log then aegisub.log(datelog) end
     savetab=nil
@@ -1667,7 +1763,7 @@ function cleantr(tags)
 	trnsfrm=trnsfrm:gsub("\\t%(\\[^%(%)]+%)","")
 	trnsfrm=trnsfrm:gsub("\\t%((\\[^%(%)]-%b()[^%)]-)%)","")
 	trnsfrm="\\t("..cleant..")"..trnsfrm
-	tags=tags:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}")
+	tags=tags:gsub("^({[^}]*)}","%1"..trnsfrm.."}")
 	return tags
 end
 
@@ -1691,8 +1787,8 @@ return num
 end
 
 function t_error(message,cancel)
-  aegisub.dialog.display({{class="label",label=message}},{"OK"},{close='OK'})
-  if cancel then aegisub.cancel() end
+  ADD({{class="label",label=message}},{"OK"},{close='OK'})
+  if cancel then ak() end
 end
 
 function stylechk(subs,stylename)
@@ -1742,7 +1838,7 @@ function getpos(subs,text)
 end
 
 function progress(msg)
-  if aegisub.progress.is_cancelled() then aegisub.cancel() end
+  if aegisub.progress.is_cancelled() then ak() end
   aegisub.progress.title(msg)
 end
 
@@ -1762,7 +1858,7 @@ unconf="Unimportant Configuration\n\n"
     end
   end
 
-unimpkonfig=aegisub.decode_path("?user").."\\unimportant.conf"
+unimpkonfig=ADP("?user").."\\unimportant.conf"
   file=io.open(unimpkonfig)
     if file~=nil then
 	konf=file:read("*all")
@@ -1796,8 +1892,8 @@ unimpkonfig=aegisub.decode_path("?user").."\\unimportant.conf"
   {x=1,y=5,class="edit",width=16,name="chap3",value=chap3},
   }
   
-  click,rez=aegisub.dialog.display(savestuff,{"Save","Cancel"},{ok='Save',close='Cancel'})
-  if click=="Cancel" then aegisub.cancel() end
+  click,rez=ADD(savestuff,{"Save","Cancel"},{ok='Save',close='Cancel'})
+  if click=="Cancel" then ak() end
   rez.imp3=rez.imp3:gsub("[^\\]$","%1\\")
   rez.chap3=rez.chap3:gsub("[^\\]$","%1\\")
   
@@ -1810,11 +1906,11 @@ unimpkonfig=aegisub.decode_path("?user").."\\unimportant.conf"
 file=io.open(unimpkonfig,"w")
 file:write(unconf)
 file:close()
-aegisub.dialog.display({{class="label",label="Config saved to:\n"..unimpkonfig}},{"OK"},{close='OK'})
+ADD({{class="label",label="Config saved to:\n"..unimpkonfig}},{"OK"},{close='OK'})
 end
 
 function loadconfig()
-unimpkonfig=aegisub.decode_path("?user").."\\unimportant.conf"
+unimpkonfig=ADP("?user").."\\unimportant.conf"
 file=io.open(unimpkonfig)
     if file~=nil then
 	konf=file:read("*all")
@@ -1826,6 +1922,8 @@ file=io.open(unimpkonfig)
 	      if konf:match(val.name) then val.value=detf(konf:match(val.name..":(.-)\n")) end
 	      if lastimp and val.name=="stuff" then val.value=lastuff end
 	      if lastimp and val.name=="log" then val.value=lastlog end
+	      if lastimp and val.name=="zeros" then val.value=lastzeros end
+	      if lastimp and val.name=="field" then val.value=lastfield end
 	    end
 	  end
 	end
@@ -2174,6 +2272,9 @@ Converts framerate from a to b where a is the input from "Left" and b is input f
 
 --	Unimportant GUI		-------------------------------------------------------------------------------------
 function unimportant(subs,sel,act)
+ADD=aegisub.dialog.display
+ADP=aegisub.decode_path
+ak=aegisub.cancel
 aegisub.progress.title("Loading Unimportant Stuff")
 aegisub.progress.task("This should take less than a second, so you won't really read this.")
 if datata==nil then data="" else data=datata end
@@ -2182,7 +2283,10 @@ if sub2==nil then sub2="" end
 if sub3==nil then sub3=1 end
 msg={"If it breaks, it's your fault.","This should be doing something...","Breaking your computer. Please wait.","Unspecified operations in progress.","This may or may not work.","Trying to avoid bugs...","Zero one one zero one zero...","10110101001101101010110101101100001","I'm surprised anyone's using this","If you're seeing this for too long, it's a bad sign.","This might hurt a little.","Please wait... I'm pretending to work.","Close all your programs and run."}
 rm=math.random(1,#msg)	msge=msg[rm]
-if lastimp then dropstuff=lastuff logg=lastlog else dropstuff="lua replacer" logg=false end
+if lastimp then dropstuff=lastuff lok=lastlog zerozz=lastzeros fld=lastfield
+else dropstuff="replacer" lok=false zerozz="01" fld="effect" end
+g_impex={"import OP","import ED","import sign","import signs","export sign","update lyrics"}
+g_stuff={"save/load","replacer","lua calc","jump to next","alpha shift","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","reverse text","reverse words","reverse transforms","fake capitals","format dates","split into letters","explode","dissolve text","randomized transforms","clone clip","what is the Matrix?","time by frames","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"}
 unconfig={
 	-- Sub --
 	{x=0,y=16,width=3,height=1,class="label",label="Left                                                    "},
@@ -2194,8 +2298,7 @@ unconfig={
 	
 	-- import
 	{x=9,y=3,width=2,height=1,class="label",label="Import/Export"},
-	{x=9,y=4,width=2,height=1,class="dropdown",name="mega",
-	items={"import OP","import ED","import sign","import signs","export sign","update lyrics"},value="import signs"},
+	{x=9,y=4,width=2,height=1,class="dropdown",name="mega",items=g_impex,value="import signs"},
 	{x=11,y=4,width=1,height=1,class="checkbox",name="keep",label="keep line",value=true,},
 	{x=9,y=5,width=3,height=1,class="checkbox",name="restr",label="style restriction (lyrics)",value=false,},
 	{x=9,y=6,width=3,height=1,class="edit",name="rest"},
@@ -2216,13 +2319,14 @@ unconfig={
 	-- numbers
 	{x=9,y=13,width=2,height=1,class="label",label="Numbers"},
 	{x=9,y=14,width=2,height=1,class="dropdown",name="modzero",items={"number lines","add to marker"},value="number lines"},
-	{x=11,y=14,width=1,height=1,class="dropdown",name="zeros",items={"1","01","001","0001"},value="01"},
-	{x=9,y=15,width=2,height=1,class="dropdown",name="field",items={"actor","effect","layer","style","text"},value="effect"},
+	{x=11,y=14,width=1,height=1,class="dropdown",name="zeros",items={"1","01","001","0001"},value=zerozz},
+	{x=9,y=15,width=2,height=1,class="dropdown",name="field",items={"actor","effect","layer","style","text"},value=fld},
 	
 	-- stuff
 	{x=0,y=15,width=1,height=1,class="label",label="Stuff  "},
-	{x=1,y=15,width=2,height=1,class="dropdown",name="stuff",items={"save/load","lua replacer","perl replacer","lua calc","jump to next","alpha shift","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","reverse text","reverse words","reverse transforms","fake capitals","format dates","split into letters","explode","dissolve text","randomized transforms","clone clip","time by frames","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"},value=dropstuff}, --dropstuff
-	{x=3,y=15,width=1,height=1,class="checkbox",name="log",label="log",value=logg,hint="replacers"},
+	{x=1,y=15,width=2,height=1,class="dropdown",name="stuff",items=g_stuff,value=dropstuff}, --dropstuff
+	{x=3,y=15,width=1,height=1,class="dropdown",name="regex",items={"lua patterns","perl regexp"},value="perl regexp"},
+	{x=4,y=15,width=1,height=1,class="checkbox",name="log",label="log",value=lok,hint="replacers"},
 	{x=8,y=15,width=1,height=1,class="label",label="Marker:"},
 	
 	-- textboxes
@@ -2230,7 +2334,8 @@ unconfig={
 	{x=9,y=1,width=3,height=1,class="label",label=" Selected Lines: "..#sel},
 	
 	-- help
-	{x=9,y=0,width=3,height=1,class="dropdown",name="help",items={"--- Help menu ---","Import/Export","Update Lyrics","Do Stuff","Numbers","Chapters"},value="--- Help menu ---"},
+	{x=9,y=0,width=3,height=1,class="dropdown",name="help",
+	items={"--- Help menu ---","Import/Export","Update Lyrics","Do Stuff","Numbers","Chapters"},value="--- Help menu ---"},
 	{x=9,y=17,width=3,height=1,class="label",label="   Unimportant version: "..script_version},
 }
 	loadconfig()
@@ -2251,11 +2356,11 @@ unconfig={
 		    if val.name=="dat" then val.value=infodump end
 		end
 	  end
-	pressed,res=aegisub.dialog.display(unconfig,
+	pressed,res=ADD(unconfig,
 	{"Import/Export","Do Stuff","Numbers","Chapters","Info","Help","Save Config","Cancel"},{ok='Import/Export',cancel='Cancel'})
 	until pressed~="Help" and pressed~="Info"
-	if pressed=="Cancel" then    aegisub.cancel() end
-	lastimp=true lastuff=res.stuff lastlog=res.log
+	if pressed=="Cancel" then    ak() end
+	lastimp=true lastuff=res.stuff lastlog=res.log lastzeros=res.zeros lastfield=res.field
 	ms2fr=aegisub.frame_from_ms
 	fr2ms=aegisub.ms_from_frame
 	progress("Doing Stuff") aegisub.progress.task(msge)
