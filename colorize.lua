@@ -1,7 +1,7 @@
 ﻿script_name="Colorize"
 script_description="Does things with colours"
 script_author="unanimated"
-script_version="4.1"
+script_version="4.2"
 
 --[[
 
@@ -34,26 +34,26 @@ script_version="4.1"
  
 	Gradient:
  Creates a gradient by character. (Uses Colorize button.)
- There are two modes: RGB and HSB. RGB is the standard, like lyger's GBC; HSB interpolates Hue, Saturation, and Brightness separately.
+ There are two modes: RGB and HSL. RGB is the standard, like lyger's GBC; HSL interpolates Hue, Saturation, and Lightness separately.
  Use the \c, \3c, \4c, \2c checkboxes on the right to choose which colour to gradient.
  "Shortest hue" makes sure that hue is interpolated in the shorter direction. Unchecking it will give you a different gradient in 50% cases.
- "Double HSB gradient" will make an extra round through Hue. Note that neither of these 2 options applies to RGB.
+ "Double HSL gradient" will make an extra round through Hue. Note that neither of these 2 options applies to RGB.
  "Use asterisks" places asterisks like GBC so that you can ungradient the line with lyger's script.
  There are several differences from lyger's GBC:
-	- RGB / HSB option
+	- RGB / HSL option
 	- You can choose which types of colour you want to gradient
 	- Other tags don't interfere with the colour gradients
  
 	Match/switch/invert \c, \3c, 4c:
  This should be obvious from the names and should apply to all new colour tags in the line.
  
-	Adjust RGB / HSB
- Adjusting Red/Green/Blue or Hue/Saturation/Brightness
+	Adjust RGB / HSL
+ Adjusting Red/Green/Blue or Hue/Saturation/Lightness
  This works for lines with multiple same-type colour tags, including gradient by character.
  You can select from -255 to 255.
  Check types of colours you want it to apply to.
  "Apply to missing" means it will be applied to the colour set in style if there's no tag in the line.
- "Randomize" - if you set Brightness (any RGB/HSB) to 20, the resulting colour will have anywhere between -20 and +20 of the original brightness.
+ "Randomize" - if you set Lightness (any RGB/HSL) to 20, the resulting colour will have anywhere between -20 and +20 of the original Lightness.
  
    "Remember last"
  Remembers last settings of checkboxes and dropdowns.
@@ -465,7 +465,7 @@ function matchcolors(subs,sel)
 		    ctg=ctg:gsub("1","")
 		    if not tags:match(ctg) and n~=2 then text=text:gsub("^({\\[^}]-)}","%1"..ctg..stylecol[n].."}") end
 		end
-		for color in text:gmatch("\\[1234]?c&H(%x%x%x%x%x%x)&") do
+		for tg,color in text:gmatch("(\\[1234]?c&H)(%x%x%x%x%x%x)&") do
 		    icolor=""
 		    for kol in color:gmatch("(%x%x)") do
 			dkol=tonumber(kol,16)
@@ -473,13 +473,13 @@ function matchcolors(subs,sel)
 			ikol=tohex(idkol)
 			icolor=icolor..ikol
 		    end
-		    text=text:gsub("&H"..color.."&","&H"..icolor.."&")
+		    text=text:gsub(tg..color,tg..icolor)
 		end
 	    text=text:gsub("\\what","")
 	end
 
-	-- RGB / HSB
-	if pressed=="RGB" or pressed=="HSB" then
+	-- RGB / HSL
+	if pressed=="RGB" or pressed=="HSL" then
 	    lvlr=res.R lvlg=res.G lvlb=res.B
 	    hue=res.huehue
 	    sat=res.satur
@@ -506,12 +506,12 @@ function matchcolors(subs,sel)
 		    kol1n=brightness(kol1,lvlb)
 		    kol2n=brightness(kol2,lvlg)
 		    kol3n=brightness(kol3,lvlr)
-		  text=text:gsub(kol1..kol2..kol3,kol1n..kol2n..kol3n)
+		  text=text:gsub(kl.."&H"..kol1..kol2..kol3,kl.."&H"..kol1n..kol2n..kol3n)
 		  end
 		end
 		
 		-- H S B --
-		if pressed=="HSB" then
+		if pressed=="HSL" then
 		  for kol1,kol2,kol3 in text:gmatch(kl.."&H(%x%x)(%x%x)(%x%x)&") do
 		  H1,S1,L1=RGB_to_HSL(kol3,kol2,kol1)
 		  H=H1+hue/255
@@ -531,7 +531,7 @@ function matchcolors(subs,sel)
 		  kol3n=tohex(round(kol3n))
 		  kol2n=tohex(round(kol2n))
 		  kol1n=tohex(round(kol1n))
-		  text=text:gsub(kol1..kol2..kol3,kol1n..kol2n..kol3n)
+		  text=text:gsub(kl.."&H"..kol1..kol2..kol3,kl.."&H"..kol1n..kol2n..kol3n)
 		  end
 		end
 	    end
@@ -894,6 +894,8 @@ function detf(txt)
     return ret
 end
 
+function logg(m) aegisub.log("\n "..m) end
+
 function saveconfig()
 colconf="Colorize Configutation\n\n"
 for key,val in ipairs(GUI) do
@@ -968,7 +970,7 @@ ak=aegisub.cancel
 	{x=8,y=5,width=3,height=1,class="intedit",name="huehue",value=0,min=-255,max=255},
 	{x=7,y=6,width=1,height=1,class="label",label="Saturation:"},
 	{x=8,y=6,width=3,height=1,class="intedit",name="satur",value=0,min=-255,max=255},
-	{x=7,y=7,width=1,height=1,class="label",label="Brightness:"},
+	{x=7,y=7,width=1,height=1,class="label",label="Lightness:"},
 	{x=8,y=7,width=3,height=1,class="intedit",name="bright",value=0,min=-255,max=255},
 	
 	{x=7,y=8,width=1,height=1,class="checkbox",name="k1",label="\\c       ",value=true  },
@@ -990,8 +992,8 @@ ak=aegisub.cancel
 	
 	{x=0,y=8,width=2,height=1,class="checkbox",name="grad",label="Gradient  ",value=false},
 	{x=2,y=8,width=3,height=1,class="checkbox",name="hueshort",label="Shortest hue",value=true},
-	{x=5,y=8,width=1,height=1,class="dropdown",name="grtype",items={"RGB","HSB"},value="HSB"},
-	{x=0,y=9,width=3,height=1,class="checkbox",name="double",label="Double HSB gradient",value=false},
+	{x=5,y=8,width=1,height=1,class="dropdown",name="grtype",items={"RGB","HSL"},value="HSL"},
+	{x=0,y=9,width=3,height=1,class="checkbox",name="double",label="Double HSL gradient",value=false},
 	{x=3,y=9,width=3,height=1,class="checkbox",name="ast",label="Use asterisks",value=false},
 	
 	{x=0,y=10,width=3,height=1,class="checkbox",name="save",label="Save configuration",value=false,hint="Saves current configuration\n(for most things)"},
@@ -1006,7 +1008,7 @@ ak=aegisub.cancel
 	    if val.name=="save" then val.value=false end
 	  end
 	end
-	pressed,res=ADD(GUI,{"Colorize","Shift","Match Colours","RGB","HSB","Cancel"},{ok='Colorize',close='Cancel'})
+	pressed,res=ADD(GUI,{"Colorize","Shift","Match Colours","RGB","HSL","Cancel"},{ok='Colorize',close='Cancel'})
 	if pressed=="Cancel" then ak() end
 	randomize=res.randoom
 	if pressed=="Colorize" then repetition() 
@@ -1017,7 +1019,7 @@ ak=aegisub.cancel
 	    else colors(subs,sel) end
 	end
 	if pressed=="Shift" then repetition() shift(subs,sel) end
-	if pressed=="Match Colours" or pressed=="RGB" or pressed=="HSB" then repetition() styleget(subs) matchcolors(subs,sel) end
+	if pressed=="Match Colours" or pressed=="RGB" or pressed=="HSL" then repetition() styleget(subs) matchcolors(subs,sel) end
 	
 	colourblind=true
 	lastres=res
