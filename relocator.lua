@@ -6,7 +6,7 @@ script_description="Makes things appear different from before"
 script_author="reanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/relocator.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/relocator.lua"
-script_version="3.11"
+script_version="3.12"
 
 include("utils.lua")
 re=require'aegisub.re'
@@ -587,7 +587,7 @@ function modifier(subs,sel)
 	    end
 	    
 	    if res.mod=="killmovetimes" then
-		text=text:gsub("\\move%(([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^,%)]+)","\\move(%1,%2,%3,%4")
+		text=text:gsub("\\move%(([^,]+,[^,]+,[^,]+,[^,]+),[^,]+,[^,%)]+","\\move(%1")
 	    end
 	    
 	    if res.mod=="fullmovetimes" then
@@ -596,8 +596,11 @@ function modifier(subs,sel)
 	    end
 	    
 	    if res.mod=="fulltranstimes" then
-		text=text:gsub("\\t%([%d,%.]-\\","\\t("..movt..",\\")
-		text=text:gsub("\\t%(\\","\\t("..movt..",\\")
+		text=text
+		:gsub("\\t%([%d%.%-]-,[%d%.%-]-,([%d%.]-,)\\","\\t("..movt..",%1\\")
+		:gsub("\\t%([%d%.%-]-,[%d%.%-]-,\\","\\t("..movt..",\\")
+		:gsub("\\t%(([%d%.]-,)\\","\\t("..movt..",%1\\")
+		:gsub("\\t%(\\","\\t("..movt..",\\")
 	    end
 	    
 	    if res.mod=="move v. clip" then
@@ -720,7 +723,7 @@ function modifier(subs,sel)
 	    end
 
 	    if res.mod=="vector2rect." then
-		text=text:gsub("\\(i?)clip%(m%s(%d-)%s(%d-)%sl%s(%d-)%s(%d-)%s(%d-)%s(%d-)%s(%d-)%s(%d-)%)","\\%1clip(%2,%3,%6,%7)") 
+		text=text:gsub("\\(i?)clip%(m%s([%d%.%-]+)%s([%d%.%-]+)%sl%s([%d%.%-]+)%s([%d%.%-]+)%s([%d%.%-]+)%s([%d%.%-]+)%s([%d%.%-]+)%s([%d%.%-]+)%)","\\%1clip(%2,%3,%6,%7)") 
 	    end
 
 	    if res.mod=="rect.2vector" then
@@ -814,21 +817,21 @@ function modifier(subs,sel)
 	    if res.mod=="randomize..." then
 		if x==1 then
 		  randomgui={
-		    {x=0,y=0,width=1,height=1,class="label",label="randomization value"},
-		    {x=1,y=0,width=1,height=1,class="floatedit",name="random",value=3},
-		    {x=0,y=1,width=1,height=1,class="label",label="rounding"},
-		    {x=1,y=1,width=1,height=1,class="dropdown",name="dec",items={"1","0.1","0.01","0.001"},value="0.1",},
-		    {x=1,y=2,width=1,height=1,class="edit",name="randomtag"},
-		    {x=1,y=3,width=1,height=1,class="edit",name="partag1",hint="pos, move, org, clip, (fad)"},
-		    {x=1,y=4,width=1,height=1,class="edit",name="partag2",hint="pos, move, org, clip, (fad)"},
-		    {x=0,y=2,width=1,height=1,class="checkbox",name="ntag",label="standard type tag - \\",value=true,hint="\\[tag][number]"},
-		    {x=0,y=3,width=1,height=1,class="checkbox",name="ptag1",label="parenthesis tag x - \\",value=false,hint="\\tag(X,y)"},
-		    {x=0,y=4,width=1,height=1,class="checkbox",name="ptag2",label="parenthesis tag y - \\",value=false,hint="\\tag(x,Y)"},
+		    {x=0,y=0,class="label",label="randomization value"},
+		    {x=1,y=0,class="floatedit",name="random",value=rnd or 3},
+		    {x=0,y=1,class="label",label="rounding"},
+		    {x=1,y=1,class="dropdown",name="dec",items={"1","0.1","0.01","0.001"},value=rd or "0.1",},
+		    {x=1,y=2,class="edit",name="randomtag",value=rt},
+		    {x=1,y=3,class="edit",name="partag1",hint="pos, move, org, clip, (fad)",value=rtx},
+		    {x=1,y=4,class="edit",name="partag2",hint="pos, move, org, clip, (fad)",value=rty},
+		    {x=0,y=2,class="checkbox",name="ntag",label="standard type tag - \\",value=rnt,hint="\\[tag][number]"},
+		    {x=0,y=3,class="checkbox",name="ptag1",label="parenthesis tag x - \\",value=rpt1,hint="\\tag(X,y)"},
+		    {x=0,y=4,class="checkbox",name="ptag2",label="parenthesis tag y - \\",value=rpt2,hint="\\tag(x,Y)"},
 		  }
 		  press,rez=ADD(randomgui,{"Randomize","Disintegrate"},{ok='Randomize',close='Disintegrate'})
 		  if press=="Disintegrate" then ak() end
-		  rt=rez.randomtag   rtx=rez.partag1   rty=rez.partag2
-		  deci=1/tonumber(rez.dec)    rnd=rez.random
+		  rt=rez.randomtag   rtx=rez.partag1   rty=rez.partag2	rd=rez.dec
+		  deci=1/tonumber(rez.dec)    rnd=rez.random	rnt=rez.ntag   rpt1=rez.ptag1   rpt2=rez.ptag2
 		end
 		
 		-- standard tags
@@ -860,6 +863,7 @@ function modifier(subs,sel)
 	    end
 
 	    if res.mod=="letterbreak" then
+	      text=text:gsub("%s*\\N%s*"," ")
 	      if not text:match("^({\\[^}]-})") then
 		notag1=text:match("^([^{]+)")
 		local notag2=notag1:gsub("([%a%s%d])","%1\\N")
@@ -1113,21 +1117,28 @@ end
 
 function negativerot(subs,sel)
 	negdialog={
-	{x=0,y=0,width=1,height=1,class="checkbox",name="frz",label="frz",value=true},
-	{x=1,y=0,width=1,height=1,class="checkbox",name="frx",label="frx"},
-	{x=2,y=0,width=1,height=1,class="checkbox",name="fry",label="fry"},
+	{x=0,y=0,class="checkbox",name="frz",label="frz",value=true},
+	{x=1,y=0,class="checkbox",name="frx",label="frx"},
+	{x=2,y=0,class="checkbox",name="fry",label="fry"},
+	{x=3,y=0,class="checkbox",name="only",label="only 180+"},
 	}
 	presst,rez=ADD(negdialog,{"OK","Cancel"},{ok='OK',cancel='Cancel'})
 	if presst=="Cancel" then ak() end
+	if rez.only then minimum=180 else minimum=0 end
     for x, i in ipairs(sel) do
         line=subs[i]
 	text=line.text
-	if rez.frz then text=text:gsub("\\frz([%d%.]+)",function(r) return "\\frz"..r-360 end) end
-	if rez.frx then text=text:gsub("\\frx([%d%.]+)",function(r) return "\\frx"..r-360 end) end
-	if rez.fry then text=text:gsub("\\fry([%d%.]+)",function(r) return "\\fry"..r-360 end) end
+	if rez.frz then text=negative(text,minimum,"\\frz") end
+	if rez.frx then text=negative(text,minimum,"\\frx") end
+	if rez.fry then text=negative(text,minimum,"\\fry") end
 	line.text=text
 	subs[i]=line
     end
+end
+
+function negative(text,m,rot)
+    text=text:gsub(rot.."([%d%.]+)",function(r) if tonumber(r)>m then return rot..r-360 end end)
+    return text
 end
 
 function transclip(subs,sel,act)
@@ -1192,7 +1203,7 @@ function clone(subs,sel)
         progress(string.format("Cloning... %d/%d",x,#sel))
 	line=subs[i]
         text=subs[i].text
-	if not text:match("^{\\") then text=text:gsub("^","{\\}") end
+	if not text:match("^{\\") then text=text:gsub("^","{\\clone}") end
 
 	if res.cpos then
 		if x==1 then posi=text:match("\\pos%(([^%)]-)%)") end
@@ -1267,21 +1278,14 @@ function clone(subs,sel)
 	end
 	
 	if res.ctclip then
-		if x==1 and text:match("\\t%([%d%.,]*\\i?clip") then
-		tklip=text:match("\\t%([%d%.,]*\\i?clip%(([^%)]-)%)")
-		end
-		if x>1 and text:match("\\i?clip") and tklip~=nil then
-		text=text:gsub("\\t%(([%d%.,]*)\\(i?clip)%([^%)]-%)","\\t%(%1\\%2%("..tklip.."%)")
-		end
-		if x>1 and not text:match("\\t%([%d%.,]*\\i?clip") and tklip~=nil and res.cre then
-		text=text:gsub("^({\\[^}]*)}","%1\\t%(\\clip%("..tklip.."%)%)}")
-		end
+	    if x==1 and text:match("\\t%([%d%.,]*\\i?clip") then tklip=text:match("\\t%([%d%.,]*\\i?clip%(([^%)]-)%)") end
+	    if x>1 and text:match("\\i?clip") and tklip~=nil then
+	    text=text:gsub("\\t%(([%d%.,]*)\\(i?clip)%([^%)]-%)","\\t%(%1\\%2%("..tklip.."%)") end
+	    if x>1 and not text:match("\\t%([%d%.,]*\\i?clip") and tklip~=nil and res.cre then
+	    text=text:gsub("^({\\[^}]*)}","%1\\t%(\\clip%("..tklip.."%)%)}") end
 	end
 
-	text=text
-	:gsub("\\\\","\\")
-	:gsub("\\}","}")
-	:gsub("{}","")
+	text=text:gsub("\\clone","")
 	
 	line.text=text
 	subs[i]=line
@@ -1293,9 +1297,9 @@ function teleport(subs,sel)
     tpfx=0    tpfy=0
     if res.tpmod then
 	telemod={
-	{x=2,y=0,width=2,height=1,class="label",label=" Warped Teleportation"},
-	{x=2,y=1,width=3,height=1,class="floatedit",name="eggs",hint="X"},
-	{x=2,y=2,width=3,height=1,class="floatedit",name="why",hint="Y"},
+	{x=2,y=0,class="label",label=" Warped Teleportation"},
+	{x=2,y=1,class="floatedit",name="eggs",hint="X"},
+	{x=2,y=2,class="floatedit",name="why",hint="Y"},
 	}
 	press,rez=ADD(telemod,
 	{"Warped Teleport","Disintegrate"},{close='Disintegrate'})
@@ -1467,7 +1471,7 @@ function cleantr(tags)
 	trnsfrm=trnsfrm:gsub("\\t%(\\[^%(%)]+%)","")
 	trnsfrm=trnsfrm:gsub("\\t%((\\[^%(%)]-%b()[^%)]-)%)","")
 	if cleant~="" then trnsfrm="\\t("..cleant..")"..trnsfrm end	
-	tags=tags:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}")
+	tags=tags:gsub("^({[^}]*)}","%1"..trnsfrm.."}")
 	return tags
 end
 
