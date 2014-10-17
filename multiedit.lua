@@ -1,151 +1,163 @@
-script_name="Multi-line Editor"
+﻿script_name="Multi-line Editor"
 script_description="Multi-line Editor"
 script_author="unanimated"
-script_version="1.33"
+script_version="1.4"
 
 require "clipboard"
+re=require'aegisub.re'
 
 function editlines(subs, sel)
-	editext=""
-	dura=""
+    editext=""
+    dura=""
     for x, i in ipairs(sel) do
-        cancelled=aegisub.progress.is_cancelled()
-	if cancelled then aegisub.cancel() end
-    	aegisub.progress.title(string.format("Reading line: %d/%d",x,#sel))
+	if aegisub.progress.is_cancelled() then aegisub.cancel() end
+    	aegisub.progress.title("Reading line: "..x.."/"..#sel.." ("..math.floor(x/#sel*100).."%)")
 	line=subs[i]
 	text=line.text
-	dur=line.end_time-line.start_time
-	dur=dur/1000
-	char=text:gsub("{[^}]-}","")	:gsub("\\[Nn]","*")	:gsub("%s?%*+%s?"," ")	:gsub(" ","")	:gsub("[%.,%?!'\"�]","")
+	dur=(line.end_time-line.start_time)/1000
+	char=text:gsub("{[^}]-}","")	:gsub("\\[Nn]","*")	:gsub("%s?%*+%s?"," ")	:gsub("[%s%p]","")
 	linelen=char:len()
 	cps=math.ceil(linelen/dur)
 	if tostring(dur):match("%.%d$") then dur=dur.."0" end
 	if not tostring(dur):match("%.") then dur=dur..".00" end
 	if cps<10 then cps="  "..cps end
 	if dur=="0.00" then cps="n/a" end
-	
-	      if x~=#sel then editext=editext..text.."\n" dura=dura..dur.." .. "..cps.." .. "..linelen.."\n" end
-	      if x==#sel then editext=editext..text dura=dura..dur.." .. "..cps.." .. "..linelen end
+	editext=editext..text.."\n"
+	dura=dura..dur.." .. "..cps.." .. "..linelen.."\n"
     end
-    editbox(subs, sel)
-    if failt==1 then editext=res.dat editbox(subs, sel) end
+    editext=editext:gsub("\n$","")
+    dura=dura:gsub("\n$","")
+    editbox(subs,sel)
+    if failt==1 then editext=res.dat editbox(subs,sel) end
     return sel
 end
 
 function esc(str)
 str=str
 :gsub("%%","%%%%")
-:gsub("%(","%%%(")
-:gsub("%)","%%%)")
-:gsub("%[","%%%[")
-:gsub("%]","%%%]")
-:gsub("%.","%%%.")
-:gsub("%*","%%%*")
-:gsub("%-","%%%-")
-:gsub("%+","%%%+")
-:gsub("%?","%%%?")
+:gsub("%(","%%(")
+:gsub("%)","%%)")
+:gsub("%[","%%[")
+:gsub("%]","%%]")
+:gsub("%.","%%.")
+:gsub("%*","%%*")
+:gsub("%-","%%-")
+:gsub("%+","%%+")
+:gsub("%?","%%?")
 return str
 end
 
-function editbox(subs, sel)
+function resc(str)
+str=str:gsub("[%%%(%)%[%]%.%*%-%+%?\\]","\\%1")
+return str
+end
+
+function editbox(subs,sel)
 aegisub.progress.title("Loading Editor...")
-	if #sel<=4 then boxheight=7 end
-	if #sel>=5 and #sel<9 then boxheight=8 end
-	if #sel>=9 and #sel<15 then boxheight=math.ceil(#sel*0.8) end
-	if #sel>=15 and #sel<18 then boxheight=12 end
-	if #sel>=18 then boxheight=15 end
-	if editext:len()>1500 and boxheight==7 then boxheight=8 end
-	if editext:len()>1800 and boxheight==8 then boxheight=9 end
-	nocom=editext:gsub("{[^}]-}","")
+	BH=math.ceil(#sel*0.66)+2
+	if BH<7 then BH=7 end
+	repeat
+	  if editext:len()>=BH*200 then BH=BH+1 end
+	until editext:len()<BH*200 or BH>=20
+	if BH>20 then BH=20 end
+	b=BH+1
+	nocom=editext:gsub("{[^}]-}","") :gsub("—"," ")
 	words=0
-	plaintxt=nocom:gsub("%p","")
-	for wrd in plaintxt:gmatch("%w+") do
-	words=words+1
-	end
-	if lastrep1==nil then lastrep1="" end
-	if lastrep2==nil then lastrep2="" end
-	dialog=
+	for wrd in nocom:gmatch("%S+") do words=words+1 end
+	GUI=
 	{
-	    {x=0,y=0,width=52,height=1,class="label",label="Text"},
-	    {x=52,y=0,width=5,height=1,class="label",label="Duration | CPS | chrctrs"},
+	    {x=0,y=0,width=15,height=1,class="label",label=" Multi-line Editor v"..script_version},
+	    {x=52,y=0,width=5,height=1,class="label",label="Duration | CPS | chrctrs "},
 	    
-	    {x=0,y=boxheight+1,width=1,height=1,class="label",label="Replace:"},
-	    {x=1,y=boxheight+1,width=15,height=1,class="edit",name="rep1",value=lastrep1},
-	    {x=16,y=boxheight+1,width=1,height=1,class="label",label="with"},
-	    {x=17,y=boxheight+1,width=15,height=1,class="edit",name="rep2",value=lastrep2},
+	    {x=0,y=b,width=1,height=1,class="label",label="Replace:"},
+	    {x=1,y=b,width=15,height=1,class="edit",name="rep1",value=lastrep1 or ""},
+	    {x=16,y=b,width=1,height=1,class="label",label="with"},
+	    {x=17,y=b,width=15,height=1,class="edit",name="rep2",value=lastrep2 or ""},
 	    
-	    {x=0,y=1,width=52,height=boxheight,class="textbox",name="dat",value=editext},
-	    {x=52,y=1,width=5,height=boxheight,class="textbox",name="durr",value=dura,hint="This is informative only. \nCPS=Characters Per Second"},
+	    {x=30,y=0,width=22,height=1,class="edit",name="info",value="Lines loaded: "..#sel..", Words: "..words..", Characters: "..editext:len() },
 	    
-	    {x=32,y=boxheight+1,width=20,height=1,class="edit",name="info",value="Lines loaded: "..#sel..", Characters: "..editext:len()..", Words: "..words },
-	    {x=52,y=boxheight+1,width=5,height=1,class="label",label="Multi-Line Editor v"..script_version},
+	    {x=0,y=1,width=52,height=BH,class="textbox",name="dat",value=editext},
+	    {x=52,y=1,width=5,height=BH,class="textbox",name="durr",value=dura,hint="This is informative only. \nCPS=Characters Per Second"},
+	    
+	    {x=32,y=b,width=12,class="edit",name="repl",value=""},
+	    {x=44,y=b,class="label",label=" "},
+	    {x=45,y=b,width=7,class="checkbox",name="whole",label="whole word only",hint="only without regexp"},
+	    {x=52,y=b,width=3,class="checkbox",name="reg",label="regexp   "},
+	    {x=55,y=b,width=2,class="checkbox",name="lua",label="lua"},
 	}
 	buttons={"Save","Replace","Remove tags","Rm. comments","Remove \"- \"","Remove \\N","Add italics","Add \\an8","Reload text","Taller GUI","Cancel"}
 	repeat
-	if pressed=="Replace" or pressed=="Add italics" or pressed=="Add \\an8" or pressed=="Remove \\N" or pressed=="Reload text"
-		or pressed=="Remove tags" or pressed=="Rm. comments" or pressed=="Remove \"- \"" or pressed=="Taller GUI" then
-		
-		if pressed=="Add italics" then
-		res.dat=res.dat	:gsub("$","\n") :gsub("(.-)\n","{\\i1}%1\n") :gsub("{\\i1}{\\","{\\i1\\") :gsub("\n$","") end
-		if pressed=="Add \\an8" then
-		res.dat=res.dat	:gsub("$","\n") :gsub("(.-)\n","{\\an8}%1\n") :gsub("{\\an8}{\\","{\\an8\\") :gsub("\n$","") end
-		if pressed=="Remove \\N" then res.dat=res.dat	:gsub("%s?\\N%s?"," ") end
-		if pressed=="Remove tags" then res.dat=res.dat:gsub("{%*?\\[^}]-}","") end
-		if pressed=="Rm. comments" then res.dat=res.dat:gsub("{[^\\}]-}","") :gsub("{[^\\}]-\\N[^\\}]-}","") end
-		if pressed=="Remove \"- \"" then res.dat=res.dat:gsub("%- ","") end
-		if pressed=="Replace" then rep1=esc(res.rep1)
-		res.dat=res.dat:gsub(rep1,res.rep2)
+	if P~="Save" and P ~="Cancel" and P~=nil then
+	    if P=="Add italics" then
+	    res.dat=res.dat:gsub("$","\n") :gsub("(.-)\n","{\\i1}%1\n") :gsub("{\\i1}{\\","{\\i1\\") :gsub("\n$","") end
+	    if P=="Add \\an8" then
+	    res.dat=res.dat:gsub("$","\n") :gsub("(.-)\n","{\\an8}%1\n") :gsub("{\\an8}{\\","{\\an8\\") :gsub("\n$","") end
+	    if P=="Remove \\N" then res.dat=res.dat:gsub("%s*\\N%s*"," ") end
+	    if P=="Remove tags" then res.dat=res.dat:gsub("{%*?\\[^}]-}","") end
+	    if P=="Rm. comments" then res.dat=res.dat:gsub("{[^\\}]-}","") :gsub("{[^\\}]-\\N[^\\}]-}","") end
+	    if P=="Remove \"- \"" then res.dat=res.dat:gsub("^%- ","") :gsub("\n%- ","\n") end
+	    if P=="Replace" then
+	      if res.lua then
+		res.dat,r=res.dat:gsub(res.rep1,res.rep2)
+	      elseif res.reg then
+		r=re.find(res.dat,res.rep1) or {}
+		r=#r
+		res.dat=re.sub(res.dat,res.rep1,res.rep2)
+	      else
+		rep1=esc(res.rep1) rerep1=resc(res.rep1)
+		if res.whole then
+		    r=re.find(res.dat,"\\b"..rerep1.."\\b") or {}
+		    r=#r
+		    res.dat=re.sub(res.dat,"\\b"..rerep1.."\\b",res.rep2)
+		else
+		    res.dat,r=res.dat:gsub(rep1,res.rep2)
 		end
-		if pressed=="Taller GUI" then boxheight=boxheight+1 
-		  for key,val in ipairs(dialog) do
-		    if val.y==1 then val.height=val.height+1 end
-		    if val.y>1 then val.y=val.y+1 end
-		  end
+	      end
+	      res.repl=r.." replacements"
+	    end
+	    if P=="Taller GUI" then
+		for key,val in ipairs(GUI) do
+		    if val.y==1 then val.height=val.height+2 end
+		    if val.y>1 then val.y=val.y+2 end
 		end
-		
-		for key,val in ipairs(dialog) do
-		  if pressed~="Reload text" then
-		    if val.name=="dat" then val.value=res.dat end
-		    if val.name=="durr" then val.value=res.durr end
-		    if val.name=="info" then val.value=res.info end
-		    if val.name=="oneline" then val.value=res.oneline end
-		    if val.name=="rep1" then val.value=res.rep1 end
-		    if val.name=="rep2" then val.value=res.rep2 end
-		  else
+	    end
+	    for key,val in ipairs(GUI) do
+		if P~="Reload text" then
+		    val.value=res[val.name]
+		else
 		    if val.name=="dat" then val.value=editext end
-		  end
 		end
+	    end
 	end
-	pressed, res=aegisub.dialog.display(dialog,buttons,{save='Save',close='Cancel'})
-	until pressed=="Save" or pressed=="Cancel"
+	P,res=aegisub.dialog.display(GUI,buttons,{save='Save',close='Cancel'})
+	until P=="Save" or P=="Cancel"
 
-	if pressed=="Cancel" then aegisub.cancel() end
-	if pressed=="Save" then savelines(subs, sel) end
+	if P=="Cancel" then aegisub.cancel() end
+	if P=="Save" then savelines(subs,sel) end
 	lastrep1=res.rep1
 	lastrep2=res.rep2
 	return sel
 end
 
-function savelines(subs, sel)
+function savelines(subs,sel)
 aegisub.progress.title("Saving...")
     local data={}	raw=res.dat.."\n"
     if #sel==1 then raw=raw:gsub("\n(.)","\\N%1") raw=raw:gsub("\\N "," \\N") end
     for dataline in raw:gmatch("(.-)\n") do table.insert(data,dataline) end
     failt=0    
     if #sel~=#data and #sel>1 then failt=1 else
-	for x, i in ipairs(sel) do
+	for x,i in ipairs(sel) do
         line=subs[i]
-	text=subs[i].text
-	text=data[x]
-	line.text=text
+	line.text=data[x]
 	subs[i]=line
 	end
     end
-    if failt==1 then aegisub.dialog.display({{class="label",
-		    label="Line count of edited text does not \nmatch the number of selected lines.",x=0,y=0,width=1,height=2}},{"OK"})  
-		    clipboard.set(res.dat) end
-	aegisub.set_undo_point(script_name)
-	return sel
+    if failt==1 then
+	aegisub.dialog.display({{class="label",label="Line count of edited text does not \nmatch the number of selected lines."}},{"OK"})
+	clipboard.set(res.dat)
+    end
+    aegisub.set_undo_point(script_name)
+    return sel
 end
 
 aegisub.register_macro(script_name, script_description, editlines)
