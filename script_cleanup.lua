@@ -3,38 +3,36 @@
 script_name="Script Cleanup"
 script_description="Removes unwanted stuff from script"
 script_author="unanimated"
-script_version="2.7"
+script_version="2.8"
 
 dont_delete_empty_tags=false	-- option to not delete {}
 
 function cleanlines(subs,sel)
     if res.all then res.nocom=true res.clear_a=true res.clear_e=true res.layers=true 
-	    res.cleantag=true res.overlap=true res.clear_a=true res.spaces=true end
+	    res.cleantag=true res.overlap=true res.clear_a=true res.spaces=true res.ctrans=true end
     for x, i in ipairs(sel) do
-	cancelled=aegisub.progress.is_cancelled()
-	if cancelled then aegisub.cancel() end
-    	aegisub.progress.title(string.format("Processing line: %d/%d",x,#sel))
+	progress("Processing line: "..x.."/"..#sel)
 	prog=math.floor(x/#sel*100)
  	aegisub.progress.set(prog)
-            local line=subs[i]
-            local text=subs[i].text
+            line=subs[i]
+            text=subs[i].text
 	    
-	    if res["nots"] and not res["nocom"] then text=text:gsub("{TS[^}]*}%s*","") end
+	    if res.nots and not res.nocom then text=text:gsub("{TS[^}]*}%s*","") end
 	    
-	    if res["nocom"] then
+	    if res.nocom then
 	    text=text:gsub("{[^\\}]-}","")
 	    :gsub("{[^\\}]-\\N[^\\}]-}","")
 	    :gsub("^({[^}]-})%s*","%1")
 	    end
 	    
-	    if res["clear_a"] then line.actor="" end
-	    if res["clear_e"] then line.effect="" end
+	    if res.clear_a then line.actor="" end
+	    if res.clear_e then line.effect="" end
 	    
-	    if res["layers"] and line.layer<5 then 
+	    if res.layers and line.layer<5 then 
 	    if line.style:match("Defa") or line.style:match("Alt") or line.style:match("Main") then line.layer=line.layer+5 end
 	    end
 	    
-	    if res["cleantag"] and text:match("{\\") then
+	    if res.cleantag and text:match("{\\") then
 	    text=text:gsub("{\\\\k0}","") :gsub("{(\\[^}]-)}{(\\r[^}]-)}","{%2}") :gsub("^{\\r([\\}])","{%1")
 	    repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
@@ -58,7 +56,7 @@ function cleanlines(subs,sel)
 	    end
 	    end
 	    
-	    if res["overlap"] then
+	    if res.overlap then
 		if line.comment==false and line.style:match("Defa") then
 	    	start=line.start_time
 		endt=line.end_time
@@ -112,12 +110,12 @@ function cleanlines(subs,sel)
 		    	end
 		    end
 		end
-		if nstart~=nil then line.start_time=nstart end
-		if nendt~=nil then line.end_time=nendt end
+		if nstart then line.start_time=nstart end
+		if nendt then line.end_time=nendt end
 		nstart=nil nendt=nil
 	    end
 	    
-	    if res.spaces then text=text:gsub("%s%s+"," ") :gsub("%s*$","") end
+	    if res.spaces then text=text:gsub("%s%s+"," ") :gsub("%s*$","") :gsub("^({\\[^}]-})%s*","%1") end
 	
 	    if res.nobreak then
 	    text=text
@@ -145,27 +143,28 @@ function cleanlines(subs,sel)
 	    
 	    if res.allsize then text=text:gsub("\\fs[%d%.]+","") :gsub("\\fs([\\}%)])","%1") :gsub("\\fsc[xy][^\\}%)]*","") end
 	    
-	    if res.inline then 
+	    if res.ctrans then text=text:gsub("{\\[^}]-}",function(tg) return cleantr(tg) end) end
+	    
+	    if res.inline then
 		tags=text:match("^{\\[^}]-}") if tags==nil then tags="" end
 		text=text:gsub("{%*?\\[^}]-}","")
 		text=tags..text
 	    end
 	    
-	    
 	if res.alphacol then
 	    text=text
 	    :gsub("alpha&(%x%x)&","alpha&H%1&")
-	    :gsub("alpha(%x%x)([\\}])","alpha&H%1&%2")
-	    :gsub("alphaH(%x%x)([\\}])","alpha&H%1&%2")
-	    :gsub("alpha&H(%x%x)([\\}])","alpha&H%1&%2")
+	    :gsub("alpha&?H?(%x%x)&?([\\}])","alpha&H%1&%2")
 	    :gsub("alpha&H0&","alpha&H00&")
-	    :gsub("alpha&H(%d%d)%d*&","alpha&H%1&")
+	    :gsub("alpha&H(%x%x)%x*&","alpha&H%1&")
 	    :gsub("(\\[1234]a)&(%x%x)&","%1&H%2&")
 	    :gsub("(\\[1234]a)(%x%x)([\\}])","%1&H%2&%3")
 	    :gsub("(\\[1234]?c&)(%x%x%x%x%x%x)&","%1H%2&")
 	    :gsub("(\\i?clip%([^%)]-)%s?([\\}])","%1)%2")
 	    :gsub("(\\t%([^%)]-\\i?clip%([^%)]-%))([\\}])","%1)%2")
 	    :gsub("(fad%([%d,]+)([\\}])","%1)%2")
+	    :gsub("([1234]?[ac])H&(%x+)","%1&H%2")
+	    :gsub("([1234]?c&H)00(%x%x%x%x%x%x)","%1%2")
 	end
 	
 	text=text:gsub("^%s*","") :gsub("\\t%([^\\%)]-%)","") :gsub("{%*}","")
@@ -173,9 +172,6 @@ function cleanlines(subs,sel)
 	line.text=text
 	subs[i]=line
     end
-    --if res.garbage then 
---	for k,v in pairs(aegisub.project_properties()) do v="" end 
-    --end
     aegisub.set_undo_point(script_name)
     return sel
 end
@@ -187,48 +183,48 @@ end
 
 -- delete commented lines from selected lines
 function nocom_line(subs,sel)
-	aegisub.progress.title(string.format("Deleting commented lines")) 
+	progress("Deleting commented lines")
 	ncl_sel={}
 	for i=#sel,1,-1 do
-		local line=subs[sel[i]]
-		if line.comment then
+	    line=subs[sel[i]]
+	    if line.comment then
 		for x,y in ipairs(ncl_sel) do ncl_sel[x]=y-1 end
 		subs.delete(sel[i])
-		else
+	    else
 		table.insert(ncl_sel,sel[i])
-		end
+	    end
 	end
 	return ncl_sel
 end
 
 -- delete empty lines from selected lines
 function noempty(subs,sel)
-	aegisub.progress.title(string.format("Deleting empty lines")) 
+	progress("Deleting empty lines")
 	noe_sel={}
 	for i=#sel,1,-1 do
-		local line=subs[sel[i]]
-		if line.text == "" then
+	    line=subs[sel[i]]
+	    if line.text=="" then
 		for x,y in ipairs(noe_sel) do noe_sel[x]=y-1 end
 		subs.delete(sel[i])
-		else
+	    else
 		table.insert(noe_sel,sel[i])
-		end
+	    end
 	end
 	return noe_sel
 end
 
 -- delete commented or empty lines from selected lines
 function noemptycom(subs,sel)
-	aegisub.progress.title(string.format("Deleting commented/empty lines"))
+	progress("Deleting commented/empty lines")
 	noecom_sel={}
 	for i=#sel,1,-1 do
-		line=subs[sel[i]]
-		if line.comment or line.text == "" then
+	    line=subs[sel[i]]
+	    if line.comment or line.text=="" then
 		for x,y in ipairs(noecom_sel) do noecom_sel[x]=y-1 end
 		subs.delete(sel[i])
-		else
+	    else
 		table.insert(noecom_sel,sel[i])
-		end
+	    end
 	end
 	return noecom_sel
 end
@@ -260,49 +256,57 @@ end
 -- kill everything
 function killemall(subs,sel)
     for x, i in ipairs(sel) do
-      local line=subs[i]
-      local text=subs[i].text
-	if res.border then text=killtag("bord",text) text=killtag("xbord",text) text=killtag("ybord",text) end
-	if res.shadow then text=killtag("shad",text) text=killtag("xshad",text) text=killtag("yshad",text) end
-	if res.blur then text=killtag("blur",text) end
-	if res.bee then text=killtag("be",text) end
-	if res.fsize then text=killtag("fs",text) end
-	if res.fspace then text=killtag("fsp",text) end
-	if res.scalex then text=killtag("fscx",text) end
-	if res.scaley then text=killtag("fscy",text) end
-	if res.fade then text=text:gsub("\\fad%([%d%.%,]-%)","")	:gsub("\\fade%([%d%.%,]-%)","") end
-	if res.posi then text=text:gsub("\\pos%([%d%.%,%-]-%)","") end
-	if res.move then text=text:gsub("\\move%([%d%.%,%-]-%)","") end
-	if res.org then text=text:gsub("\\org%([%d%.%,%-]-%)","") end
-	if res.color1 then text=killctag("c",text) text=killctag("1c",text) end
-	if res.color2 then text=killctag("2c",text) end
-	if res.color3 then text=killctag("3c",text) end
-	if res.color4 then text=killctag("4c",text) end
-	if res.alfa1 then text=killctag("1a",text) end
-	if res.alfa2 then text=killctag("2a",text) end
-	if res.alfa3 then text=killctag("3a",text) end
-	if res.alfa4 then text=killctag("4a",text) end
-	if res.alpha then text=killctag("alpha",text) end
-	if res.clip then text=text:gsub("\\i?clip%([%w%,%.%s%-]-%)","") end
-	if res.fname then text=text:gsub("\\fn[^\\}]+","") end
-	if res.frz then text=killtag("frz",text) end
-	if res.frx then text=killtag("frx",text) end
-	if res.fry then text=killtag("fry",text) end
-	if res.fax then text=killtag("fax",text) end
-	if res.fay then text=killtag("fay",text) end
-	if res.anna then text=killtag("an",text) end
-	if res.align then text=killtag("a",text) end
-	if res["return"] then text=text:gsub("\\r.+([\\}])","%1") end
-	if res.kara then text=text:gsub("\\k[fo]?[%d%.]+([\\}])","%1") end
-	if res.ital then text=text:gsub("\\i[01]?([\\}])","%1") end
-	if res.bold then text=text:gsub("\\b[01]?([\\}])","%1") end
-	if res.trans then text=text:gsub("\\t%([^%(%)]-%)","") text=text:gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","") end
-	text=text:gsub("\\t%(%)","")
-	text=text:gsub("\\t%([%d,]+%)","")
-	text=text:gsub("{%**}","")
-	line.text=text
-        subs[i]=line
-	aegisub.progress.title(string.format("Processing line: %d/%d",x,#sel))
+      progress("Processing line: "..x.."/"..#sel)
+      line=subs[i]
+      text=line.text
+      tags=text:match("^{\\[^}]-}") or ""
+      inline=text:gsub("^{\\[^}]-}","")
+      if res.skill and res.ikill then trgt=text tg=3
+      elseif res.ikill then trgt=inline tg=2 
+      else trgt=tags tg=1  end
+	if res.border then trgt=killtag("bord",trgt) trgt=killtag("xbord",trgt) trgt=killtag("ybord",trgt) end
+	if res.shadow then trgt=killtag("shad",trgt) trgt=killtag("xshad",trgt) trgt=killtag("yshad",trgt) end
+	if res.blur then trgt=killtag("blur",trgt) end
+	if res.bee then trgt=killtag("be",trgt) end
+	if res.fsize then trgt=killtag("fs",trgt) end
+	if res.fspace then trgt=killtag("fsp",trgt) end
+	if res.scalex then trgt=killtag("fscx",trgt) end
+	if res.scaley then trgt=killtag("fscy",trgt) end
+	if res.fade then trgt=trgt:gsub("\\fade?%([%d%.%,]-%)","") end
+	if res.posi then trgt=trgt:gsub("\\pos%([%d%.%,%-]-%)","") end
+	if res.move then trgt=trgt:gsub("\\move%([%d%.%,%-]-%)","") end
+	if res.org then trgt=trgt:gsub("\\org%([%d%.%,%-]-%)","") end
+	if res.color1 then trgt=killctag("c",trgt) trgt=killctag("1c",trgt) end
+	if res.color2 then trgt=killctag("2c",trgt) end
+	if res.color3 then trgt=killctag("3c",trgt) end
+	if res.color4 then trgt=killctag("4c",trgt) end
+	if res.alfa1 then trgt=killctag("1a",trgt) end
+	if res.alfa2 then trgt=killctag("2a",trgt) end
+	if res.alfa3 then trgt=killctag("3a",trgt) end
+	if res.alfa4 then trgt=killctag("4a",trgt) end
+	if res.alpha then trgt=killctag("alpha",trgt) end
+	if res.clip then trgt=trgt:gsub("\\i?clip%([%w%,%.%s%-]-%)","") end
+	if res.fname then trgt=trgt:gsub("\\fn[^\\}]+","") end
+	if res.frz then trgt=killtag("frz",trgt) end
+	if res.frx then trgt=killtag("frx",trgt) end
+	if res.fry then trgt=killtag("fry",trgt) end
+	if res.fax then trgt=killtag("fax",trgt) end
+	if res.fay then trgt=killtag("fay",trgt) end
+	if res.anna then trgt=killtag("an",trgt) end
+	if res.align then trgt=killtag("a",trgt) end
+	if res["return"] then trgt=trgt:gsub("\\r.+([\\}])","%1") end
+	if res.kara then trgt=trgt:gsub("\\[Kk][fo]?[%d%.]+([\\}])","%1") end
+	if res.ital then trgt=trgt:gsub("\\i[01]?([\\}])","%1") end
+	if res.bold then trgt=trgt:gsub("\\b[01]?([\\}])","%1") end
+	if res.trans then trgt=trgt:gsub("\\t%([^%(%)]-%)","") trgt=trgt:gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","") end
+      trgt=trgt:gsub("\\t%(%)","")
+      trgt=trgt:gsub("\\t%([%d,]+%)","")
+      trgt=trgt:gsub("{%**}","")
+      if tg==1 then tags=trgt elseif tg==2 then inline=trgt elseif tg==3 then text=trgt end
+      if trgt~=text then text=tags..inline end
+      if res.hspace then text=text:gsub("\\h","") end
+      line.text=text
+      subs[i]=line
     end
 end
 
@@ -315,12 +319,8 @@ tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
 
 function duplikill(tagz)
 	tf=""
-	if tagz:match("\\t") then 
-	    for t in tagz:gmatch("(\\t%([^%(%)]-%))") do tf=tf..t end
-	    for t in tagz:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","") do tf=tf..t end
-	    tagz=tagz:gsub("\\t%([^%(%)]+%)","")
-	    tagz=tagz:gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","")
-	end
+	for t in tagz:gmatch("\\t%b()") do tf=tf..t end
+	tagz=tagz:gsub("\\t%b()","")
 	for i=1,#tags1 do
 	    tag=tags1[i]
 	    tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%1%2")
@@ -332,6 +332,21 @@ function duplikill(tagz)
 	end
 	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf.."}")
 	return tagz
+end
+
+function cleantr(tags)
+	trnsfrm=""
+	for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
+	tags=tags:gsub("\\t%b()","")
+
+	cleant=""
+	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-)%)") do cleant=cleant..ct end
+	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-%b()[^%)]-)%)") do cleant=cleant..ct end
+	trnsfrm=trnsfrm:gsub("\\t%(\\[^%(%)]+%)","")
+	trnsfrm=trnsfrm:gsub("\\t%((\\[^%(%)]-%b()[^%)]-)%)","")
+	if cleant~="" then trnsfrm="\\t("..cleant..")"..trnsfrm end
+	tags=tags:gsub("^({[^}]*)}","%1"..trnsfrm.."}")
+	return tags
 end
 
 function esc(str)
@@ -349,85 +364,95 @@ str=str
 return str
 end
 
+function progress(msg)
+  if aegisub.progress.is_cancelled() then aegisub.cancel() end
+  aegisub.progress.title(msg)
+end
+
 function cleanup(subs,sel,act)
 cleanup_cfg=
 {
-{x=0,y=0,width=1,height=1,class="checkbox",name="nots",label="Remove TS timecodes",value=false,hint="Removes timecodes like {TS 12:36}"},
-{x=0,y=1,width=1,height=1,class="checkbox",name="nocom",label="Remove comments from lines",value=false,hint="Removes {comments} (not tags)"},
-{x=0,y=2,width=1,height=1,class="checkbox",name="clear_a",label="Clear Actor field",value=false},
-{x=0,y=3,width=1,height=1,class="checkbox",name="clear_e",label="Clear Effect field",value=false},
-{x=0,y=4,width=1,height=1,class="checkbox",name="layers",label="Raise dialogue layer by 5",value=false},
-{x=0,y=5,width=1,height=1,class="checkbox",name="cleantag",label="Clean up tags",value=false,hint="Fixes \\\\, \\}, }{ and some duplicates"},
-{x=0,y=6,width=1,height=1,class="checkbox",name="overlap",label="Fix 1-frame gaps/overlaps",value=false},
-{x=0,y=7,width=1,height=1,class="checkbox",name="nocomline",label="Delete commented lines",value=false},
-{x=0,y=8,width=1,height=1,class="checkbox",name="noempty",label="Delete empty lines",value=false},
-{x=0,y=9,width=1,height=1,class="checkbox",name="spaces",label="Fix start/end/double spaces",value=false},
-{x=0,y=11,width=1,height=1,class="checkbox",name="all",label="ALL OF THE ABOVE",value=false},
+{x=0,y=0,class="checkbox",name="nots",label="Remove TS timecodes",hint="Removes timecodes like {TS 12:36}"},
+{x=0,y=1,class="checkbox",name="nocom",label="Remove comments from lines",hint="Removes {comments} (not tags)"},
+{x=0,y=2,class="checkbox",name="clear_a",label="Clear Actor field"},
+{x=0,y=3,class="checkbox",name="clear_e",label="Clear Effect field"},
+{x=0,y=4,class="checkbox",name="layers",label="Raise dialogue layer by 5"},
+{x=0,y=5,class="checkbox",name="cleantag",label="Clean up tags",hint="Fixes \\\\, \\}, }{ and some duplicates"},
+{x=0,y=6,class="checkbox",name="overlap",label="Fix 1-frame gaps/overlaps"},
+{x=0,y=7,class="checkbox",name="nocomline",label="Delete commented lines"},
+{x=0,y=8,class="checkbox",name="noempty",label="Delete empty lines"},
+{x=0,y=9,class="checkbox",name="ctrans",label="Clean up && sort transforms"},
+{x=0,y=10,class="checkbox",name="spaces",label="Fix start/end/double spaces"},
+{x=0,y=12,class="checkbox",name="all",label="ALL OF THE ABOVE"},
 
-{x=2,y=0,width=1,height=1,class="checkbox",name="allcol",label="Remove all colour tags",value=false},
-{x=2,y=1,width=1,height=1,class="checkbox",name="allphas",label="Remove all alpha tags",value=false},
-{x=2,y=2,width=1,height=1,class="checkbox",name="allrot",label="Remove all rotations",value=false},
-{x=2,y=3,width=1,height=1,class="checkbox",name="allpers",label="Remove all perspective",value=false},
-{x=2,y=4,width=1,height=1,class="checkbox",name="allsize",label="Remove size/scaling",value=false},
-{x=2,y=5,width=1,height=1,class="checkbox",name="inline",label="Remove inline tags",value=false},
-{x=2,y=6,width=1,height=1,class="checkbox",name="nostyle",label="Delete unused styles",value=false},
-{x=2,y=7,width=1,height=1,class="checkbox",name="nostyle2",label="Delete unused styles (leave Default)",value=false},
-{x=2,y=8,width=1,height=1,class="checkbox",name="nobreak2",label="Remove linebreaks  - \\N (nospace)",value=false},  
-{x=2,y=9,width=1,height=1,class="checkbox",name="nobreak",label="Remove linebreaks  - \\N",value=false},  
-{x=2,y=10,width=1,height=1,class="checkbox",name="alphacol",label="Try to fix alpha / colour tags",value=false},
-{x=2,y=11,width=1,height=1,class="checkbox",name="notag",label="Remove all {\\tags} from selected lines",value=false},
+{x=2,y=0,class="checkbox",name="allcol",label="Remove all colour tags"},
+{x=2,y=1,class="checkbox",name="allphas",label="Remove all alpha tags"},
+{x=2,y=2,class="checkbox",name="allrot",label="Remove all rotations"},
+{x=2,y=3,class="checkbox",name="allpers",label="Remove all perspective"},
+{x=2,y=4,class="checkbox",name="allsize",label="Remove size/scaling"},
+{x=2,y=5,class="checkbox",name="inline",label="Remove inline tags"},
+{x=2,y=6,class="checkbox",name="nostyle",label="Delete unused styles"},
+{x=2,y=7,class="checkbox",name="nostyle2",label="Delete unused styles (leave Default)"},
+{x=2,y=9,class="checkbox",name="nobreak2",label="Remove linebreaks  - \\N (nospace)"},  
+{x=2,y=10,class="checkbox",name="nobreak",label="Remove linebreaks  - \\N"},  
+{x=2,y=11,class="checkbox",name="alphacol",label="Try to fix alpha / colour tags"},
+{x=2,y=12,class="checkbox",name="notag",label="Remove all {\\tags} from selected lines"},
 
-{x=3,y=0,width=1,height=12,class="label",label="| \n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|",},
+{x=3,y=0,width=1,height=13,class="label",label="| \n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|"},
 
-{x=4,y=0,width=1,height=1,class="label",label="Kill tags:   ",},
+{x=4,y=0,class="label",label="Kill tags:   ",},
 
-{x=4,y=1,width=1,height=1,class="checkbox",name="border",label="bord",hint="includes xbord and ybord",value=false },
-{x=4,y=2,width=1,height=1,class="checkbox",name="shadow",label="shad",hint="includes xshad and yshad",value=false },
-{x=4,y=3,width=1,height=1,class="checkbox",name="blur",label="blur",value=false },
-{x=4,y=4,width=1,height=1,class="checkbox",name="bee",label="be",value=false },
-{x=4,y=5,width=1,height=1,class="checkbox",name="fsize",label="fs",value=false },
-{x=4,y=6,width=1,height=1,class="checkbox",name="fspace",label="fsp",value=false },
-{x=4,y=7,width=1,height=1,class="checkbox",name="scalex",label="fscx",value=false },
-{x=4,y=8,width=1,height=1,class="checkbox",name="scaley",label="fscy",value=false },
-{x=4,y=9,width=1,height=1,class="checkbox",name="fname",label="fn",value=false },
-{x=4,y=10,width=1,height=1,class="checkbox",name="ital",label="i",value=false },
-{x=4,y=11,width=1,height=1,class="checkbox",name="bold",label="b",value=false },
+{x=5,y=0,class="checkbox",name="skill",label="start",value=true},
+{x=6,y=0,class="checkbox",name="ikill",label="inline",value=true},
 
-{x=5,y=0,width=1,height=1,class="checkbox",name="anna",label="an",value=false },
-{x=5,y=1,width=1,height=1,class="checkbox",name="color1",label="c, 1c",value=false },
-{x=5,y=2,width=1,height=1,class="checkbox",name="color2",label="2c",value=false },
-{x=5,y=3,width=1,height=1,class="checkbox",name="color3",label="3c",value=false },
-{x=5,y=4,width=1,height=1,class="checkbox",name="color4",label="4c",value=false },
-{x=5,y=5,width=1,height=1,class="checkbox",name="alpha",label="alpha",value=false },
-{x=5,y=6,width=1,height=1,class="checkbox",name="alfa1",label="1a",value=false },
-{x=5,y=7,width=1,height=1,class="checkbox",name="alfa2",label="2a",value=false },
-{x=5,y=8,width=1,height=1,class="checkbox",name="alfa3",label="3a",value=false },
-{x=5,y=9,width=1,height=1,class="checkbox",name="alfa4",label="4a",value=false },
-{x=5,y=10,width=1,height=1,class="checkbox",name="align",label="a",value=false },
-{x=5,y=11,width=1,height=1,class="checkbox",name="clip",label="(i)clip  ",value=false },
+{x=4,y=1,class="checkbox",name="border",label="bord",hint="includes xbord and ybord"},
+{x=4,y=2,class="checkbox",name="shadow",label="shad",hint="includes xshad and yshad"},
+{x=4,y=3,class="checkbox",name="blur",label="blur"},
+{x=4,y=4,class="checkbox",name="bee",label="be"},
+{x=4,y=5,class="checkbox",name="fsize",label="fs"},
+{x=4,y=6,class="checkbox",name="fspace",label="fsp"},
+{x=4,y=7,class="checkbox",name="scalex",label="fscx"},
+{x=4,y=8,class="checkbox",name="scaley",label="fscy"},
+{x=4,y=9,class="checkbox",name="fname",label="fn"},
+{x=4,y=10,class="checkbox",name="ital",label="i"},
+{x=4,y=11,class="checkbox",name="bold",label="b"},
+{x=4,y=12,class="checkbox",name="hspace",label="h"},
 
-{x=6,y=0,width=1,height=1,class="checkbox",name="fade",label="fad",value=false },
-{x=6,y=1,width=1,height=1,class="checkbox",name="posi",label="pos",value=false },
-{x=6,y=2,width=1,height=1,class="checkbox",name="move",label="move",value=false },
-{x=6,y=3,width=1,height=1,class="checkbox",name="org",label="org",value=false },
-{x=6,y=4,width=1,height=1,class="checkbox",name="frz",label="frz",value=false },
-{x=6,y=5,width=1,height=1,class="checkbox",name="frx",label="frx",value=false },
-{x=6,y=6,width=1,height=1,class="checkbox",name="fry",label="fry",value=false },
-{x=6,y=7,width=1,height=1,class="checkbox",name="fax",label="fax",value=false },
-{x=6,y=8,width=1,height=1,class="checkbox",name="fay",label="fay",value=false },
-{x=6,y=9,width=1,height=1,class="checkbox",name="return",label="r",value=false },
-{x=6,y=10,width=1,height=1,class="checkbox",name="kara",label="k/kf/ko",value=false },
-{x=6,y=11,width=1,height=1,class="checkbox",name="trans",label="t",value=false },
+{x=5,y=1,class="checkbox",name="color1",label="c, 1c"},
+{x=5,y=2,class="checkbox",name="color2",label="2c"},
+{x=5,y=3,class="checkbox",name="color3",label="3c"},
+{x=5,y=4,class="checkbox",name="color4",label="4c"},
+{x=5,y=5,class="checkbox",name="alpha",label="alpha"},
+{x=5,y=6,class="checkbox",name="alfa1",label="1a"},
+{x=5,y=7,class="checkbox",name="alfa2",label="2a"},
+{x=5,y=8,class="checkbox",name="alfa3",label="3a"},
+{x=5,y=9,class="checkbox",name="alfa4",label="4a"},
+{x=5,y=10,class="checkbox",name="align",label="a"},
+{x=5,y=11,class="checkbox",name="anna",label="an"},
+{x=5,y=12,class="checkbox",name="clip",label="(i)clip  "},
+
+{x=6,y=1,class="checkbox",name="fade",label="fad"},
+{x=6,y=2,class="checkbox",name="posi",label="pos"},
+{x=6,y=3,class="checkbox",name="move",label="move"},
+{x=6,y=4,class="checkbox",name="org",label="org"},
+{x=6,y=5,class="checkbox",name="frz",label="frz"},
+{x=6,y=6,class="checkbox",name="frx",label="frx"},
+{x=6,y=7,class="checkbox",name="fry",label="fry"},
+{x=6,y=8,class="checkbox",name="fax",label="fax"},
+{x=6,y=9,class="checkbox",name="fay",label="fay"},
+{x=6,y=10,class="checkbox",name="return",label="r"},
+{x=6,y=11,class="checkbox",name="kara",label="k/kf/ko"},
+{x=6,y=12,class="checkbox",name="trans",label="t"},
 } 
-	pressed, res=aegisub.dialog.display(cleanup_cfg,
+	P,res=aegisub.dialog.display(cleanup_cfg,
 	{"Run selected","Comments","Tags","Dial 5","Clean Tags","^ Kill checked tags","Cancer"},{ok='Run selected',cancel='Cancer'})
-	if pressed=="Cancer" then aegisub.cancel() end
-	if pressed=="^ Kill checked tags" then killemall(subs,sel) end
-	if pressed=="Comments" then res.nocom=true cleanlines(subs,sel) end
-	if pressed=="Tags" then res.notag=true cleanlines(subs,sel) end
-	if pressed=="Dial 5" then res.layers=true cleanlines(subs,sel) end
-	if pressed=="Clean Tags" then res.cleantag=true cleanlines(subs,sel) end
-	if pressed=="Run selected" then 
+	if P=="Cancer" then aegisub.cancel() end
+	if P=="^ Kill checked tags" then killemall(subs,sel) end
+	if P=="Comments" then res.nocom=true cleanlines(subs,sel) end
+	if P=="Tags" then res.notag=true cleanlines(subs,sel) end
+	if P=="Dial 5" then res.layers=true cleanlines(subs,sel) end
+	if P=="Clean Tags" then res.cleantag=true cleanlines(subs,sel) end
+	if P=="Run selected" then 
 	    if res["all"] then 
 		for key,v in ipairs(cleanup_cfg) do  if v.x==2 then res[v.name]=false end  end
 		cleanlines(subs,sel)
@@ -441,6 +466,7 @@ cleanup_cfg=
 		if res.nostyle or res.nostyle2 then act,sel=nostyle(subs,sel) end
 	    end
 	end
+	if act>#subs then act=#subs end
 	aegisub.set_undo_point(script_name)
 	return sel, act
 end
