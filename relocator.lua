@@ -6,7 +6,7 @@ script_description="Makes things appear different from before"
 script_author="reanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/relocator.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/relocator.lua"
-script_version="3.2"
+script_version="3.21"
 
 include("utils.lua")
 re=require'aegisub.re'
@@ -1938,7 +1938,7 @@ hyperconfig={
     {x=11,y=2,width=3,height=1,class="floatedit",name="wai",hint="Y"},
 
     {x=0,y=0,width=3,height=1,class="label",label="Repositioning Field",},
-    {x=0,y=1,width=2,height=1,class="dropdown",name="posi",value=posdrop,items=Repositioning},
+    {x=0,y=1,width=2,height=1,class="dropdown",name="posi",value="clip to frz",items=Repositioning},
     {x=0,y=2,width=2,height=1,class="floatedit",name="post",value=0},
     {x=0,y=3,width=1,height=1,class="checkbox",name="first",label="by first",value=true,hint="align with first line"},
     {x=1,y=3,width=1,height=1,class="checkbox",name="rota",label="rotate",value=false,hint="shake rotation / rotate mirrors"},
@@ -1949,16 +1949,16 @@ hyperconfig={
 	hint="The Typesetter's Guide to the Hyperdimensional Relocator."},
 
     {x=3,y=0,width=2,height=1,class="label",label="Soul Bilocator"},
-    {x=3,y=1,width=1,height=1,class="dropdown",name="move",value=movedrop,items=Bilocator},
+    {x=3,y=1,width=1,height=1,class="dropdown",name="move",value="transmove",items=Bilocator},
     {x=3,y=2,width=1,height=1,class="checkbox",name="keep",label="keep both",value=false,hint="keeps both lines for transmove"},
     {x=3,y=3,width=3,height=1,class="checkbox",name="rotac",label="rotation acceleration",value=true,hint="transmove option"},
     {x=3,y=4,width=3,height=1,class="label",name="moo",label=mlbl},
     
     {x=5,y=0,width=2,height=1,class="label",label="Morphing Grounds",},
-    {x=5,y=1,width=2,height=1,class="dropdown",name="mod",value=morphdrop,items=Morphing},
+    {x=5,y=1,width=2,height=1,class="dropdown",name="mod",value="round numbers",items=Morphing},
     {x=5,y=2,width=1,height=1,class="label",label="Round:",},
     {x=6,y=2,width=1,height=1,class="dropdown",name="rnd",items=Rounding,value="all"},
-    {x=6,y=3,width=1,height=1,class="dropdown",name="rndec",items={"1","0.1","0.01","0.001"},value="0"},
+    {x=6,y=3,width=1,height=1,class="dropdown",name="rndec",items={"1","0.1","0.01","0.001"},value="1"},
     {x=6,y=4,width=1,height=1,class="dropdown",name="freeze",items=Freezing,value="-frz-"},
     {x=5,y=5,width=2,height=1,class="checkbox",name="delfbf",label="delete orig. line",value=true,hint="delete original line for line2fbf / mirror functions"},
 
