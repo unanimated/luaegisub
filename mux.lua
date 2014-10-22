@@ -1,6 +1,6 @@
 --[[
 
-	Muxing script version 1.0
+	Muxing script version 1.1
 	Read everything here before using it.
 	
 	
@@ -207,9 +207,21 @@
 	    This is the video to be used for muxing and should be the video you have loaded in Aegisub.
 	    Obviously, trying to mux without video loaded will result in failure.
 	    
+	  - -A/-S/-M/nc/nt
+	    Options for source video. (Disable audio, subs, attachments, chapters, tags.)
+	  
+	  - File/segment title
+	    Same as in mkvmerge, this is what's displayed in medianfo and players as the 'Movie name'.
+	  
+	  - Video options
+	    Additional options for source video. May include --track-name etc.
+	  
 	  - Subtitle 1
 	    This is the subtitle file to be used for muxing and should be the subtitle file you have loaded in Aegisub.
 	    Obviously, trying to mux without the correct subtitle file loaded will result in failure.
+	    
+	  - Set as default
+	    This is useful when the input video already has subtitles and you want your subs to be the default ones.
 	    
 	  - Subtitle 1 mkv title
 	    This is the title of the subtitles that you can see in your player when selecting a subtitle stream.
@@ -242,7 +254,7 @@
 	    
 	  - Delete temporary files when done
 	    The whole process creates a bunch of files required for everything to work.
-	    These normally serve no purpose when everything works and can and should be deleted.
+	    These normally serve no purpose when everything works and can and should be deleted afterwards.
 	    If, however, the process fails at some point, it's useful to keep the files to determine what exactly failed.
 	    
 	  - Keep cmd window open
@@ -267,7 +279,7 @@
 	   When you set up everything correctly, click on the Mux button.
 	   A cmd window will flash and close.
 	   This part of the process creates the necessary files for muxing.
-	   Then a window will pop up (assuming there was no error) that will list:
+	   Then a dialog will pop up (assuming there was no error) that will list:
 	   - Files to mux (video, subtitles)
 	   - Number of fonts to mux that the script found
 	   - The final filename of the muxed mkv
@@ -316,7 +328,7 @@
 		Find which of the temp files it failed at, and try to execute that file under Windows.
 		You should open a new cmd window first and navigate to the folder, so that the window stays open and shows you the error.
 		This is especially the case with sfv.lua. If the problem is with that one,
-		running it from a cmd window under Windows will tell you what line it failed on and why.
+		running it from a cmd window under Windows will tell you which line it failed at and why.
 	   IV. If the process fails with CRC or xdelta, try the same without CRC first to see if that part works.
 	       This narrows down where the error occurred.
 	   
@@ -341,7 +353,7 @@
 	   - Don't use unicode characters anywhere in the process.
 	   
 	   - For smooth automatic naming, use this pattern in the script's Title: 'Show's name 01' or 'Show's name - 01',
-	     where 01 is the episode title.
+	     where 01 is the episode number.
 	     The Title is ignored if it's empty or the default, in which case the .ass filename is used.
 	     Generally speaking, just use the 'name number' pattern with space, ' - ', or nothing in between.
 	     
@@ -368,7 +380,7 @@
 script_name="Multiplexer"
 script_description="Muxes stuff using mkvmerge"
 script_author="unanimated"
-script_version="1.0"
+script_version="1.1"
 
 -- Here's where the actual script starts, though that's not really true because in a way it starts at the top,
 -- and from a technical point of view it starts at the last line, which then redirects here.
@@ -475,8 +487,8 @@ function mux(subs,sel)
     -- Or maybe we don't have a title because we just got an empty string.
     -- Or maybe we just have "Default Aegisub file", which is just as useless.
     -- Anyway, we use what's useful and ignore what's useless, and in the latter case revert to using the filename.
-    if title:match("%d+$") then ep=title:match("(%d+)$") title=title:gsub("%s?%-?%s?%d+$","") end
     if title==nil or title=="Default Aegisub file" then title=show end
+    if title:match("%d+$") then ep=title:match("(%d+)$") title=title:gsub("%s?%-?%s?%d+$","") end
     
     -- Here we compile the name for the muxed file from what we have.
     -- We use the group tag, that is if you already have one saved.
@@ -501,43 +513,52 @@ function mux(subs,sel)
     GUI={
 	-- First the part where you select the things that don't change (unless you weird and change them every time).
 	-- Most of the things in this block are taken from your saved settings (if you saved them).
-	{x=0,y=0,class="label",label="mkvmerge.exe:"},		{x=1,y=0,width=8,class="edit",name="mmgpath",value=mmgpath},
+	{x=0,y=0,class="label",label="mkvmerge.exe:"},		{x=1,y=0,width=11,class="edit",name="mmgpath",value=mmgpath},
 	{x=0,y=1,class="label",label="Fonts folder:"},
 	{x=1,y=1,width=2,class="dropdown",name="ff",value=fontpath,items={"script folder","script folder/fonts","script folder/ep number","video folder","video folder/fonts","video folder/ep number","custom path:"}},
-	{x=3,y=1,width=6,class="edit",name="fontspath",value=fontspath or "(only custom path goes here)"},
-	{x=0,y=2,class="label",label="Group tag:"},		{x=1,y=2,width=8,class="edit",name="tag",value=tag},
-	{x=0,y=3,class="label",label="Enfis_SFV.exe:"},	{x=1,y=3,width=8,class="edit",name="enfis",value=sfvpath},
-	{x=0,y=4,class="label",label="xdelta(3).exe:"},	{x=1,y=4,width=8,class="edit",name="xdelta",value=xdpath},
+	{x=3,y=1,width=9,class="edit",name="fontspath",value=fontspath or "(only custom path goes here)"},
+	{x=0,y=2,class="label",label="Group tag:"},		{x=1,y=2,width=11,class="edit",name="tag",value=tag},
+	{x=0,y=3,class="label",label="Enfis_SFV.exe:"},	{x=1,y=3,width=11,class="edit",name="enfis",value=sfvpath},
+	{x=0,y=4,class="label",label="xdelta(3).exe:"},	{x=1,y=4,width=11,class="edit",name="xdelta",value=xdpath},
 	
 	-- This is just some writing, mostly me repeating the same things again because users can be pretty dumb.
 	{x=1,y=5,width=7,class="label",label="'Save settings' saves the above + languages + the bottom 4 checkboxes."},
 	
 	-- Here's video stuff
-	{x=0,y=6,class="label",label="Muxed video name:"},	{x=1,y=6,width=8,class="edit",name="mvid",value=mvideo},
-	{x=0,y=7,class="label",label="Source video:"},		{x=1,y=7,width=8,class="edit",name="vid",value=videoname},
+	{x=0,y=6,class="label",label="Muxed video name:"},	{x=1,y=6,width=11,class="edit",name="mvid",value=mvideo},
+	{x=0,y=7,class="label",label="Source video:"},		{x=1,y=7,width=6,class="edit",name="vid",value=videoname},
+	{x=7,y=7,class="checkbox",name="noA",label="-A ",hint="no audio"},
+	{x=8,y=7,class="checkbox",name="noS",label="-S",hint="no subtitles"},
+	{x=9,y=7,class="checkbox",name="noM",label="-M ",hint="no attachments"},
+	{x=10,y=7,class="checkbox",name="noC",label="nc",hint="no chapters"},
+	{x=11,y=7,class="checkbox",name="noT",label="nt",hint="no tags"},
+	{x=0,y=8,class="label",label="File/segment title:"},	{x=1,y=8,width=4,class="edit",name="vtitle"},
+	{x=5,y=8,width=3,class="checkbox",name="VO",label="Video options:",hint="additional input video options"},
+	{x=8,y=8,width=4,class="edit",name="vopt"},
 	
 	-- Here's primary subtitle stuff
-	{x=0,y=8,class="label",label="Subtitle 1:"},		{x=1,y=8,width=8,class="edit",name="subs",value=spath..scriptname},
-	{x=0,y=9,class="label",label="Subtitle 1 mkv title:"},	{x=1,y=9,width=6,class="edit",name="subname1",value=""},
-	{x=7,y=9,class="label",label="    Language:"},		{x=8,y=9,width=1,class="edit",name="lang1",value=lang1 or ""},
+	{x=0,y=9,class="label",label="Subtitle 1:"},		{x=1,y=9,width=8,class="edit",name="subs",value=spath..scriptname},
+	{x=9,y=9,width=3,class="checkbox",name="defsub",label="Set as default",hint="You can use this when orginal video already has subs"},
+	{x=0,y=10,class="label",label="Subtitle 1 title:"},{x=1,y=10,width=6,class="edit",name="subname1",value=""},
+	{x=7,y=10,width=2,class="label",label="    Language:  "},{x=9,y=10,width=3,class="edit",name="lang1",value=lang1 or ""},
 	
 	-- Here's secondary subtitle stuff
-	{x=0,y=10,class="checkbox",name="sub2",label="Subtitle 2:"},{x=1,y=10,width=8,class="edit",name="subs2",value=""},
-	{x=0,y=11,class="label",label="Subtitle 2 mkv title:"},{x=1,y=11,width=6,class="edit",name="subname2",value=""},
-	{x=7,y=11,class="label",label="    Language:"},	{x=8,y=11,width=1,class="edit",name="lang2",value=lang2 or ""},
+	{x=0,y=11,class="checkbox",name="sub2",label="Subtitle 2:"},{x=1,y=11,width=11,class="edit",name="subs2",value=""},
+	{x=0,y=12,class="label",label="Subtitle 2 title:"},{x=1,y=12,width=6,class="edit",name="subname2",value=""},
+	{x=7,y=12,width=2,class="label",label="    Language:  "},{x=9,y=12,width=3,class="edit",name="lang2",value=lang2 or ""},
 	
 	-- And here's chapter stuff
-	{x=0,y=12,class="checkbox",name="ch",label="Chapters",value=false},
-	{x=1,y=12,width=8,class="edit",name="chapters",value=ch_name},
+	{x=0,y=13,class="checkbox",name="ch",label="Chapters",value=false},
+	{x=1,y=13,width=11,class="edit",name="chapters",value=ch_name},
 	
 	-- This block is checkboxes with additional options
-	{x=0,y=13,class="checkbox",name="sfv",label="Create CRC",value=crc,hint="requires Enfis_SFV.exe and lua for windows"},
-	{x=1,y=13,class="checkbox",name="xd",label="Create xdelta patch",value=patch,hint="requires Enfis_SFV.exe, xdelta3.exe, lua for win"},
-	{x=3,y=13,width=2,class="checkbox",name="del",label="Delete temporary files when done      ",value=delete},
-	{x=5,y=13,width=3,class="checkbox",name="cmd",label="Keep cmd window open",value=cmdopen},
+	{x=0,y=14,class="checkbox",name="sfv",label="Create CRC",value=crc,hint="requires Enfis_SFV.exe and lua for windows"},
+	{x=1,y=14,class="checkbox",name="xd",label="Create xdelta patch",value=patch,hint="requires Enfis_SFV.exe, xdelta3.exe, lua for win"},
+	{x=3,y=14,width=2,class="checkbox",name="del",label="Delete temporary files when done      ",value=delete},
+	{x=5,y=14,width=4,class="checkbox",name="cmd",label="Keep cmd window open",value=cmdopen},
 	
 	-- This shows the user what version of this software this is
-	{x=8,y=13,class="label",label="      [ Multiplexer v"..script_version.." ]"},
+	{x=9,y=14,width=3,class="label",label="      [ Multiplexer v"..script_version.." ]"},
     }
     
     -- This is where we attach a function to most of the buttons in the GUI.
@@ -630,6 +651,7 @@ function mux(subs,sel)
     lang1=res.lang1
     lang2=res.lang2
     fontspath=res.fontspath
+    if res.vtitle~="" then vtitle=" --title "..quo(res.vtitle) else vtitle="" end
     
     -- Here we anticipate the possibility that you didn't read the fucking instructions and are doing something stupid,
     -- namely trying to create an xdelta without creating CRC when we clearly said it's not allowed.
@@ -688,8 +710,9 @@ function mux(subs,sel)
 	      xdt="xdtext=\"call \\\""..luaxd.."\\\" -f -s \\\""..video.."\\\" \\\"\"..crc_name..\"\\\" \\\""..show..ep..".xdelta\\\"\"\nfile=io.open(\""..luavpath.."xdbatch.bat\",\"w\")\nfile:write(xdtext)\nfile:close()"
 	    end
 	  else
-	    -- If xdelta wasn't selected, we give this empty string a few lines later.
+	    -- If xdelta wasn't selected, we give this empty string a few lines later, and we delete patching from the batch.
 	    xdt=""
+	    bat_crc=bat_crc:gsub("\ncall xdbatch","")
 	  end
 	  
 	  -- Proceeding to write sfv.lua, consisting of the CRC part and xdelta part that, as previously mentioned,
@@ -738,7 +761,7 @@ function mux(subs,sel)
     
     -- Here we infiltrate the fonts folder and secretly plant a file there.
     -- This file will shortly be used to get the filenames of fonts.
-    list="cd "..quo(ffpath).."\ndir /b>files.txt\n del list.bat"
+    list="cd /d "..quo(ffpath).."\ndir /b>files.txt\n del list.bat"
     file=io.open(ffpath.."list.bat","w")
     file:write(list)
     file:close()
@@ -805,10 +828,20 @@ function mux(subs,sel)
 	subs2=""
     end
     
+    -- This line determines whether we need to set the subtitle track as default.
+    if res.defsub then defsub=" --default-track 0:true" else defsub="" end
+    -- This is options for input video.
+    vopt=""
+    if res.noA then vopt=vopt.." -A" end
+    if res.noS then vopt=vopt.." -S" end
+    if res.noM then vopt=vopt.." -M" end
+    if res.noC then vopt=vopt.." --no-chapters" end
+    if res.noT then vopt=vopt.." -T --no-global-tags" end
+    if res.VO then vopt=vopt.." "..res.vopt end
     -- Here the main chunk of the muxing script is written, namely the path to mkvmerge.exe,
     -- output video file, input video file, subtitles with information just collected a few lines above,
     -- chapters as collected earlier, and at the end is attached the list of fonts that we already have.
-    muxbatch=quo(res.mmgpath).." -o "..quo(vpath..mvideo).." "..quo(vpath..video)..tn1..ln1.." "..quo(res.subs)..subs2.." "..bat_chap..muxbatch
+    muxbatch=quo(res.mmgpath)..vtitle.." -o "..quo(vpath..mvideo)..vopt.." "..quo(vpath..video)..tn1..ln1..defsub.." "..quo(res.subs)..subs2.." "..bat_chap..muxbatch
     
     -- Here the actual muxing script is written and saved in the fonts directory.
     file=io.open(ffpath.."mux.bat","w")
@@ -842,7 +875,7 @@ function mux(subs,sel)
     -- 7. execute xdbatch, creating the xdelta file
     -- 8. pause, i.e. keep cmd window open until the 'any' key is pressed
     -- 9. delete temporary files
-    BAT="cd "..ffpath.."\ncall mux.bat\ncd "..vpath.."\n"..bat_crc..pause..delete
+    BAT="cd /d "..quo(ffpath).."\ncall mux.bat\ncd /d "..quo(vpath).."\n"..bat_crc..pause..delete
     
     -- batch is the location of muxing.bat
     batch=vpath.."muxing.bat"
