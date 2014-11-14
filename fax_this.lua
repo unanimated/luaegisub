@@ -1,7 +1,7 @@
 ﻿script_name="Copyfax This"
 script_description="Copyfax This"
 script_author="unanimated"
-script_version="2.71"
+script_version="2.8"
 
 -- all the "copy" things copy things from first selected line and paste them to the other lines
 -- clip shift coordinates will shift the clip by that amount each line
@@ -144,6 +144,7 @@ function copystuff(subs, sel)
 	{x=1,y=0,width=1,height=1,class="checkbox",name="css",label="[   Style   ]   ",value=false},
 	{x=1,y=1,width=1,height=1,class="checkbox",name="tkst",label="[   Text   ]",value=false},
 	{x=2,y=0,width=1,height=1,class="label",label="Place * in text below to copy tags there"},
+	{x=2,y=1,width=1,height=1,class="checkbox",name="breaks",label="Copy tags after all linebreaks (all lines)   ",realname=""},
 	{x=0,y=2,width=3,height=1,class="edit",name="ltxt",value=vis,hint="only works for first selected line"},
 	}
     ftw=3
@@ -202,14 +203,16 @@ function copystuff(subs, sel)
 	if press=="Paste Saved" then kopytags=savedkopytags copytfs=savedcopytfs sn=1
 	csstyle=savedstyle csst=savedt1 cset=savedt2 cstext=savedtext
 	rez.css=savedcss rez.chks=savedchks rez.chke=savedchke rez.tkst=savedtkst
-	elseif press=="Copy" then sn=2 
+	elseif press=="Copy" then sn=2
 	savedkopytags=kopytags
 	savedcopytfs=copytfs
 	savedt1=csst savedt2=cset savedstyle=csstyle
 	savedcss=rez.css savedchks=rez.chks savedchke=rez.chke
 	savedtext=cstext savedtkst=rez.tkst
 	end
-	if rez.ltxt:match"%*" then inline=true sn=1 maxx=1 else inline=false maxx=#sel end
+	if rez.ltxt:match"%*" then inline=true sn=1 maxx=1
+	elseif rez.breaks then inline=true sn=1 maxx=#sel
+	else inline=false maxx=#sel end
 
     -- lines 2+
     if press~="[Un]hide" then
@@ -230,14 +233,20 @@ function copystuff(subs, sel)
 	    end
 	    -- add + clean tags
 	    if inline then
-		initags=text:match("^{\\[^}]-}") if initags==nil then initags="" end
+		initags=text:match("^{\\[^}]-}") or ""
 		endcom=""
 		repeat
-		  ec=text:match("{[^\\}]-}$") text=text:gsub("{[^\\}]-}$","") if ec~=nil then endcom=ec..endcom end
+		  ec=text:match("{[^\\}]-}$") text=text:gsub("{[^\\}]-}$","") if ec then endcom=ec..endcom end
 		until ec==nil
 		orig=text
-		text=rez.ltxt:gsub("%*","{"..kopytags.."}")
-		text=textmod(orig,text)
+		if rez.breaks then
+		  initags=""
+		  text=text:gsub("\\N","\\N{"..kopytags.."}") :gsub("\\N{(\\[^}]-})({\\[^}]-)}","\\N%2%1")
+		else
+		  text=rez.ltxt:gsub("%*","{"..kopytags.."}")
+		  text=textmod(orig,text)
+		end
+		
 		text=initags..text..endcom
 	    else
 		text=text:gsub("^({\\[^}]-)}","%1"..kopytags.."}")
@@ -607,7 +616,7 @@ function cleantr(tags)
 	trnsfrm=trnsfrm:gsub("\\t%(\\[^%(%)]+%)","")
 	trnsfrm=trnsfrm:gsub("\\t%((\\[^%(%)]-%b()[^%)]-)%)","")
 	if cleant~="" then trnsfrm="\\t("..cleant..")"..trnsfrm end	
-	tags=tags:gsub("^({\\[^}]*)}","%1"..trnsfrm.."}")
+	tags=tags:gsub("^({[^}]*)}","%1"..trnsfrm.."}")
 	return tags
 end
 
