@@ -3,7 +3,7 @@ script_description="A multi-headed typesetting tool"
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/hydra.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/hydra.lua"
-script_version="3.9"
+script_version="3.92"
 
 -- SETTINGS - feel free to change these
 
@@ -339,34 +339,36 @@ function special(subs, sel)
 	
 	-- SORT TAGS
 	if res.spec=="sort tags in set order" then
-	  text=text:gsub("\\a6","\\an8")
-	  text=text:gsub("\\1c","\\c")
+	  text=text:gsub("\\a6","\\an8") :gsub("\\1c","\\c")
 	  -- run for each set of tags
 	  for tags in text:gmatch("{\\[^}]-}") do
 	  orig=tags
-	  ordered=""
 	  tags=tags:gsub("{.-\\r","{\\r")	-- delete shit before \r in case some idiot puts it there
-		-- save & nuke transforms
-		trnsfrm=""
-		for t in tags:gmatch("(\\t%([^%(%)]-%))") do trnsfrm=trnsfrm..t end
-		for t in tags:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))") do trnsfrm=trnsfrm..t end
-		tags=tags:gsub("(\\t%([^%(%)]+%))","")
-		tags=tags:gsub("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","")
+	    -- save & nuke transforms
+	    trnsfrm=""
+	    for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
+	    tags=tags:gsub("\\t%b()","")
+	  trans=trnsfrm:gsub("\\t%(","") :gsub("%)$","")
+	  tab={tags,trans}
+	  ord={"",""}
 	    -- go through tags, save them in ordered, and delete from tags
-	    for tg in order:gmatch("\\[%a%d]+") do
-		tag=tags:match("("..tg.."[^\\}]-)[\\}]")
-		if tg=="\\fs" then tag=tags:match("(\\fs%d[^\\}]-)[\\}]") end
-		if tg=="\\fad" then tag=tags:match("(\\fad%([^\\}]-)[\\}]") end
-		if tg=="\\c" then tag=tags:match("(\\c&[^\\}]-)[\\}]") end
-		if tg=="\\i" then tag=tags:match("(\\i[^%a\\}]-)[\\}]") end
-		if tg=="\\s" then tag=tags:match("(\\s[^%a\\}]-)[\\}]") end
-		if tg=="\\p" then tag=tags:match("(\\p[^%a\\}]-)[\\}]") end
-		if tag~=nil then ordered=ordered..tag etag=esc(tag) tags=tags:gsub(etag,"") end
+	    for x=1,2 do
+	      for tg in order:gmatch("\\[%a%d]+") do
+		tag=tab[x]:match("("..tg.."[^\\}]-)[\\}]")
+		if tg=="\\fs" then tag=tab[x]:match("(\\fs%d[^\\}]-)[\\}]") end
+		if tg=="\\fad" then tag=tab[x]:match("(\\fad%([^\\}]-)[\\}]") end
+		if tg=="\\c" then tag=tab[x]:match("(\\c&[^\\}]-)[\\}]") end
+		if tg=="\\i" then tag=tab[x]:match("(\\i[^%a\\}]-)[\\}]") end
+		if tg=="\\s" then tag=tab[x]:match("(\\s[^%a\\}]-)[\\}]") end
+		if tg=="\\p" then tag=tab[x]:match("(\\p[^%a\\}]-)[\\}]") end
+		if tag then ord[x]=ord[x]..tag etag=esc(tag) tab[x]=tab[x]:gsub(etag,"") end
+	      end
 	    end
 	    -- attach whatever got left
-	    if tags~="{}" then remains=tags:match("{(.-)}") ordered=ordered..remains end
+	    if tab[1]~="{}" then ord[1]=ord[1]..tab[1]:match("{(.-)}") end
+	    if tab[2]~="" then ord[2]="\\t("..ord[2]..tab[2]..")" end
 	    -- put saved transforms at the end of ordered + add { }
-	    ordered="{"..ordered..trnsfrm.."}"
+	    ordered="{"..ord[1]..ord[2].."}"
 	    orig=esc(orig)
 	    text=text:gsub(orig,ordered)
 	  end
@@ -583,7 +585,7 @@ function cleantr(tags)
 	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-%b()[^%)]-)%)") do cleant=cleant..ct end
 	trnsfrm=trnsfrm:gsub("\\t%(\\[^%(%)]+%)","")
 	trnsfrm=trnsfrm:gsub("\\t%((\\[^%(%)]-%b()[^%)]-)%)","")
-	if cleant~="" then trnsfrm="\\t("..cleant..")"..trnsfrm end	
+	if cleant~="" then trnsfrm="\\t("..cleant..")"..trnsfrm end
 	tags=tags:gsub("^({[^}]*)}","%1"..trnsfrm.."}")
 	return tags
 end
@@ -603,6 +605,9 @@ function duplikill(tagz)
 	    tag=tags2[i]
 	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1")
 	end
+	tagz=tagz:gsub("(\\i?clip%b())(.-)(\\i?clip%b())",
+	  function(a,b,c) if a:match("m") and c:match("m") or not a:match("m") and not c:match("m") then
+	  return b..c else return a..b..c end end)
 	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf.."}")
 	return tagz
 end
