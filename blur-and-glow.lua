@@ -28,7 +28,7 @@ script_description="Add blur and/or glow to signs"
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/blur-and-glow.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/blur-and-glow.lua"
-script_version="2.4"
+script_version="2.41"
 
 default_blur="0.6"
 
@@ -216,7 +216,7 @@ function topline(txt)
     txt=txt
     :gsub("\\bord[%d%.]+","\\bord0") 
     :gsub("(\\r[^}]-)}","%1\\bord0}")
-    txt=txt:gsub("(\\[xy]bord)[%d%.]+","")    :gsub("(\\[xy]shad)[%d%.%-]+","")    :gsub("\\3c&H%x+&","")
+    txt=txt:gsub("(\\[xy]bord)[%d%.]+","")    :gsub("\\3c&H%x+&","")
     if shadow~="0" then txt=txt:gsub("^({\\[^}]+)}","%1\\shad"..shadow.."}") end
     txt=txt
     :gsub("^({\\[^}]-)}","%1\\4a&HFF&}")
