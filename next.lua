@@ -7,7 +7,7 @@
 script_name="Jump to Next"
 script_description="Jumps to next 'sign' in the subtitle grid"
 script_author="unanimated"
-script_version="1.1"
+script_version="1.21"
 
 --OPTIONS--
 default_marker="text"	-- "text" looks for text (without tags/comments) / "style" looks for style
@@ -17,6 +17,7 @@ function nextsel(subs, sel)
 marker=default_marker
 lm=nil
 i=sel[1]
+j=sel[#sel]
 marks={}
 for x,i in ipairs(sel) do
   rine=subs[i]
@@ -34,7 +35,7 @@ for x,i in ipairs(sel) do
 end
 count=1
 repeat
-  line=subs[i+count]
+  line=subs[j+count]
   txt2=line.text:gsub("{[^}]-}","")
   sty2=line.style
   act2=line.actor
@@ -45,9 +46,9 @@ repeat
   if marker=="effect" then hit=eff2 end
   ch=0
   for m=1,#marks do if marks[m]==hit then ch=1 end end
-  if ch==0 or i+count==#subs then sel={i+count} end
+  if ch==0 or j+count==#subs then sel={j+count} end
   count=count+1
-until ch==0 or hit==nil or i+count>#subs
+until ch==0 or hit==nil or j+count>#subs
 return sel
 end
 
