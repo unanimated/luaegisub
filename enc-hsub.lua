@@ -28,7 +28,7 @@
 script_name="Encode - Hardsub"
 script_description="Encode a clip with or without hardsubs"
 script_author="unanimated"
-script_version="1.0"
+script_version="1.01"
 
 function encode(subs,sel)
     enconfig=aegisub.decode_path("?user").."\\encode_hardsub.conf"
@@ -269,6 +269,7 @@ function encode(subs,sel)
     encode=quo(xpath).." "..res.encset.." -o "..quo(target..encname..res.vtype).." "..source
     batch=scriptpath.."encode.bat"
     if res.pause then encode=encode.."\npause" end
+    encode=encode.."\ndel "..quo(target..videoname..".ffindex")
     if res.delavs then encode=encode.."\ndel "..quo(scriptpath.."hardsub.avs") end
     if res.delbat then encode=encode.."\ndel "..quo(batch) end
     
