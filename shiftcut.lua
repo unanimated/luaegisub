@@ -4,12 +4,12 @@
 script_name="ShiftCut"
 script_description="Time Machine."
 script_author="unanimated"
-script_version="2.6"
+script_version="2.61"
 
 
 function style(subs)
 styles={"All","All Default","Default+Alt","----------------"}
-  for i=1, #subs do
+  for i=1,#subs do
     if subs[i].class=="style" then
       local st=subs[i]
       table.insert(styles,st.name)
@@ -30,8 +30,8 @@ function runcheck()
 end
 
 --	Lead in		--
-function cutin(subs, sel)
-	for z, i in ipairs(sel) do
+function cutin(subs,sel)
+	for z,i in ipairs(sel) do
 	    line=subs[i]
 		inn=res.inn
 		start=line.start_time
@@ -63,8 +63,8 @@ function cutin(subs, sel)
 end
 
 --	Lead out	--
-function cutout(subs, sel)
-	for z, i in ipairs(sel) do
+function cutout(subs,sel)
+	for z,i in ipairs(sel) do
 	    line=subs[i]
 		ut=res.utt
 		start=line.start_time
@@ -95,8 +95,8 @@ function cutout(subs, sel)
 end
 
 --	Shifting	--
-function shiift(subs, sel)
-	for z, i in ipairs(sel) do
+function shiift(subs,sel)
+	for z,i in ipairs(sel) do
 	    line=subs[i]
 		shift=res.shifft
 		start=line.start_time
@@ -119,9 +119,9 @@ function shiift(subs, sel)
 end
 
 --	Linking		--
-function linklines(subs, sel)
+function linklines(subs,sel)
 	marker=0	linx=0	overl=0
-	for z, i in ipairs(sel) do
+	for z,i in ipairs(sel) do
 	    line=subs[i]
 		lnk=res.link
 		start=line.start_time
@@ -169,21 +169,21 @@ function linklines(subs, sel)
 end
 
 --	Snapping	--
-function keyframesnap(subs, sel)
+function keyframesnap(subs,sel)
 snapd=0
-    if res.pres then kfsb,kfeb,kfsa,kfea=res.preset:match("(%d+),(%d+),(%d+),(%d+)") 
+    if res.pres then kfsb,kfeb,kfsa,kfea=res.preset:match("(%d+),(%d+),(%d+),(%d+)")
 	kfsb=tonumber(kfsb)
 	kfeb=tonumber(kfeb)
 	kfsa=tonumber(kfsa)
 	kfea=tonumber(kfea)
+    else
+	kfsb=res.sb kfeb=res.eb kfsa=res.sa kfea=res.ea
     end
-    if not res.pres then kfsb=res.sb kfeb=res.eb kfsa=res.sa kfea=res.ea end
-	for z, i in ipairs(sel) do aegisub.progress.title(string.format("Snapping Line %d/%d",z,#sel))
+	for z,i in ipairs(sel) do aegisub.progress.title(string.format("Snapping Line %d/%d",z,#sel))
 	    line=subs[i]
 		run=runcheck()
 		
 	    if run==1 then
-
 	    -- snapping to keyframes
 		
 		start=line.start_time		-- start time
@@ -227,7 +227,7 @@ snapd=0
 			if res.prevent and z~=#sel and endtemp>nextart and endkf-endf>kfsb then stopend=1 end
 			if stopend==0 then endt=endtemp end
 			end
-			
+		
 		end
 	    line.start_time=start
 	    if endt-start>450 then line.end_time=endt end
@@ -239,7 +239,7 @@ snapd=0
 	end
 end
 
-function selectall(subs, sel)
+function selectall(subs,sel)
 sel={}
     for i=1,#subs do
 	if subs[i].class=="dialogue" then table.insert(sel,i) end
@@ -269,7 +269,7 @@ shiftkonfig=aegisub.decode_path("?user").."\\shiftcut.conf"
 file=io.open(shiftkonfig,"w")
 file:write(scconf)
 file:close()
-press,rez=aegisub.dialog.display({{class="label",label="Config saved to:\n"..shiftkonfig}},{"OK","Add/Delete kf preset","Restore Defaults"},{close='OK'})
+press,rez=ADD({{class="label",label="Config saved to:\n"..shiftkonfig}},{"OK","Add/Delete kf preset","Restore Defaults"},{close='OK'})
     if press=="Add/Delete kf preset" then
 	ite=scconf:match("keyframe presets:(.-)\n")
 	pressets=""
@@ -278,7 +278,7 @@ press,rez=aegisub.dialog.display({{class="label",label="Config saved to:\n"..shi
 	end
 	repeat
 	if press=="Reset" then pressets="1,1,1,1\n2,2,2,2\n6,6,6,10\n6,6,8,12\n6,6,10,12\n6,10,8,12\n8,8,8,12\n0,0,0,10\n7,12,10,13" end
-	press,rez=aegisub.dialog.display({{class="textbox",x=0,y=0,width=12,height=12,name="addpres",value=pressets}},
+	press,rez=ADD({{class="textbox",x=0,y=0,width=12,height=12,name="addpres",value=pressets}},
 	{"Save","Reset"},{ok='Save'})
 	until press~="Reset"
 	newpres=rez.addpres.."\n"
@@ -287,13 +287,13 @@ press,rez=aegisub.dialog.display({{class="label",label="Config saved to:\n"..shi
 	file=io.open(shiftkonfig,"w")
 	file:write(scconf)
 	file:close()
-	aegisub.dialog.display({{class="label",label="Saved"}},{"OK"},{close='OK'})
+	ADD({{class="label",label="Saved"}},{"OK"},{close='OK'})
     end
     if press=="Restore Defaults" then
 	file=io.open(shiftkonfig,"w")
 	file:write("")
 	file:close()
-	aegisub.dialog.display({{class="label",label="Defaults restored"}},{"OK"},{close='OK'})
+	ADD({{class="label",label="Defaults restored"}},{"OK"},{close='OK'})
     end
 end
 
@@ -331,7 +331,7 @@ function detf(txt)
     return ret
 end
 
-function konfig(subs, sel)
+function konfig(subs,sel)
 BIAS={"0","0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9","1"}
 kf_snap_presets={"1,1,1,1","2,2,2,2","6,6,6,10","6,6,8,12","6,6,10,12","6,10,8,12","8,8,8,12","0,0,0,10","7,12,10,13"}
 	style(subs)
@@ -344,31 +344,31 @@ kf_snap_presets={"1,1,1,1","2,2,2,2","6,6,6,10","6,6,8,12","6,6,10,12","6,10,8,1
 	    {x=2,y=1,width=2,height=1,class="dropdown",name="stail",items=styles,value="All Default"},
 	    {x=4,y=1,width=3,height=1,class="edit",name="plustyle",value="",hint="Additional style"},
 	    
-	    {x=4,y=0,width=4,height=1,class="checkbox",name="info",label="Info (link/snap)",value=false},
-	    {x=8,y=0,width=2,height=1,class="checkbox",name="mark",label="Mark changed lines",value=false,
+	    {x=4,y=0,width=4,height=1,class="checkbox",name="info",label="Info (link/snap)"},
+	    {x=8,y=0,width=2,height=1,class="checkbox",name="mark",label="Mark changed lines",
 		hint="linking/snapping - marks changed lines in effect"},
 
 	    -- shift
 	    {x=0,y=2,width=1,height=1,class="label",label="SHIFT backward"},
 	    {x=2,y=2,width=2,height=1,class="floatedit",name="shifft",value=0},
 	    {x=4,y=2,width=1,height=1,class="label",label="ms"},
-	    {x=5,y=2,width=2,height=1,class="checkbox",name="shit",label="Shift forward",value=false},
+	    {x=5,y=2,width=2,height=1,class="checkbox",name="shit",label="Shift forward"},
 
 	    -- add/cut
 	    {x=0,y=3,width=1,height=1,class="checkbox",name="IN",label="Add lead in"},
 	    {x=2,y=3,width=2,height=1,class="floatedit",name="inn",value=0},
 	    {x=4,y=3,width=1,height=1,class="label",label="ms"},
-	    {x=5,y=3,width=2,height=1,class="checkbox",name="cutin",label="Cut lead in",value=false},
+	    {x=5,y=3,width=2,height=1,class="checkbox",name="cutin",label="Cut lead in"},
 	    
 	    {x=0,y=4,width=1,height=1,class="checkbox",name="OUT",label="Add lead out"},
 	    {x=2,y=4,width=2,height=1,class="floatedit",name="utt",value=0},
 	    {x=4,y=4,width=1,height=1,class="label",label="ms"},
-	    {x=5,y=4,width=2,height=1,class="checkbox",name="cutout",label="Cut lead out",value=false},
+	    {x=5,y=4,width=2,height=1,class="checkbox",name="cutout",label="Cut lead out"},
 	    
 	    {x=0,y=5,width=3,height=1,class="checkbox",name="preventcut",
 	    label="prevent overlaps from adding leads",value=true},
 	    {x=3,y=5,width=4,height=1,class="checkbox",name="holdkf",
-	    label="don't add leads on keyframes",value=false},
+	    label="don't add leads on keyframes"},
 
 	    -- linking
 	    {x=0,y=6,width=2,height=1,class="label",label="Line linking:  Max gap:"},
@@ -378,7 +378,7 @@ kf_snap_presets={"1,1,1,1","2,2,2,2","6,6,6,10","6,6,8,12","6,6,10,12","6,10,8,1
 	    {x=6,y=6,width=1,height=1,class="dropdown",name="bias",items=BIAS,value="0.8",hint="higher number=closer to 2nd line"},
 
 	    -- overlaps
-	    {x=0,y=7,width=2,height=1,class="checkbox",name="over",label="Fix overlaps up to:",value=false,
+	    {x=0,y=7,width=2,height=1,class="checkbox",name="over",label="Fix overlaps up to:",
 		hint="This is part of line linking.\nIf you want only overlaps, set linking gap to 0."},
 	    {x=2,y=7,width=2,height=1,class="floatedit",name="overlap",value=500,min=0 },
 	    {x=4,y=7,width=1,height=1,class="label",label="ms   "},
@@ -404,35 +404,38 @@ kf_snap_presets={"1,1,1,1","2,2,2,2","6,6,6,10","6,6,8,12","6,6,10,12","6,10,8,1
 	    {x=8,y=7,width=2,height=1,class="checkbox",name="prevent",label="Prevent overlaps by snapping",value=true},
 	}
 	loadconfig()
-	pressed, res=aegisub.dialog.display(gui,
-		{"Lead in/out","Link Lines","Shift times","Snap to keyframes","Save config","Cancel"},{cancel='Cancel'})
-	if res.slct=="Apply to all lines" then sel=selectall(subs, sel) end
+	P,res=ADD(gui,{"Lead in/out","Link lines","Shift times","Keyframe snap","All","Save config","Cancel"},{cancel='Cancel'})
+	if res.slct=="Apply to all lines" then sel=selectall(subs,sel) end
 	keyframes=aegisub.keyframes()
 	ms2fr=aegisub.frame_from_ms
 	fr2ms=aegisub.ms_from_frame
 	
-	if pressed=="Lead in/out" then 
-	    if res.IN or res.cutin then cutin(subs, sel) end
-	    if res.OUT or res.cutout then cutout(subs, sel) end
+	if P=="Lead in/out" or P=="All" then 
+	    if res.IN or res.cutin then cutin(subs,sel) end
+	    if res.OUT or res.cutout then cutout(subs,sel) end
 	end
-	if pressed=="Shift times" then shiift(subs, sel) end
-	if pressed=="Link Lines" then linklines(subs, sel) end
-	if pressed=="Snap to keyframes" then keyframesnap(subs, sel) end
-	if pressed=="Cancel" then aegisub.cancel() end
+	if P=="Shift times" then shiift(subs,sel) end
+	if P=="Link lines" or P=="All" then linklines(subs,sel) end
+	if P=="Keyframe snap" or P=="All" then keyframesnap(subs,sel) end
+	
+	if P=="Cancel" then ak() end
 	if res.info then
-	    if pressed=="Link Lines" then aegisub.log("\n Linked lines: "..linx) end
-	    if pressed=="Link Lines" and res.over then aegisub.log("\n Overlaps fixed: "..overl) end
-	    if pressed=="Snap to keyframes" then aegisub.log("\n Lines snapped to keyframes: "..snapd) end
+	    if P=="Link lines" or P=="All" then alog("\n Linked lines: "..linx) end
+	    if P=="Link lines" and res.over or P=="All" and res.over then alog("\n Overlaps fixed: "..overl) end
+	    if P=="Keyframe snap" or P=="All" then alog("\n Lines snapped to keyframes: "..snapd) end
 	end
-	if pressed=="Save config" then saveconfig() end
+	if P=="Save config" then saveconfig() end
 	
 	return sel
 end
 
-function shiftcut(subs, sel)
-    konfig(subs, sel)
+function shiftcut(subs,sel)
+    ADD=aegisub.dialog.display
+    ak=aegisub.cancel
+    alog=aegisub.log
+    konfig(subs,sel)
     aegisub.set_undo_point(script_name)
     return sel
 end
 
-aegisub.register_macro(script_name, script_description, shiftcut)
+aegisub.register_macro(script_name,script_description,shiftcut)
