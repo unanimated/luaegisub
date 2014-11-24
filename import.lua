@@ -3,7 +3,7 @@ script_description="Import stuff, number stuff, chapter stuff, replace stuff, do
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/import.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/import.lua"
-script_version="2.4"
+script_version="2.5"
 
 require "clipboard"
 re=require'aegisub.re'
@@ -195,21 +195,34 @@ function important(subs,sel,act)
 	    for x, i in ipairs(sel) do
             line=subs[i]
             text=line.text
-	    if line.effect=="" then t_error("Effect must contain name.",true) end
 	    if x==1 then snam=line.effect end
 	    exportsign=exportsign..line.raw.."\n"
 	    end
 	    press,reslt=ADD({
-		{x=0,y=0,width=2,height=1,class="dropdown",name="addsign",
+		{x=0,y=0,class="label",label="Target:",},
+		{x=0,y=1,class="label",label="Name:",},
+		{x=1,y=0,width=2,height=1,class="dropdown",name="addsign",
 			items={"Add to signs.ass","Save to new file:"},value="Add to signs.ass"},
-		{x=0,y=1,width=2,height=1,class="edit",name="newsign",value=snam},
+		{x=1,y=1,width=2,height=1,class="edit",name="newsign",value=snam},
 		},{"OK","Cancel"},{ok='OK',close='Cancel'})
 	    if press=="Cancel" then ak() end
 	    if press=="OK" then
+	    if reslt.newsign=="" then t_error("No name supplied.",true) end
 	    newsgn=reslt.newsign:gsub("%.ass$","")
-	    if reslt.addsign=="Add to signs.ass" then file=io.open(path.."signs.ass","a") exportsign="\n"..exportsign end
-	    if reslt.addsign=="Save to new file:" then file=io.open(path..newsgn..".ass","w") end
-	    file:write(exportsign)
+	    if reslt.addsign=="Add to signs.ass" then 
+		file=io.open(path.."signs.ass")
+		sign=file:read("*all")
+		file:close()
+		exportsign=exportsign:gsub("(%u%a+: %d+,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-),[^,]-,(.-)\n","%1,"..reslt.newsign..",%2\n")
+		sign=sign:gsub("%u%a+:.-,"..esc(reslt.newsign)..",.-\n","") :gsub("^\n*","")
+		sign=sign.."\n"..exportsign
+		file=io.open(path.."signs.ass","w")
+		file:write(sign)
+	    end
+	    if reslt.addsign=="Save to new file:" then
+		file=io.open(path..newsgn..".ass","w")
+		file:write(exportsign)
+	    end
 	    file:close()
 	    end
 	end
@@ -469,6 +482,27 @@ function stuff(subs,sel)
 	pres,rez=ADD(dategui,{"OK","Cancel"},{ok='OK',close='Cancel'})
 	if pres=="Cancel" then ak() end
 	datelog=""
+    end
+    
+    -- MOTION BLUR GUI
+    if res.stuff=="motion blur" then
+	mblurgui={
+	  {x=0,y=0,width=2,class="checkbox",name="keepblur",label="Keep current blur...",value=true},
+	  {x=0,y=1,class="label",label="...or use blur:"},
+	  {x=1,y=1,class="floatedit",name="mblur",value=mblur or 3},
+	  
+	  {x=0,y=2,class="label",label="Distance:"},
+	  {x=1,y=2,class="floatedit",name="mbdist",value=mbdist or 6},
+	  
+	  {x=0,y=3,class="label",label="Alpha: "},
+	  {x=1,y=3,class="dropdown",name="mbalfa",value=mbalfa or "80",items={"00","20","40","60","80","A0","C0","D0"}},
+	  
+	  {x=0,y=4,width=2,class="checkbox",name="mb3",label="Use 3 lines instead of 2",value=mb3},
+	  {x=0,y=5,width=2,class="label",label="Direction = first 2 points of a clip"},
+	}
+	pres,rez=ADD(mblurgui,{"OK","Cancel"},{ok='OK',close='Cancel'})
+	if pres=="Cancel" then ak() end
+	mblur=rez.mblur mbdist=rez.mbdist mbalfa=rez.mbalfa mb3=rez.mb3
     end
     
     -- EXPLODE GUI --
@@ -1092,6 +1126,36 @@ function stuff(subs,sel)
 	    text=tags..nt
 	end
 	
+	-- MOTION BLUR ------------------
+	if res.stuff=="motion blur" then
+	    if text:match("\\clip%(m") then
+	      if not text:match("\\pos") then text=getpos(subs,text) end
+	      if not rez.keepblur then text=addtag("\\blur"..mblur,text) end
+	      c1,c2,c3,c4=text:match("\\clip%(m ([%-%d%.]+) ([%-%d%.]+) l ([%-%d%.]+) ([%-%d%.]+)")
+	      if c1==nil then t_error("There seems to be something wrong with your clip",true) end
+	      text=text:gsub("\\clip%b()","")
+	      text=addtag("\\alpha&H"..mbalfa.."&",text)
+	      cx=c3-c1
+	      cy=c4-c2
+	      cdist=math.sqrt(cx^2+cy^2)
+	      mbratio=cdist/mbdist*2
+	      mbx=round(cx/mbratio*100)/100
+	      mby=round(cy/mbratio*100)/100
+	      text2=text:gsub("\\pos%(([%-%d%.]+),([%-%d%.]+)",function(a,b) return "\\pos("..a-mbx..","..b-mby end)
+	      l2=line
+	      l2.text=text2
+	      subs.insert(sel[i]+1,l2)
+	      table.insert(sel,sel[#sel]+1)
+	      if rez.mb3 then
+		line.text=text
+		subs.insert(sel[i]+1,line)
+		table.insert(sel,sel[#sel]+1)
+	      end
+	      text=text:gsub("\\pos%(([%-%d%.]+),([%-%d%.]+)",function(a,b) return "\\pos("..a+mbx..","..b+mby end)
+	    else noclip=true
+	    end
+	end
+	
 	-- REVERSE TRANSFORMS ------------------
 	if res.stuff=="reverse transforms" then
 	    styleref=stylechk(subs,line.style)
@@ -1452,6 +1516,7 @@ function stuff(subs,sel)
 	press,reslt=ADD({},{repl..rp},{cancel=repl..rp})
     end
     if res.stuff=="format dates" and rez.log then aegisub.log(datelog) end
+    if noclip then t_error("Some lines weren't processed - missing clip.") noclip=nil end
     savetab=nil
 end
 
@@ -1802,8 +1867,8 @@ function stylechk(subs,stylename)
 end
 
 function getpos(subs,text)
-    for i=1, #subs do
-        if subs[i].class=="info" then
+    for i=1,#subs do
+	if subs[i].class=="info" then
 	    local k=subs[i].key
 	    local v=subs[i].value
 	    if k=="PlayResX" then resx=v end
@@ -2208,6 +2273,13 @@ Shifts {\alpha&HFF&} by one letter for each line. Text thus appears letter by le
 It's an alternative to the script that spawns \ko, but this works with shadow too.
 Duplicate a line with {\alpha&HFF&} however many times you need and run the script on the whole selection.
 
+- Motion Blur - 
+Creates motion blur by duplicating the line and using some alpha.
+By default you keep the existing blur for each line, but you can set a value to override all lines.
+'Distance' is the distance between the \pos coordinates of the resulting 2 lines.
+If you use 3 lines, the 3rd one will be in the original position, i.e. in the middle.
+The direction is determined from the first 2 points of a vectorial clip (like with clip2frz/clip2fax).
+
 - Merge Inline Tags -
 Select lines with the same text but different tags,
 and they will be merged into one line with tags from all of them.
@@ -2286,7 +2358,7 @@ rm=math.random(1,#msg)	msge=msg[rm]
 if lastimp then dropstuff=lastuff lok=lastlog zerozz=lastzeros fld=lastfield
 else dropstuff="replacer" lok=false zerozz="01" fld="effect" end
 g_impex={"import OP","import ED","import sign","import signs","export sign","update lyrics"}
-g_stuff={"save/load","replacer","lua calc","jump to next","alpha shift","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","reverse text","reverse words","reverse transforms","fake capitals","format dates","split into letters","explode","dissolve text","randomized transforms","clone clip","what is the Matrix?","time by frames","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"}
+g_stuff={"save/load","replacer","lua calc","jump to next","alpha shift","motion blur","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","reverse text","reverse words","reverse transforms","fake capitals","format dates","split into letters","explode","dissolve text","randomized transforms","clone clip","what is the Matrix?","time by frames","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"}
 unconfig={
 	-- Sub --
 	{x=0,y=16,width=3,height=1,class="label",label="Left                                                    "},
