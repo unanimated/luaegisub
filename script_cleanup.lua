@@ -3,7 +3,7 @@
 script_name="Script Cleanup"
 script_description="Removes unwanted stuff from script"
 script_author="unanimated"
-script_version="2.8"
+script_version="2.91"
 
 dont_delete_empty_tags=false	-- option to not delete {}
 
@@ -130,6 +130,8 @@ function cleanlines(subs,sel)
 	    if res.nobreak2 then
 	    text=text:gsub("\\[Nn]","")
 	    end
+	    
+	    if res.hspace then text=text:gsub("\\h","") end
 	    
 	    if res.notag then text=text:gsub("{\\[^}]*}","") end
 	    
@@ -294,6 +296,7 @@ function killemall(subs,sel)
 	if res.fay then trgt=killtag("fay",trgt) end
 	if res.anna then trgt=killtag("an",trgt) end
 	if res.align then trgt=killtag("a",trgt) end
+	if res.wrap then trgt=killtag("q",trgt) end
 	if res["return"] then trgt=trgt:gsub("\\r.+([\\}])","%1") end
 	if res.kara then trgt=trgt:gsub("\\[Kk][fo]?[%d%.]+([\\}])","%1") end
 	if res.ital then trgt=trgt:gsub("\\i[01]?([\\}])","%1") end
@@ -304,7 +307,6 @@ function killemall(subs,sel)
       trgt=trgt:gsub("{%**}","")
       if tg==1 then tags=trgt elseif tg==2 then inline=trgt elseif tg==3 then text=trgt end
       if trgt~=text then text=tags..inline end
-      if res.hspace then text=text:gsub("\\h","") end
       line.text=text
       subs[i]=line
     end
@@ -369,7 +371,10 @@ function progress(msg)
   aegisub.progress.title(msg)
 end
 
+function logg(m) aegisub.log("\n "..m) end
+
 function cleanup(subs,sel,act)
+if act==0 then act=sel[1] end
 cleanup_cfg=
 {
 {x=0,y=0,class="checkbox",name="nots",label="Remove TS timecodes",hint="Removes timecodes like {TS 12:36}"},
@@ -390,13 +395,14 @@ cleanup_cfg=
 {x=2,y=2,class="checkbox",name="allrot",label="Remove all rotations"},
 {x=2,y=3,class="checkbox",name="allpers",label="Remove all perspective"},
 {x=2,y=4,class="checkbox",name="allsize",label="Remove size/scaling"},
-{x=2,y=5,class="checkbox",name="inline",label="Remove inline tags"},
-{x=2,y=6,class="checkbox",name="nostyle",label="Delete unused styles"},
-{x=2,y=7,class="checkbox",name="nostyle2",label="Delete unused styles (leave Default)"},
-{x=2,y=9,class="checkbox",name="nobreak2",label="Remove linebreaks  - \\N (nospace)"},  
-{x=2,y=10,class="checkbox",name="nobreak",label="Remove linebreaks  - \\N"},  
-{x=2,y=11,class="checkbox",name="alphacol",label="Try to fix alpha / colour tags"},
-{x=2,y=12,class="checkbox",name="notag",label="Remove all {\\tags} from selected lines"},
+{x=2,y=5,class="checkbox",name="nobreak",label="Remove linebreaks - \\N"},
+{x=2,y=6,class="checkbox",name="nobreak2",label="Remove linebreaks - \\N (nospace)"},
+{x=2,y=7,class="checkbox",name="hspace",label="Remove hard spaces - \\h"},
+{x=2,y=8,class="checkbox",name="nostyle",label="Delete unused styles"},
+{x=2,y=9,class="checkbox",name="nostyle2",label="Delete unused styles (leave Default)"},
+{x=2,y=10,class="checkbox",name="alphacol",label="Try to fix alpha / colour tags"},
+{x=2,y=11,class="checkbox",name="inline",label="Remove inline tags"},
+{x=2,y=12,class="checkbox",name="notag",label="Remove all {\\tags} from selected lines "},
 
 {x=3,y=0,width=1,height=13,class="label",label="| \n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|"},
 
@@ -416,7 +422,7 @@ cleanup_cfg=
 {x=4,y=9,class="checkbox",name="fname",label="fn"},
 {x=4,y=10,class="checkbox",name="ital",label="i"},
 {x=4,y=11,class="checkbox",name="bold",label="b"},
-{x=4,y=12,class="checkbox",name="hspace",label="h"},
+{x=4,y=12,class="checkbox",name="wrap",label="q"},
 
 {x=5,y=1,class="checkbox",name="color1",label="c, 1c"},
 {x=5,y=2,class="checkbox",name="color2",label="2c"},
@@ -463,7 +469,8 @@ cleanup_cfg=
 		    if res.nocomline then sel=nocom_line(subs,sel) end
 		    if res.noempty then sel=noempty(subs,sel) end
 		end
-		if res.nostyle or res.nostyle2 then act,sel=nostyle(subs,sel) end
+		table.sort(sel)
+		if res.nostyle or res.nostyle2 then sel=nostyle(subs,sel) end
 	    end
 	end
 	if act>#subs then act=#subs end
