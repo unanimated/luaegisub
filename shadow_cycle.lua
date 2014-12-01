@@ -1,14 +1,14 @@
--- Adds \shad0 to selected lines, then cycles through 1, 2, 3, 4, 5, 6, 7, 8, 9, back to 0. 
+-- Adds \shad0 to selected lines, then cycles through 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, back to 0. 
 
 script_name="Shadow cycle"
 script_description="Add shadow tags to selected lines."
 script_author="unanimated"
-script_version="1.62"
+script_version="1.7"
 
-sequence={"0","1","2","3","4","5","6","7","8","9"}	-- you can modify this
+sequence={"0","1","2","3","4","5","6","7","8","9","10","11","12"}	-- you can modify this
 
-function shad(subs, sel)
-    for z, i in ipairs(sel) do
+function shad(subs,sel)
+    for z,i in ipairs(sel) do
 	line=subs[i]
 	text=line.text
 	    tf=""
@@ -27,10 +27,16 @@ function shad(subs, sel)
 		for b=1,#sequence do
 		    if sh==sequence[b] then sh2=sequence[b+1] end
 		end
-		if sh2==nil then sh2="0" end
+		if sh2==nil then
+		  for b=1,#sequence do
+		    if tonumber(sh)<tonumber(sequence[b]) then sh2=sequence[b] break end
+		  end
+		end
+		if sh2==nil then sh2=sequence[1] end
 		text=text:gsub("^({[^}]-\\shad)[%d%.]+","%1"..sh2)
+		sh2=nil
 	    else
-		text="{\\shad0}" .. text
+		text="{\\shad0}"..text
 		text=text:gsub("{\\shad0}{\\","{\\shad0\\")
 	    end
 
@@ -42,4 +48,4 @@ function shad(subs, sel)
     return sel
 end
 
-aegisub.register_macro(script_name, script_description, shad)
+aegisub.register_macro(script_name,script_description,shad)

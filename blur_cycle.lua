@@ -1,14 +1,14 @@
--- Adds blur 0.6, then cycles through 0.8, 1, 1.2, 1.5, 2, 3, 4, 5, 0.4, 0.5, back to 0.6. Feel free to modify the sequence below.
+-- Adds blur 0.6, then cycles through 0.8, 1, 1.2, 1.5, 2, 3, 4, 5, 0.4, 0.5, back to 0.6.
 
 script_name="Blur Cycle"
 script_description="Adds blur"
 script_author="unanimated"
-script_version="1.62"
+script_version="1.7"
 
 sequence={"0.6","0.8","1","1.2","1.5","2","3","4","5","6","8","0.4","0.5"}	-- you can modify this
 
-function blur(subs,sel,act)
-    for z, i in ipairs(sel) do
+function blur(subs,sel)
+    for z,i in ipairs(sel) do
 	line=subs[i]
 	text=line.text
 	    tf=""
@@ -27,10 +27,16 @@ function blur(subs,sel,act)
 		for b=1,#sequence do
 		    if bl==sequence[b] then bl2=sequence[b+1] end
 		end
-		if bl2==nil then bl2="0.6" end
+		if bl2==nil then
+		  for b=1,#sequence do
+		    if tonumber(bl)<tonumber(sequence[b]) then bl2=sequence[b] break end
+		  end
+		end
+		if bl2==nil then bl2=sequence[1] end
 		text=text:gsub("^({[^}]-\\blur)[%d%.]+","%1"..bl2)
+		bl2=nil
 	    else
-		text="{\\blur0.6}" .. text
+		text="{\\blur0.6}"..text
 		text=text:gsub("{\\blur0%.6}{\\","{\\blur0.6\\")
 	    end
 
@@ -42,4 +48,4 @@ function blur(subs,sel,act)
     return sel
 end
 
-aegisub.register_macro(script_name, script_description, blur)
+aegisub.register_macro(script_name,script_description,blur)

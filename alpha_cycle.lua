@@ -3,12 +3,12 @@
 script_name="Alpha cycle"
 script_description="Add alpha tags to selected lines."
 script_author="unanimated"
-script_version="1.53"
+script_version="1.7"
 
 sequence={"FF","00","10","30","60","80","A0","C0","E0"}	-- you can modify this
 
-function alpha(subs, sel)
-    for z, i in ipairs(sel) do
+function alpha(subs,sel)
+    for z,i in ipairs(sel) do
 	line=subs[i]
 	text=line.text
 	    tf=""
@@ -27,10 +27,16 @@ function alpha(subs, sel)
 		for b=1,#sequence do
 		    if al==sequence[b] then al2=sequence[b+1] end
 		end
-		if al2==nil then al2="FF" end
+		if al2==nil then
+		  for b=2,#sequence do
+		    if tonumber(al,16)<tonumber(sequence[b],16) then al2=sequence[b] break end
+		  end
+		end
+		if al2==nil then al2=sequence[1] end
 		text=text:gsub("^({[^}]-\\alpha&H)%x%x","%1"..al2)
+		al2=nil
 	    else
-		text="{\\alpha&HFF&}" .. text
+		text="{\\alpha&HFF&}"..text
 		text=text:gsub("{\\alpha&HFF&}{(\\[^}]-)}","{%1\\alpha&HFF&}")
 	    end
 
@@ -42,4 +48,4 @@ function alpha(subs, sel)
     return sel
 end
 
-aegisub.register_macro(script_name, script_description, alpha)
+aegisub.register_macro(script_name,script_description,alpha)

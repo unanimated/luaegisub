@@ -1,14 +1,14 @@
--- Adds \bord0 to selected lines, then cycles through 1, 2, 3, 4, 5, 6, 7, 8, 9, back to 0. 
+-- Adds \bord0 to selected lines, then cycles through 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, back to 0. 
 
 script_name="Border cycle"
 script_description="Add border tags to selected lines."
 script_author="unanimated"
-script_version="1.62"
+script_version="1.7"
 
-sequence={"0","1","2","3","4","5","6","7","8","9"}	-- you can modify this
+sequence={"0","1","2","3","4","5","6","7","8","9","10","11","12"}	-- you can modify this
 
-function bord(subs, sel)
-    for z, i in ipairs(sel) do
+function bord(subs,sel)
+    for z,i in ipairs(sel) do
 	line=subs[i]
 	text=line.text
 	    tf=""
@@ -27,10 +27,16 @@ function bord(subs, sel)
 		for b=1,#sequence do
 		    if br==sequence[b] then br2=sequence[b+1] end
 		end
-		if br2==nil then br2="0" end
+		if br2==nil then
+		  for b=1,#sequence do
+		    if tonumber(br)<tonumber(sequence[b]) then br2=sequence[b] break end
+		  end
+		end
+		if br2==nil then br2=sequence[1] end
 		text=text:gsub("^({[^}]-\\bord)[%d%.]+","%1"..br2)
+		br2=nil
 	    else
-		text="{\\bord0}" .. text
+		text="{\\bord0}"..text
 		text=text:gsub("{\\bord0}{\\","{\\bord0\\")
 	    end
 
@@ -42,4 +48,4 @@ function bord(subs, sel)
     return sel
 end
 
-aegisub.register_macro(script_name, script_description, bord)
+aegisub.register_macro(script_name,script_description,bord)
