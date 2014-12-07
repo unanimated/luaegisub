@@ -1,7 +1,7 @@
 ﻿script_name="Colorize"
 script_description="Does things with colours"
 script_author="unanimated"
-script_version="4.2"
+script_version="4.3"
 
 --[[
 
@@ -89,6 +89,7 @@ function colors(subs,sel)
 
 	    tags=text:match("^{\\[^}]-}") or ""
 	    orig=text:gsub("^({\\[^}]*})","")
+	    comm="" for c in text:gmatch("{[^\\}]*}") do comm=comm..c end
 	    text=text:gsub("{[^}]*}","") :gsub("%s*$","")
 
 	    if res.clrs=="2" then
@@ -146,6 +147,7 @@ function colors(subs,sel)
 	text=tags..text
 	if res.join==false then text=text:gsub("}{","") end
 	if orig:match("{%*?\\") then text=textmod(orig) end
+	text=text..comm
 	line.text=text
         subs[i]=line
     end
@@ -555,6 +557,7 @@ function gradient(subs,sel)
 	text=line.text
 	text=text:gsub("\\c&","\\1c&") :gsub("\\N","{\\N}") :gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 	after=text:gsub("^{\\[^}]-}","")
+	nc=text:gsub("{[^\\}]-}","")
 	if text:match("{\\[^}]-}$") then text=text.."wtfwhywouldyoudothis" end
 	
 	-- colours from style
@@ -570,9 +573,16 @@ function gradient(subs,sel)
 	for g=1,#applycol do
 	  ac=applycol[g]
 	  sc=stylecol[ac]
-	  -- backup original text + save tags
-	  orig=text
+	  -- save tags
 	  tags=text:match("^{\\[^}]-}") or ""
+	  -- linebreak adjustment
+	  if res.gradn then
+	    startc=tags:match("\\"..ac.."c&H%x+&") or "\\"..ac.."c"..sc
+	    endc=nc:match("(\\"..ac.."c&H%x+&)[^}]-}%w+$") or ""
+	    text=text:gsub("([%w%p])%s*{\\N","{"..endc.."}%1{\\N}{"..startc)
+	  end
+	  -- back up original
+	  orig=text
 	  -- leave only releavant colour tags, nuke all other ones, add colour from style if missing at the start
 	  ctext=text:gsub("\\N","") :gsub("\\[^1234][^c][^\\}]+","") :gsub("\\[^"..ac.."]c[^\\}]+","") :gsub("{%*?}","")
 	  if not ctext:match("^{\\") then ctext="{\\kolor}"..ctext end
@@ -929,76 +939,77 @@ ADP=aegisub.decode_path
 ak=aegisub.cancel
 	GUI=
 	{
-	{x=0,y=0,width=1,height=1,class="label",label="Colours"},
-	{x=1,y=0,width=2,height=1,class="dropdown",name="clrs",items={"2","3","4","5"},value="2"},
+	{x=0,y=0,class="label",label="Colours"},
+	{x=1,y=0,width=2,class="dropdown",name="clrs",items={"2","3","4","5"},value="2"},
 	
-	{x=0,y=1,width=1,height=1,class="label",label="Shift base:"},
-	{x=1,y=1,width=2,height=1,class="dropdown",name="shit",items={"# of colours","line"},value="# of colours"},
+	{x=0,y=1,class="label",label="Shift base:"},
+	{x=1,y=1,width=2,class="dropdown",name="shit",items={"# of colours","line"},value="# of colours"},
 	
-	{x=0,y=2,width=1,height=1,class="label",label="Apply to:  "},
-	{x=1,y=2,width=2,height=1,class="dropdown",name="kol",items={"primary","border","shadow","secondary"},value="primary"},
+	{x=0,y=2,class="label",label="Apply to:  "},
+	{x=1,y=2,width=2,class="dropdown",name="kol",items={"primary","border","shadow","secondary"},value="primary"},
 	    
-	{x=4,y=0,width=1,height=1,class="label",label="  1 "},
-	{x=4,y=1,width=1,height=1,class="label",label="  2 "},
-	{x=4,y=2,width=1,height=1,class="label",label="  3 "},
-	{x=4,y=3,width=1,height=1,class="label",label="  4 "},
-	{x=4,y=4,width=1,height=1,class="label",label="  5 "},
+	{x=4,y=0,class="label",label="  1 "},
+	{x=4,y=1,class="label",label="  2 "},
+	{x=4,y=2,class="label",label="  3 "},
+	{x=4,y=3,class="label",label="  4 "},
+	{x=4,y=4,class="label",label="  5 "},
 	
-	{x=5,y=0,width=1,height=1,class="color",name="c1"},
-	{x=5,y=1,width=1,height=1,class="color",name="c2"},
-	{x=5,y=2,width=1,height=1,class="color",name="c3"},
-	{x=5,y=3,width=1,height=1,class="color",name="c4"},
-	{x=5,y=4,width=1,height=1,class="color",name="c5"},
+	{x=5,y=0,class="color",name="c1"},
+	{x=5,y=1,class="color",name="c2"},
+	{x=5,y=2,class="color",name="c3"},
+	{x=5,y=3,class="color",name="c4"},
+	{x=5,y=4,class="color",name="c5"},
 	
-	{x=0,y=3,width=3,height=1,class="checkbox",name="word",label="Colorize by word",value=false },
-	{x=0,y=4,width=3,height=1,class="checkbox",name="join",label="Don't join with other tags",value=false },
-	{x=0,y=5,width=4,height=1,class="checkbox",name="cont",label="Continuous shift line by line",value=false },
-	{x=0,y=6,width=3,height=1,class="checkbox",name="tune",label="Tune colours",value=false },
-	{x=0,y=7,width=5,height=1,class="checkbox",name="gcl",label="Set colours across whole line:",value=false },
-	{x=5,y=7,width=1,height=1,class="dropdown",name="gclrs",items={"2","3","4","5","6","7","8","9","10"},value="3"},
+	{x=0,y=3,width=3,class="checkbox",name="word",label="Colorize by word"},
+	{x=0,y=4,width=3,class="checkbox",name="join",label="Don't join with other tags"},
+	{x=0,y=5,width=4,class="checkbox",name="cont",label="Continuous shift line by line"},
+	{x=0,y=6,width=3,class="checkbox",name="tune",label="Tune colours"},
+	{x=0,y=7,width=5,class="checkbox",name="gcl",label="Set colours across whole line:"},
+	{x=5,y=7,class="dropdown",name="gclrs",items={"2","3","4","5","6","7","8","9","10"},value="3"},
 		
-	{x=6,y=0,width=1,height=1,class="label",label=" "},
+	{x=6,y=0,class="label",label=" "},
 		
-	{x=7,y=2,width=1,height=1,class="label",label="Red: "},
-	{x=8,y=2,width=3,height=1,class="intedit",name="R",value=0,min=-255,max=255},
-	{x=7,y=3,width=1,height=1,class="label",label="Green: "},
-	{x=8,y=3,width=3,height=1,class="intedit",name="G",value=0,min=-255,max=255},
-	{x=7,y=4,width=1,height=1,class="label",label="Blue: "},
-	{x=8,y=4,width=3,height=1,class="intedit",name="B",value=0,min=-255,max=255},
+	{x=7,y=2,class="label",label="Red: "},
+	{x=8,y=2,width=3,class="intedit",name="R",value=0,min=-255,max=255},
+	{x=7,y=3,class="label",label="Green: "},
+	{x=8,y=3,width=3,class="intedit",name="G",value=0,min=-255,max=255},
+	{x=7,y=4,class="label",label="Blue: "},
+	{x=8,y=4,width=3,class="intedit",name="B",value=0,min=-255,max=255},
 	
-	{x=7,y=5,width=1,height=1,class="label",label="Hue:"},
-	{x=8,y=5,width=3,height=1,class="intedit",name="huehue",value=0,min=-255,max=255},
-	{x=7,y=6,width=1,height=1,class="label",label="Saturation:"},
-	{x=8,y=6,width=3,height=1,class="intedit",name="satur",value=0,min=-255,max=255},
-	{x=7,y=7,width=1,height=1,class="label",label="Lightness:"},
-	{x=8,y=7,width=3,height=1,class="intedit",name="bright",value=0,min=-255,max=255},
+	{x=7,y=5,class="label",label="Hue:"},
+	{x=8,y=5,width=3,class="intedit",name="huehue",value=0,min=-255,max=255},
+	{x=7,y=6,class="label",label="Saturation:"},
+	{x=8,y=6,width=3,class="intedit",name="satur",value=0,min=-255,max=255},
+	{x=7,y=7,class="label",label="Lightness:"},
+	{x=8,y=7,width=3,class="intedit",name="bright",value=0,min=-255,max=255},
 	
-	{x=7,y=8,width=1,height=1,class="checkbox",name="k1",label="\\c       ",value=true  },
-	{x=8,y=8,width=1,height=1,class="checkbox",name="k3",label="\\3c      ",value=false },
-	{x=9,y=8,width=1,height=1,class="checkbox",name="k4",label="\\4c      ",value=false },
-	{x=10,y=8,width=1,height=1,class="checkbox",name="k2",label="\\2c",value=false },
-	{x=7,y=9,width=2,height=1,class="checkbox",name="mktag",label="Apply to missing",hint="Apply even to colours without tags in line",value=false },
-	{x=9,y=9,width=2,height=1,class="checkbox",name="randoom",label="Randomize",hint="",value=false },
+	{x=7,y=8,class="checkbox",name="k1",label="\\c       ",value=true},
+	{x=8,y=8,class="checkbox",name="k3",label="\\3c      "},
+	{x=9,y=8,class="checkbox",name="k4",label="\\4c      "},
+	{x=10,y=8,class="checkbox",name="k2",label="\\2c"},
+	{x=7,y=9,width=2,class="checkbox",name="mktag",label="Apply to missing",hint="Apply even to colours without tags in line"},
+	{x=9,y=9,width=2,class="checkbox",name="randoom",label="Randomize",hint=""},
 	
-	{x=7,y=0,width=1,height=1,class="label",label="Match col.:"},
-	{x=8,y=0,width=1,height=1,class="checkbox",name="match13",label="c->3c  ",value=false,hint="copy primary to outline"},
-	{x=9,y=0,width=1,height=1,class="checkbox",name="match31",label="3c->c",value=false,hint="copy outline to primary"},
-	{x=7,y=1,width=1,height=1,class="checkbox",name="match14",label="c->4c",value=false,hint="copy primary to shadow"},
-	{x=8,y=1,width=1,height=1,class="checkbox",name="match34",label="3c->4c",value=false,hint="copy outline to shadow"},
-	{x=9,y=1,width=1,height=1,class="checkbox",name="match131",label="c<->3c",value=false,hint="switch primary and outline"},
-	{x=10,y=1,width=1,height=1,class="checkbox",name="invert",label="Invert",value=false,hint="invert colours"},
+	{x=7,y=0,class="label",label="Match col.:"},
+	{x=8,y=0,class="checkbox",name="match13",label="c->3c  ",hint="copy primary to outline"},
+	{x=9,y=0,class="checkbox",name="match31",label="3c->c",hint="copy outline to primary"},
+	{x=7,y=1,class="checkbox",name="match14",label="c->4c",hint="copy primary to shadow"},
+	{x=8,y=1,class="checkbox",name="match34",label="3c->4c",hint="copy outline to shadow"},
+	{x=9,y=1,class="checkbox",name="match131",label="c<->3c",hint="switch primary and outline"},
+	{x=10,y=1,class="checkbox",name="invert",label="Invert",hint="invert colours"},
 	
-	{x=10,y=0,width=1,height=1,class="label",label="[ver. "..script_version.."]"},
+	{x=10,y=0,class="label",label="[ver. "..script_version.."]"},
 	
-	{x=0,y=8,width=2,height=1,class="checkbox",name="grad",label="Gradient  ",value=false},
-	{x=2,y=8,width=3,height=1,class="checkbox",name="hueshort",label="Shortest hue",value=true},
-	{x=5,y=8,width=1,height=1,class="dropdown",name="grtype",items={"RGB","HSL"},value="HSL"},
-	{x=0,y=9,width=3,height=1,class="checkbox",name="double",label="Double HSL gradient",value=false},
-	{x=3,y=9,width=3,height=1,class="checkbox",name="ast",label="Use asterisks",value=false},
+	{x=0,y=8,width=2,class="checkbox",name="grad",label="Gradient  "},
+	{x=2,y=8,width=3,class="checkbox",name="hueshort",label="Shortest hue",value=true},
+	{x=5,y=8,class="dropdown",name="grtype",items={"RGB","HSL"},value="HSL"},
+	{x=0,y=9,width=3,class="checkbox",name="double",label="Double HSL gradient"},
+	{x=3,y=9,width=3,class="checkbox",name="ast",label="Use asterisks"},
 	
-	{x=0,y=10,width=3,height=1,class="checkbox",name="save",label="Save configuration",value=false,hint="Saves current configuration\n(for most things)"},
-	{x=3,y=10,width=3,height=1,class="checkbox",name="rem",label="Remember last",value=false,hint="remember last settings"},
-	{x=7,y=10,width=3,height=1,class="checkbox",name="rept",label="Repeat with last settings",value=false },
+	{x=0,y=10,width=3,class="checkbox",name="gradn",label="Restart after each \\N",hint="Restart gradient after each linebreak"},
+	{x=3,y=10,width=3,class="checkbox",name="rem",label="Remember last",hint="Remember last settings"},
+	{x=7,y=10,width=2,class="checkbox",name="rept",label="Repeat last",hint="Repeat with last settings"},
+	{x=9,y=10,width=2,class="checkbox",name="save",label="Save config",hint="Saves current configuration\n(for most things)"},
 	
 	}
 	loadconfig()
