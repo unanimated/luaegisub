@@ -1,9 +1,9 @@
 ﻿script_name="Multi-line Editor"
 script_description="Multi-line Editor"
 script_author="unanimated"
-script_version="1.5"
+script_version="1.6"
 
-require "clipboard"
+clipboard=require("aegisub.clipboard")
 re=require'aegisub.re'
 
 function editlines(subs,sel)
@@ -81,9 +81,13 @@ aegisub.progress.title("Loading Editor...")
 	R9={x=55,y=b,width=2,class="checkbox",name="lua",label="lua",value=luar}
 	
 	GUI1={R1,R2,R3,R4,R5,R6,R7,R8,R9,
-	{x=0,y=0,width=15,height=1,class="label",label=" Multi-line Editor v"..script_version},
+	{x=0,y=0,width=10,height=1,class="label",label=" Multi-line Editor v"..script_version},
 	{x=52,y=0,width=5,height=1,class="label",label="Duration | CPS | chrctrs "},
-	{x=30,y=0,width=22,height=1,class="edit",name="info",value="Lines loaded: "..#sel..", Words: "..words..", Characters: "..editext:len()},
+	{x=10,y=0,width=22,height=1,class="edit",value="Lines loaded: "..#sel..", Words: "..words..", Characters: "..editext:len()},
+	{x=32,y=0,width=3,height=1,class="checkbox",name="an",label="\\an8 "},
+	{x=35,y=0,width=3,height=1,class="checkbox",name="i",label="\\i1 "},
+	{x=38,y=0,width=3,height=1,class="checkbox",name="b",label="\\b1 "},
+	{x=41,y=0,width=5,height=1,class="checkbox",name="q",label="\\q2 "},
 	{x=0,y=1,width=52,height=BH,class="textbox",name="dat",value=editext},
 	{x=52,y=1,width=5,height=BH,class="textbox",name="durr",value=dura,hint="This is informative only. \nCPS=Characters Per Second"},
 	}
@@ -99,14 +103,27 @@ aegisub.progress.title("Loading Editor...")
 	{x=20,y=1,width=12,height=BH,class="textbox",name="deaf",value=edeff},
 	{x=32,y=1,width=28,height=BH,class="textbox",name="dat",value=editext},
 	}
-	buttons={"Save","Replace","Remove tags","Rm. comments","Remove \"- \"","Remove \\N","Add italics","Add \\an8","Switch","Taller GUI","Cancel"}
+	buttons={"Save","Replace","Remove tags","Rm. comments","Remove \"- \"","Remove \\N","Add tags","Capitalize","Switch","Taller GUI","Cancel"}
 	GUI=GUI1
 	repeat
 	if P~="Save" and P ~="Cancel" and P~=nil then
-	    if P=="Add italics" then
-	    res.dat=res.dat:gsub("$","\n") :gsub("(.-)\n","{\\i1}%1\n") :gsub("{\\i1}{\\","{\\i1\\") :gsub("\n$","") end
-	    if P=="Add \\an8" then
-	    res.dat=res.dat:gsub("$","\n") :gsub("(.-)\n","{\\an8}%1\n") :gsub("{\\an8}{\\","{\\an8\\") :gsub("\n$","") end
+	    if P=="Add tags" then
+	      tg=""
+	      if res.q then tg=tg.."{\\q2}" end
+	      if res.an then tg=tg.."{\\an8}" end
+	      if res.i then tg=tg.."{\\i1}" end
+	      if res.b then tg=tg.."{\\b1}" end
+	      tg=tg:gsub("}{","")
+	      res.dat=res.dat:gsub("$","\n") :gsub("(.-)\n",tg.."%1\n") :gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") :gsub("\n$","")
+	    end
+	    if P=="Capitalize" then
+		captest=res.dat:gsub("{[^}]-}","")
+		res.dat=res.dat:gsub("$","\n")
+		if not captest:match("%l") then res.dat=res.dat:gsub("(.-)\n",function(a) a=lowercase(a) return capitalize(a).."\n" end)
+		elseif not captest:match("%u") then res.dat=res.dat:gsub("(.-)\n",function(a) return uppercase(a).."\n" end)
+		else res.dat=res.dat:gsub("(.-)\n",function(a) return lowercase(a).."\n" end)
+		end
+	    end
 	    if P=="Remove \\N" then res.dat=res.dat:gsub("%s*\\N%s*"," ") end
 	    if P=="Remove tags" then res.dat=res.dat:gsub("{%*?\\[^}]-}","") end
 	    if P=="Rm. comments" then res.dat=res.dat:gsub("{[^\\}]-}","") :gsub("{[^\\}]-\\N[^\\}]-}","") end
@@ -166,6 +183,69 @@ function replace(d)
     c=c+r
     return d
 end
+
+function lowercase(t)
+	t=t:gsub("\\n","small_break")
+	t=t:gsub("\\N","large_break")
+	t=t:gsub("\\h","hard_space")
+	t=t:gsub("^([^{]*)", function (l) return l:lower() end)
+	t=t:gsub("}([^{]*)", function (l) return "}"..l:lower() end)
+	t=t:gsub("small_break","\\n")
+	t=t:gsub("large_break","\\N")
+	t=t:gsub("hard_space","\\h")
+	return t
+end
+
+function uppercase(t)
+	t=t:gsub("\\n","SMALL_BREAK")
+	t=t:gsub("\\N","LARGE_BREAK")
+	t=t:gsub("\\h","HARD_SPACE")
+	t=t:gsub("^([^{]*)", function (u) return u:upper() end)
+	t=t:gsub("}([^{]*)", function (u) return "}"..u:upper() end)
+	t=t:gsub("SMALL_BREAK","\\n")
+	t=t:gsub("LARGE_BREAK","\\N")
+	t=t:gsub("HARD_SPACE","\\h")
+	return t
+end
+
+
+function capitalize(t)
+word={"The","A","An","At","As","On","Of","Or","For","Nor","With","Without","Within","To","Into","Onto","Unto","And","But","In","Inside","By","Till","From","Over","Above","About","Around","After","Against","Along","Below","Beneath","Beside","Between","Beyond","Under","Until","Via"}
+vord={"the","a","an","at","as","on","of","or","for","nor","with","without","within","to","into","onto","unto","and","but","in","inside","by","till","from","over","above","about","around","after","against","along","below","beneath","beside","between","beyond","under","until","via"}
+	t=t:gsub("\\n","*small_break*")
+	t=t:gsub("\\N","*large_break*")
+	t=t:gsub("\\h","*hard_space*")
+	t=t:gsub("^(%l)(%l-)", function (c,d) return c:upper()..d end)				-- start of line
+	t=t:gsub("([%s\"}%(%-=])(%l)(%l-)", function (e,f,g) return e..f:upper()..g end)		-- after: space " } ( - =
+	t=t:gsub("(break%*)(%l)(%l-)", function (h,j,k) return h..j:upper()..k end)			-- after \N
+	t=t:gsub("%s(')(%l)(%l-)", function (l,m,n) return " "..l..m:upper()..n end)		-- after space + '
+	t=t:gsub("^(')(%l)(%l-)", function (l,m,n) return l..m:upper()..n end)			-- start of line + '
+	t=t:gsub("(}')(%l)(%l-)", function (l,m,n) return l..m:upper()..n end)			-- end of tag/comment + '
+
+	for r=1,#word do
+	w=word[r] v=vord[r]
+	t=t:gsub("([^%.%:])%s"..w.."%s","%1 "..v.." ")
+	t=t:gsub("([^%.%:])%s({[^}]-})"..w.."%s","%1 %2"..v.." ")
+	end
+
+	t=t:gsub("$","#")
+	t=t:gsub("(%s?)([IVXLCDM])([ivxlcdm]+)([%s%p#])",function (s,r,m,e) return s..r..m:upper()..e end)	-- Roman numbers
+	t=t:gsub("LID","Lid")
+	t=t:gsub("DIM","Dim")
+	t=t:gsub("DID","Did")
+	t=t:gsub("Ok([%s%p#])","OK%1")
+	t=t:gsub("%-San([%s%p#])","-san%1")
+	t=t:gsub("%-Kun([%s%p#])","-kun%1")
+	t=t:gsub("%-Chan([%s%p#])","-chan%1")
+	t=t:gsub("%-Sama([%s%p#])","-sama%1")
+	t=t:gsub("%-Dono([%s%p#])","-dono%1")
+	t=t:gsub("#$","")
+	t=t:gsub("%*small_break%*","\\n")
+	t=t:gsub("%*large_break%*","\\N")
+	t=t:gsub("%*hard_space%*","\\h")
+	return t
+end
+
 
 function savelines(subs,sel)
 aegisub.progress.title("Saving...")
