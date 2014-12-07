@@ -3,36 +3,18 @@ script_description="A multi-headed typesetting tool"
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/hydra.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/hydra.lua"
-script_version="3.92"
+script_version="4.0"
 
--- SETTINGS - feel free to change these
-
-startup_mode=1		-- 1: only basic tags (fast), 2: medium (no transforms), 3: full // you can load the rest from the GUI in modes 1-2
-default_blur=0.5
-default_border=0
-default_shadow=0
-default_fontsize=50
-default_spacing=1
-default_fax=0.05
-default_fay=0.05
-
--- ^ this block (with '=' replaced with ':') can be saved as 'hydra.conf' in your Application Data with values that will override these
--- it must contain all 8 lines. you can use that if you don't want to overwrite these every time you update
--- you can also get the default here: http://unanimated.xtreemhost.com/ts/hydra.conf
-
--- this is the order "sort tags in set order" will use:
 order="\\r\\fad\\fade\\an\\q\\blur\\be\\bord\\shad\\fn\\fs\\fsp\\fscx\\fscy\\frx\\fry\\frz\\c\\2c\\3c\\4c\\alpha\\1a\\2a\\3a\\4a\\xbord\\ybord\\xshad\\yshad\\pos\\move\\org\\clip\\iclip\\b\\i\\u\\s\\p"
 
--- END of SETTINGS
-    
 re=require'aegisub.re'
 
-function hh9(subs, sel)
+function hh9(subs,sel)
 	-- get colours from input
 	getcolours()
 	
-    for z, i in ipairs(sel) do
-    if aegisub.progress.is_cancelled() then aegisub.cancel() end
+    for z,i in ipairs(sel) do
+    if aegisub.progress.is_cancelled() then ak() end
     progress(string.format("Hydralizing line: %d/%d",z,#sel))
     prog=math.floor((z+0.5)/#sel*100)
     aegisub.progress.set(prog)
@@ -49,7 +31,7 @@ function hh9(subs, sel)
 	if not text:match("^{\\") then text="{\\hydra}"..text end		-- add {\} if line has no tags
 	
 	-- tag position
-	place=res.linetext	if place==nil then place="" end
+	place=res.linetext or ""
 	if place:match("*") then pl1,pl2,pl3=place:match("(.*)(%*)(.*)") pla=1 else pla=0 end
 	if res.tagpres~="--- presets ---" and res.tagpres~=nil then pla=1 end
 
@@ -99,13 +81,20 @@ function hh9(subs, sel)
 	end
 	text=text:gsub("\\alltagsgohere",transform)
 	text=text:gsub("\\t%(0,0,1,","\\t(")
-	if tmode==4 then text=text:gsub("^({\\[^}]-})",function(tg) return cleantr(tg) end) end
-	for tranz in text:gmatch("\\t(%([^%(%)]+%))") do
-		tranz2=duplikill(tranz)
-		tranz=esc(tranz)
-		text=text:gsub(tranz,tranz2)
+	if tmode==4 then
+	    text=text:gsub("({\\[^}]-})",function(tg)
+	      for tag,val in transform:gmatch("(\\%a+)([%d%.%-]+)") do
+		if tg:match(tag) then oldval=tg:match(tag.."([%d%.%-]+)")
+		    newval=oldval+val
+		    eval=esc(val)
+		    transform2=transform:gsub(tag..eval,tag..newval)
+		    tg=tg:gsub(transform,transform2)
+		    logg(tg)
+		end
+	      end
+	    return cleantr(tg) end)
 	end
-	for tranz in text:gmatch("\\t(%([^%(%)]-%([^%)]-%)[^%)]-%))") do
+	for tranz in text:gmatch("\\t(%b())") do
 		tranz2=duplikill(tranz)
 		tranz=esc(tranz)
 		text=text:gsub(tranz,tranz2)
@@ -124,7 +113,7 @@ function hh9(subs, sel)
 	
 	if pla==1 then 
 	    	bkp=text
-	    if res.tagpres=="before last char." then	
+	    if res.tagpres=="before last char." then
 	    -- BEFORE LAST CHARACTER
 		text=text:gsub("({\\[^}]-)}(.)$","%1"..tags.."}%2")
 		if bkp==text then text=text:gsub("([^}])$","{"..tags.."}%1") end
@@ -146,9 +135,19 @@ function hh9(subs, sel)
 		pl1=esc(pl1)	pl3=esc(pl3)
 		text=text:gsub(pl1.."({\\[^}]-)}"..pl3,pl1.."%1"..tags.."}"..pl3)
 		if bkp==text then text=text:gsub(pl1..pl3,pl1.."{"..tags.."}"..pl3) end
+	    elseif res.tagpres=="section" then
+		tags2=""
+		for tg in tags:gmatch("\\%d?%a+") do
+		  txt1=text:match("^.-"..esc(place)) or ""
+		  local tg2=txt1:match("^.*("..tg.."[^\\}]+).-$") or tg
+		  tags2=tags2..tg2
+		end
+		text=text:gsub("^(.-)("..esc(place).."%s*)(.*)$","%1{"..tags.."}%2{"..tags2.."}%3")
+		:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
+		:gsub("{(\\[^}]-)}\\N{(\\[^}]-)}","\\N{%1%2}")
 	    else
 	    -- AT ASTERISK POINT
-		initags=text:match("^{\\[^}]-}") if initags==nil then initags="" end
+		initags=text:match("^{\\[^}]-}") or ""
 		orig=text
 		replace=place:gsub("%*","{"..tags.."}")
 		v1=orig:gsub("{[^}]-}","")
@@ -214,7 +213,7 @@ function hh9(subs, sel)
 	end
 	-- raise layer
 	if res["layer"] then
-	if line.layer+res["layers"]<0 then aegisub.dialog.display({{class="label",
+	if line.layer+res["layers"]<0 then ADD({{class="label",
 		    label="Layers can't be negative.",x=0,y=0,width=1,height=2}},{"OK"}) else
 	line.layer=line.layer+res["layers"] end
 	end
@@ -278,7 +277,7 @@ function gettags(tags)
 	return tags
 end
 
-function special(subs, sel)
+function special(subs,sel)
   if res.spec=="back and forth transform" then
     styleget(subs)
     getcolours()
@@ -325,16 +324,27 @@ function special(subs, sel)
 	
 	-- CLEAN UP TAGS
 	if res.spec=="clean up tags" then
-  	    text=text:gsub("\\\\","\\")
-	    text=text:gsub("\\}","}")
-	    text=text:gsub("(%.%d%d)%d+","%1")
-	    text=text:gsub("(%.%d)0","%1")
-	    text=text:gsub("%.0([^%d])","%1")
-		repeat
-		text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-		until text:match("{(\\[^}]-)}{(\\[^}]-)}")==nil
-	    text=text:gsub("^{(\\[^}]-)\\frx0\\fry0([\\}])","{%1%2")
-	    text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
+	    text=text:gsub("{\\\\k0}","") :gsub("{(\\[^}]-)}{(\\r[^}]-)}","{%2}") :gsub("^{\\r([\\}])","{%1")
+	    repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
+	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
+	    text=text:gsub("({\\[^}]-){(\\[^}]-})","%1%2")
+	    :gsub("^{(\\[^}]-)\\frx0\\fry0([\\}])","{%1%2")
+	    repeat text=text:gsub("(\\fad%([%d,]+%))(.-)\\fad%([%d,]+%)","%1%2")
+	    until not text:match("\\fad%([%d,]+%).-\\fad%([%d,]+%)")
+	    text=text:gsub("\\fad%(0,0%)","") :gsub("{\\[^}]-}$","")
+	    for tgs in text:gmatch("{\\[^}]-}") do
+  	      tgs2=tgs
+  	      tgs2=tgs2
+	      :gsub("\\\\","\\")
+	      :gsub("\\}","}")
+	      :gsub("(\\%a+)([%d%-]+%.%d+)",function(a,b) if not a:match("\\fn") then b=rnd2dec(b) end return a..b end)
+	      :gsub("(\\%a+)%(([%d%-]+%.%d+),([%d%-]+%.%d+)%)",function(a,b,c) b=rnd2dec(b) c=rnd2dec(c) return a.."("..b..","..c..")" end)
+	      :gsub("(\\%a+)%(([%d%-]+%.%d+),([%d%-]+%.%d+),([%d%-]+%.%d+),([%d%-]+%.%d+)",function(a,b,c,d,e) 
+		b=rnd2dec(b) c=rnd2dec(c) d=rnd2dec(d) e=rnd2dec(e) return a.."("..b..","..c..","..d..","..e end)
+	      tgs2=duplikill(tgs2)
+	      tgs=esc(tgs)
+	      text=text:gsub(tgs,tgs2)
+	    end
 	end
 	
 	-- SORT TAGS
@@ -381,7 +391,7 @@ function special(subs, sel)
 	
 	-- CLIP TO DRAWING
 	if res.spec=="convert clip to drawing" then
-	  if not text:match("\\clip") then aegisub.cancel() end
+	  if not text:match("\\clip") then ak() end
 	  text=text:gsub("^({\\[^}]-}).*","%1")
 	  text=text:gsub("^({[^}]*)\\clip%(m(.-)%)([^}]*)}","%1%3\\p1}m%2")
 	  if text:match("\\pos") then
@@ -400,7 +410,7 @@ function special(subs, sel)
 	
 	-- DRAWING TO CLIP
 	if res.spec=="convert drawing to clip" then
-	  if not text:match("\\p1") then aegisub.cancel() end
+	  if not text:match("\\p1") then ak() end
 	  --text=text:gsub("^({\\[^}]-}).*","%1")
 	  text=text:gsub("^({[^}]*)\\p1([^}]-})(m [^{]*)","%1\\clip(%3)%2")
 	  scx=text:match("\\fscx([%d%.]+)")	if scx==nil then scx=100 end
@@ -568,6 +578,11 @@ end
 --	reanimatools	--
 function round(num) num=math.floor(num+0.5) return num end
 
+function rnd2dec(num)
+num=math.floor((num*100)+0.5)/100
+return num
+end
+
 function trem(tags)
 	trnsfrm=""
 	for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
@@ -674,7 +689,7 @@ return str
 end
 
 function progress(msg)
-  if aegisub.progress.is_cancelled() then aegisub.cancel() end
+  if aegisub.progress.is_cancelled() then ak() end
   aegisub.progress.title(msg)
 end
 
@@ -701,26 +716,65 @@ function stylechk(stylename)
     return styleref
 end
 
-function checkonfig()
-hconfig=aegisub.decode_path("?user").."\\hydra.conf"
-file=io.open(hconfig)
+function tf(val)
+    if val==true then ret="true" else ret="false" end
+    return ret
+end
+
+function detf(txt)
+    if txt=="true" then ret=true
+    elseif txt=="false" then ret=false
+    else ret=txt end
+    return ret
+end
+
+--	Config Stuff	--
+function saveconfig()
+hydraconf="Hydra 4+ Config\n\n"
+  for key,val in ipairs(hh_gui) do
+    if val.class:match"edit" or val.class=="dropdown" or val.class=="coloralpha" then
+      if val.name~="linetext" and val.name~="herp" and not val.name:match"app" then
+	hydraconf=hydraconf..val.name..":"..res[val.name].."\n"
+      end
+    end
+    if val.class=="checkbox" and val.name~="save" then
+      hydraconf=hydraconf..val.name..":"..tf(res[val.name]).."\n"
+    end
+  end
+file=io.open(hydrakonfig,"w")
+file:write(hydraconf)
+file:close()
+ADD({{class="label",label="Config saved to:\n"..hydrakonfig}},{"OK"},{close='OK'})
+end
+
+function loadconfig()
+file=io.open(hydrakonfig)
     if file~=nil then
 	konf=file:read("*all")
-	startup_mode=tonumber(konf:match("startup_mode:(%d)"))
-	default_blur=tonumber(konf:match("default_blur:([%d%.]+)"))
-	default_border=tonumber(konf:match("default_border:([%d%.]+)"))
-	default_shadow=tonumber(konf:match("default_shadow:([%d%.]+)"))
-	default_fontsize=tonumber(konf:match("default_fontsize:([%d%.]+)"))
-	default_spacing=tonumber(konf:match("default_spacing:([%d%-%.]+)"))
-	default_fax=tonumber(konf:match("default_fax:([%d%-%.]+)"))
-	default_fay=tonumber(konf:match("default_fay:([%d%-%.]+)"))
+	sm=tonumber(konf:match("smode:(.-)\n"))
 	io.close(file)
+	  for key,val in ipairs(hh1) do
+	    if val.class:match"edit" or val.class=="checkbox" or val.class=="coloralpha" then
+	      if konf:match(val.name) then val.value=detf(konf:match(val.name..":(.-)\n")) end
+	    end
+	  end
+	  for key,val in ipairs(hh2) do
+	    if val.class:match"edit" or val.class=="checkbox" or val.class=="dropdown" then
+	      if konf:match(val.name) then val.value=detf(konf:match(val.name..":(.-)\n")) end
+	    end
+	  end
+	  for key,val in ipairs(hh3) do
+	    if val.class:match"edit" or val.class=="checkbox" or val.class=="dropdown" then
+	      if konf:match(val.name) then val.value=detf(konf:match(val.name..":(.-)\n")) end
+	    end
+	  end
+    else sm=1
     end
 end
 
 hydraulics={"A multi-headed typesetting tool","Nine heads typeset better than one.","Eliminating the typing part of typesetting","Mass-production of typesetting tags","Hydraulic typesetting machinery","Making sure your subtitles aren't dehydrated","Making typesetting so easy that even you can do it!","A monstrous typesetting tool","A deadly typesetting beast","Building monstrous scripts with ease","For irrational typesetting wizardry","Building a Wall of Tags"}
 
-function konfig(subs, sel)
+function konfig(subs,sel)
 app_lay={"All Layers"}
 app_sty={"All Styles"}
 app_act={"All Actors"}
@@ -743,159 +797,160 @@ for x,i in ipairs(sel) do
     for a=1,#app_eff do if eph==app_eff[a] then asdf=1 end end
     if asdf==0 then table.insert(app_eff,eph) end
 end
-sm=startup_mode
-heads=sm*2+1
-progress(string.format("Loading Hydra Heads 1-"..heads))
 hr=math.random(1,#hydraulics)
 oneline=subs[sel[1]]
 linetext=oneline.text:gsub("{[^}]-}","")
 hh1=
 {
-    {x=0,y=0,width=5,height=1,class="label",label=hydraulics[hr], },
-    {x=6,y=0,width=2,height=1,class="label",label="HYDRA version "..script_version },
+    {x=0,y=0,width=5,class="label",label="Hydra "..script_version.."  -  "..hydraulics[hr], },
     
-    {x=0,y=1,width=1,height=1,class="checkbox",name="k1",label="Primary:",value=false },
-    {x=0,y=2,width=1,height=1,class="checkbox",name="k3",label="Border:",value=false },
-    {x=0,y=3,width=1,height=1,class="checkbox",name="k4",label="Shadow:",value=false },
-    {x=0,y=4,width=1,height=1,class="checkbox",name="k2",label="useless... (2c):",value=false },
-    {x=0,y=5,width=1,height=1,class="checkbox",name="alfas",label="Include alphas",value=false,
+    {x=0,y=1,class="checkbox",name="k1",label="Primary:"},
+    {x=0,y=2,class="checkbox",name="k3",label="Border:"},
+    {x=0,y=3,class="checkbox",name="k4",label="Shadow:"},
+    {x=0,y=4,class="checkbox",name="k2",label="useless... (2c):"},
+    {x=0,y=5,class="checkbox",name="alfas",label="Include alphas",
 	hint="Include alphas from colours pickers.\nRequires Aegisub r7993 or higher." },
-    {x=1,y=5,width=1,height=1,class="checkbox",name="aonly",label="only",value=false,hint="Use only alphas, not colours" },
-    {x=0,y=6,width=1,height=1,class="checkbox",name="italix",label="Italics",value=false },
-    {x=1,y=6,width=1,height=1,class="checkbox",name="bolt",label="Bold",value=false },
+    {x=1,y=5,class="checkbox",name="aonly",label="only",hint="Use only alphas, not colours" },
+    {x=0,y=6,class="checkbox",name="italix",label="Italics"},
+    {x=1,y=6,class="checkbox",name="bolt",label="Bold"},
     
-    {x=1,y=1,width=1,height=1,class="coloralpha",name="c1" },
-    {x=1,y=2,width=1,height=1,class="coloralpha",name="c3" },
-    {x=1,y=3,width=1,height=1,class="coloralpha",name="c4" },
-    {x=1,y=4,width=1,height=1,class="coloralpha",name="c2" },
+    {x=1,y=1,class="coloralpha",name="c1" },
+    {x=1,y=2,class="coloralpha",name="c3" },
+    {x=1,y=3,class="coloralpha",name="c4" },
+    {x=1,y=4,class="coloralpha",name="c2" },
     
-    {x=2,y=1,width=1,height=1,class="checkbox",name="bord1",label="\\bord",value=false },
-    {x=2,y=2,width=1,height=1,class="checkbox",name="shad1",label="\\shad",value=false },
-    {x=2,y=3,width=1,height=1,class="checkbox",name="fs1",label="\\fs",value=false },
-    {x=2,y=4,width=1,height=1,class="checkbox",name="spac1",label="\\fsp",value=false },
-    {x=2,y=5,width=1,height=1,class="checkbox",name="blur1",label="\\blur",value=false },
-    {x=2,y=6,width=1,height=1,class="checkbox",name="be1",label="\\be",value=false },
+    {x=2,y=1,class="checkbox",name="bord1",label="\\bord"},
+    {x=2,y=2,class="checkbox",name="shad1",label="\\shad"},
+    {x=2,y=3,class="checkbox",name="fs1",label="\\fs"},
+    {x=2,y=4,class="checkbox",name="spac1",label="\\fsp"},
+    {x=2,y=5,class="checkbox",name="blur1",label="\\blur"},
+    {x=2,y=6,class="checkbox",name="be1",label="\\be"},
     
-    {x=3,y=1,width=2,height=1,class="floatedit",name="bord2",value=default_border,min=0 },
-    {x=3,y=2,width=2,height=1,class="floatedit",name="shad2",value=default_shadow,min=0 },
-    {x=3,y=3,width=2,height=1,class="floatedit",name="fs2",value=default_fontsize,min=1 },
-    {x=3,y=4,width=2,height=1,class="floatedit",name="spac2",value=default_spacing },
-    {x=3,y=5,width=2,height=1,class="floatedit",name="blur2",value=default_blur,min=0 },
-    {x=3,y=6,width=2,height=1,class="floatedit",name="be2",value=1,min=0 },
+    {x=3,y=1,width=2,class="floatedit",name="bord2",value=0 },
+    {x=3,y=2,width=2,class="floatedit",name="shad2",value=0 },
+    {x=3,y=3,width=2,class="floatedit",name="fs2",value=50 },
+    {x=3,y=4,width=2,class="floatedit",name="spac2",value=1 },
+    {x=3,y=5,width=2,class="floatedit",name="blur2",value=0.5 },
+    {x=3,y=6,width=2,class="floatedit",name="be2",value=1 },
     
-    {x=5,y=1,width=1,height=1,class="checkbox",name="xbord1",label="\\xbord",value=false },
-    {x=5,y=2,width=1,height=1,class="checkbox",name="ybord1",label="\\ybord",value=false },
-    {x=5,y=3,width=1,height=1,class="checkbox",name="xshad1",label="\\xshad",value=false },
-    {x=5,y=4,width=1,height=1,class="checkbox",name="yshad1",label="\\yshad",value=false },
-    {x=5,y=5,width=1,height=1,class="checkbox",name="fax1",label="\\fax",value=false },
-    {x=5,y=6,width=1,height=1,class="checkbox",name="fay1",label="\\fay",value=false },
+    {x=5,y=1,class="checkbox",name="xbord1",label="\\xbord"},
+    {x=5,y=2,class="checkbox",name="ybord1",label="\\ybord"},
+    {x=5,y=3,class="checkbox",name="xshad1",label="\\xshad"},
+    {x=5,y=4,class="checkbox",name="yshad1",label="\\yshad"},
+    {x=5,y=5,class="checkbox",name="fax1",label="\\fax"},
+    {x=5,y=6,class="checkbox",name="fay1",label="\\fay"},
     
-    {x=6,y=1,width=2,height=1,class="floatedit",name="xbord2",value="",min=0 },
-    {x=6,y=2,width=2,height=1,class="floatedit",name="ybord2",value="",min=0 },
-    {x=6,y=3,width=2,height=1,class="floatedit",name="xshad2",value="" },
-    {x=6,y=4,width=2,height=1,class="floatedit",name="yshad2",value="" },
-    {x=6,y=5,width=2,height=1,class="floatedit",name="fax2",value=default_fax },
-    {x=6,y=6,width=2,height=1,class="floatedit",name="fay2",value=default_fay },
+    {x=6,y=1,width=2,class="floatedit",name="xbord2",value="" },
+    {x=6,y=2,width=2,class="floatedit",name="ybord2",value="" },
+    {x=6,y=3,width=2,class="floatedit",name="xshad2",value="" },
+    {x=6,y=4,width=2,class="floatedit",name="yshad2",value="" },
+    {x=6,y=5,width=2,class="floatedit",name="fax2",value=0.05 },
+    {x=6,y=6,width=2,class="floatedit",name="fay2",value=0.05 },
+    {x=6,y=0,width=2,class="label",name="info",label="Selected lines: "..#sel },
 }
     
 hh2={
-    {x=8,y=0,width=2,height=1,class="label",name="info",label="Selected lines: "..#sel },
-    {x=8,y=1,width=1,height=1,class="checkbox",name="layer",label="layer",value=false},
-    {x=8,y=2,width=1,height=1,class="checkbox",name="arfa",label="\\alpha",value=false },
-    {x=8,y=3,width=1,height=1,class="checkbox",name="arf1",label="\\1a",value=false },
-    {x=8,y=4,width=1,height=1,class="checkbox",name="arf2",label="\\2a",value=false },
-    {x=8,y=5,width=1,height=1,class="checkbox",name="arf3",label="\\3a",value=false },
-    {x=8,y=6,width=1,height=1,class="checkbox",name="arf4",label="\\4a",value=false },
+    {x=8,y=0,class="label",name="startmode",label="Start mode" },
+    {x=9,y=0,class="dropdown",name="smode",items={"1","2","3"},value="1" },
+    {x=8,y=1,class="checkbox",name="layer",label="layer"},
+    {x=8,y=2,class="checkbox",name="arfa",label="\\alpha"},
+    {x=8,y=3,class="checkbox",name="arf1",label="\\1a"},
+    {x=8,y=4,class="checkbox",name="arf2",label="\\2a"},
+    {x=8,y=5,class="checkbox",name="arf3",label="\\3a"},
+    {x=8,y=6,class="checkbox",name="arf4",label="\\4a"},
     
-    {x=9,y=1,width=1,height=1,class="dropdown",name="layers",
+    {x=9,y=1,class="dropdown",name="layers",
 	items={"-5","-4","-3","-2","-1","+1","+2","+3","+4","+5"},value="+1" },
-    {x=9,y=2,width=1,height=1,class="dropdown",name="alpha",
+    {x=9,y=2,class="dropdown",name="alpha",
 	items={"00","10","20","30","40","50","60","70","80","90","A0","B0","C0","D0","E0","F0","F8","FF"},value="00" },
-    {x=9,y=3,width=1,height=1,class="dropdown",name="alph1",
+    {x=9,y=3,class="dropdown",name="alph1",
 	items={"00","10","20","30","40","50","60","70","80","90","A0","B0","C0","D0","E0","F0","FF"},value="00" },
-    {x=9,y=4,width=1,height=1,class="dropdown",name="alph2",
+    {x=9,y=4,class="dropdown",name="alph2",
 	items={"00","10","20","30","40","50","60","70","80","90","A0","B0","C0","D0","E0","F0","FF"},value="00" },
-    {x=9,y=5,width=1,height=1,class="dropdown",name="alph3",
+    {x=9,y=5,class="dropdown",name="alph3",
 	items={"00","10","20","30","40","50","60","70","80","90","A0","B0","C0","D0","E0","F0","FF"},value="00" },
-    {x=9,y=6,width=1,height=1,class="dropdown",name="alph4",
+    {x=9,y=6,class="dropdown",name="alph4",
 	items={"00","10","20","30","40","50","60","70","80","90","A0","B0","C0","D0","E0","F0","FF"},value="00" },
-    {x=0,y=7,width=1,height=1,class="checkbox",name="an1",label="\\an",value=false },
-    {x=1,y=7,width=1,height=1,class="dropdown",name="an2",items={"1","2","3","4","5","6","7","8","9"},value="5"},
-    {x=2,y=7,width=1,height=1,class="checkbox",name="fade",label="\\fad",value=false },
-    {x=3,y=7,width=2,height=1,class="floatedit",name="fadin",min=0 },
-    {x=5,y=7,width=1,height=1,class="label",label="<- in,out ->", },
-    {x=6,y=7,width=2,height=1,class="floatedit",name="fadout",min=0 },
-    {x=8,y=7,width=1,height=1,class="checkbox",name="glo",label="global",value=false,hint="global fade - IN on first line, OUT on last line" },
-    {x=9,y=7,width=1,height=1,class="checkbox",name="q2",label="\\q2",value=false },
+    {x=0,y=7,class="checkbox",name="an1",label="\\an"},
+    {x=1,y=7,class="dropdown",name="an2",items={"1","2","3","4","5","6","7","8","9"},value="5"},
+    {x=2,y=7,class="checkbox",name="fade",label="\\fad"},
+    {x=3,y=7,width=2,class="floatedit",name="fadin",min=0 },
+    {x=5,y=7,class="label",label="<- in,out ->", },
+    {x=6,y=7,width=2,class="floatedit",name="fadout",min=0 },
+    {x=8,y=7,class="checkbox",name="glo",label="global",hint="global fade - IN on first line, OUT on last line" },
+    {x=9,y=7,class="checkbox",name="q2",label="\\q2"},
     
-    {x=0,y=8,width=1,height=1,class="label",label="Additional tags:"},
-    {x=1,y=8,width=4,height=1,class="edit",name="moretags",value="\\" },
+    {x=0,y=8,class="label",label="Additional tags:"},
+    {x=1,y=8,width=4,class="edit",name="moretags",value="\\" },
 }
 
 hh3={
-    {x=0,y=9,width=1,height=1,class="label",label="Transform mode:"},
-    {x=1,y=9,width=2,height=1,class="dropdown",name="tmode",items={"normal","add2first","add2all","all tag blocks"},value="normal",hint="new \\t  |  add to first \\t  |  add to all \\t"},
-    {x=3,y=9,width=2,height=1,class="checkbox",name="tend",label="times from end",value=false,hint="Count times from end"},
-    {x=0,y=10,width=1,height=1,class="label",label="Transform t1,t2:"},
-    {x=1,y=10,width=2,height=1,class="floatedit",name="trin" },
-    {x=3,y=10,width=2,height=1,class="floatedit",name="trout" },
-    {x=0,y=11,width=1,height=1,class="label",label="Acceleration:"},
-    {x=1,y=11,width=2,height=1,class="floatedit",name="accel",value=1 },
-    {x=3,y=11,width=2,height=1,class="floatedit",name="int",value=500,hint="interval for 'back and forth transform'"},
-    {x=4,y=12,width=1,height=1,class="label",label="^inetrval"},
-    {x=8,y=8,width=2,height=1,class="checkbox",name="relative",label="Relative transform",value=false,
+    {x=0,y=9,class="label",label="Transform mode:"},
+    {x=1,y=9,width=2,class="dropdown",name="tmode",items={"normal","add2first","add2all","all tag blocks"},value="normal",hint="new \\t  |  add to first \\t  |  add to all \\t"},
+    {x=3,y=9,width=2,class="checkbox",name="tend",label="times from end",hint="Count times from end"},
+    {x=0,y=10,class="label",label="Transform t1,t2:"},
+    {x=1,y=10,width=2,class="floatedit",name="trin" },
+    {x=3,y=10,width=2,class="floatedit",name="trout" },
+    {x=0,y=11,class="label",label="Acceleration:"},
+    {x=1,y=11,width=2,class="floatedit",name="accel",value=1 },
+    {x=3,y=11,width=2,class="floatedit",name="int",value=500,hint="interval for 'back and forth transform'"},
+    {x=4,y=12,class="label",label="^inetrval"},
+    {x=8,y=8,width=2,class="checkbox",name="relative",label="Relative transform",
 	hint="Example:\ntag: \\frz30\ninput: 60\nresult: \\t(\\frz90)"},
     
-    {x=5,y=8,width=1,height=1,class="checkbox",name="frz1",label="\\frz",value=false },
-    {x=5,y=9,width=1,height=1,class="checkbox",name="frx1",label="\\frx",value=false },
-    {x=5,y=10,width=1,height=1,class="checkbox",name="fry1",label="\\fry",value=false },
-    {x=5,y=11,width=1,height=1,class="checkbox",name="fscx1",label="\\fscx",value=false },
-    {x=5,y=12,width=1,height=1,class="checkbox",name="fscy1",label="\\fscy",value=false },
+    {x=5,y=8,class="checkbox",name="frz1",label="\\frz"},
+    {x=5,y=9,class="checkbox",name="frx1",label="\\frx"},
+    {x=5,y=10,class="checkbox",name="fry1",label="\\fry"},
+    {x=5,y=11,class="checkbox",name="fscx1",label="\\fscx"},
+    {x=5,y=12,class="checkbox",name="fscy1",label="\\fscy"},
     
-    {x=6,y=8,width=2,height=1,class="floatedit",name="frz2",value="" },
-    {x=6,y=9,width=2,height=1,class="floatedit",name="frx2",value="" },
-    {x=6,y=10,width=2,height=1,class="floatedit",name="fry2",value="" },
-    {x=6,y=11,width=2,height=1,class="floatedit",name="fscx2",value=100,min=0 },
-    {x=6,y=12,width=2,height=1,class="floatedit",name="fscy2",value=100,min=0 },
+    {x=6,y=8,width=2,class="floatedit",name="frz2",value="" },
+    {x=6,y=9,width=2,class="floatedit",name="frx2",value="" },
+    {x=6,y=10,width=2,class="floatedit",name="fry2",value="" },
+    {x=6,y=11,width=2,class="floatedit",name="fscx2",value=100 },
+    {x=6,y=12,width=2,class="floatedit",name="fscy2",value=100 },
 
-    {x=0,y=12,width=1,height=1,class="label",label="Special functions:"},
-    {x=1,y=12,width=3,height=1,class="dropdown",name="spec",items={"fscx -> fscy","fscy -> fscx","move colour tag to first block","convert clip <-> iclip","clean up tags","sort tags in set order","clean up and sort transforms","back and forth transform","select overlaps","convert clip to drawing","convert drawing to clip","clip square grid small","clip square grid large","create 3D effect from shadow","split line in 3 parts"},value="convert clip <-> iclip"},
+    {x=0,y=12,class="label",label="Special functions:"},
+    {x=1,y=12,width=3,class="dropdown",name="spec",items={"fscx -> fscy","fscy -> fscx","move colour tag to first block","convert clip <-> iclip","clean up tags","sort tags in set order","clean up and sort transforms","back and forth transform","select overlaps","convert clip to drawing","convert drawing to clip","clip square grid small","clip square grid large","create 3D effect from shadow","split line in 3 parts"},value="convert clip <-> iclip"},
     
-    {x=0,y=13,width=1,height=1,class="label",label="Tag position*:"},
-    {x=1,y=13,width=5,height=1,class="edit",name="linetext",value=linetext,hint="Place asterisk where you want the tags"},
-    {x=6,y=13,width=2,height=1,class="dropdown",name="tagpres",items={"--- presets ---","before last char.","in the middle","1/4 of text","3/4 of text","1/8 of text","3/8 of text","5/8 of text","7/8 of text","custom pattern"},value="--- presets ---"},
+    {x=0,y=13,class="label",label="Tag position*:"},
+    {x=1,y=13,width=5,class="edit",name="linetext",value=linetext,hint="Place asterisk where you want the tags"},
+    {x=6,y=13,width=2,class="dropdown",name="tagpres",items={"--- presets ---","before last char.","in the middle","1/4 of text","3/4 of text","1/8 of text","3/8 of text","5/8 of text","7/8 of text","custom pattern","section"},value="--- presets ---"},
     
-    {x=8,y=9,width=2,height=1,class="label",label="Apply to:"},
-    {x=8,y=10,width=2,height=1,class="dropdown",name="applay",items=app_lay,value="All Layers"},
-    {x=8,y=11,width=2,height=1,class="dropdown",name="applst",items=app_sty,value="All Styles"},
-    {x=8,y=12,width=2,height=1,class="dropdown",name="applac",items=app_act,value="All Actors"},
-    {x=8,y=13,width=2,height=1,class="dropdown",name="applef",items=app_eff,value="All Effects"},
+    {x=8,y=9,width=2,class="label",label="Apply to:"},
+    {x=8,y=10,width=2,class="dropdown",name="applay",items=app_lay,value="All Layers"},
+    {x=8,y=11,width=2,class="dropdown",name="applst",items=app_sty,value="All Styles"},
+    {x=8,y=12,width=2,class="dropdown",name="applac",items=app_act,value="All Actors"},
+    {x=8,y=13,width=2,class="dropdown",name="applef",items=app_eff,value="All Effects"},
 }
 
 	buttons={{"Apply","Repeat Last","Load Medium","Load Full","Cancel"},
-	{"Apply","Repeat Last","Load Full","Cancel"},{"Apply","Transform","Repeat Last","Special","Help","Cancel"}}
+	{"Apply","Repeat Last","Load Full","Cancel"},{"Apply","Transform","Repeat Last","Special","Save Config","Help","Cancel"}}
+	loadconfig()
+	heads=sm*2+1
 	hh_gui=hh1	loaded=sm
+	progress(string.format("Loading Hydra Heads 1-"..heads))
 	if sm==2 then for i=1,#hh2 do l=hh2[i] table.insert(hh_gui,l) end loaded=2 end
 	if sm==3 then for i=1,#hh2 do l=hh2[i] table.insert(hh_gui,l) end for i=1,#hh3 do l=hh3[i] table.insert(hh_gui,l) end end
 	hh_buttons=buttons[sm]
-	pressed,res=aegisub.dialog.display(hh_gui,hh_buttons,{ok='Apply',cancel='Cancel'})
+	pressed,res=ADD(hh_gui,hh_buttons,{ok='Apply',cancel='Cancel'})
 	
 	if pressed=="Load Medium" then progress(string.format("Loading Heads 4-5"))
 	    for key,val in ipairs(hh_gui) do val.value=res[val.name] end
 	    for i=1,#hh2 do l=hh2[i] table.insert(hh_gui,l) end loaded=2
-	    pressed,res=aegisub.dialog.display(hh_gui,buttons[2],{ok='Apply',cancel='Cancel'})
+	    pressed,res=ADD(hh_gui,buttons[2],{ok='Apply',cancel='Cancel'})
 	end
 	
 	if pressed=="Load Full" then progress(string.format("Loading Heads "..(loaded+1)*2 .."-7"))
 	    for key,val in ipairs(hh_gui) do val.value=res[val.name] end
 	    if loaded<2 then  for i=1,#hh2 do l=hh2[i] table.insert(hh_gui,l) end  end
 	    for i=1,#hh3 do l=hh3[i] table.insert(hh_gui,l) end loaded=3
-	    pressed,res=aegisub.dialog.display(hh_gui,buttons[3],{ok='Apply',cancel='Cancel'})
+	    pressed,res=ADD(hh_gui,buttons[3],{ok='Apply',cancel='Cancel'})
 	end
 	
 	if pressed=="Help" then progress(string.format("Loading Head 8"))
 	for key,val in ipairs(hh_gui) do val.value=res[val.name] end
-	hhh={x=0,y=14,width=10,height=1,class="dropdown",name="herp",items={"HELP (scroll/click to read)",
+	hhh={x=0,y=14,width=10,class="dropdown",name="herp",items={"HELP (scroll/click to read)",
 	"Standard mode: check tags, set values, click 'Apply'.",
 	"Transform mode normal: check tags, set values, set t1/t2/accel if needed, click 'Transform'.",
 	"Transform mode add2first: the transforms will be added to the first existing transform in the line.",
@@ -912,7 +967,7 @@ hh3={
 	"Special functions - split line in 3 parts: uses t1 and t2 as time markers.",
 	},value="HELP (scroll/click to read)"}
 	table.insert(hh_gui,hhh)
-	pressed,res=aegisub.dialog.display(hh_gui,{"Apply","Transform","Repeat Last","Special","Cancel"},{ok='Apply',cancel='Cancel'})
+	pressed,res=ADD(hh_gui,{"Apply","Transform","Repeat Last","Special","Save Config","Cancel"},{ok='Apply',cancel='Cancel'})
 	end
 	
 	if res.tmode=="normal" then tmode=1 end
@@ -923,19 +978,23 @@ hh3={
 	if sm==3 and res.tagpres:match("of text") then fa,fb=res.tagpres:match("(%d)/(%d)") fak=fa/fb end
 	if res.aonly then res.alfas=true end
 	
-	if pressed=="Apply" then trans=0 hh9(subs, sel) end
-	if pressed=="Transform" then trans=1 hh9(subs, sel) end
-	if pressed=="Special" then sel=special(subs, sel) end
+	if pressed=="Apply" then trans=0 hh9(subs,sel) end
+	if pressed=="Transform" then trans=1 hh9(subs,sel) end
+	if pressed=="Special" then sel=special(subs,sel) end
+	if pressed=="Save Config" then saveconfig() end
 	
 	if pressed~="Repeat Last" then hydralast=res end
-	if pressed=="Repeat Last" then res=hydralast hh9(subs, sel)end
+	if pressed=="Repeat Last" then res=hydralast hh9(subs,sel)end
 	
 	return sel
 end
 
-function hydra(subs, sel)
-    checkonfig()
-    sel=konfig(subs, sel)
+function hydra(subs,sel)
+    ADD=aegisub.dialog.display
+    ADP=aegisub.decode_path
+    ak=aegisub.cancel
+    hydrakonfig=ADP("?user").."\\hydra4.conf"
+    sel=konfig(subs,sel)
     aegisub.set_undo_point(script_name)
     return sel
 end
