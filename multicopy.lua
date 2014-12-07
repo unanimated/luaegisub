@@ -1,11 +1,11 @@
 ﻿script_name="MultiCopy"
 script_description="Copy and paste just about anything from/to multiple lines"
 script_author="unanimated"
-script_version="3.01"
+script_version="3.02"
 
 -- Use the Help button for info
 
-require "clipboard"
+clipboard=require("aegisub.clipboard")
 re=require'aegisub.re'
 
 -- COPY PART
@@ -225,7 +225,7 @@ function paste(subs,sel)	-- tags
     data={}	raw=res.dat.."\n"	loop=nil	over=nil
     for dataline in raw:gmatch("(.-)\n") do table.insert(data,dataline) end
     if #data~=#sel then mispaste(sel) end
-    overloop(sel)
+    overloop(subs,sel)
     for x,i in ipairs(sel) do
       if data[x] then
 	line=subs[i]
@@ -242,7 +242,7 @@ function pastet(subs,sel)	-- text
     data={}	raw=res.dat.."\n"	loop=nil	over=nil
     for dataline in raw:gmatch("(.-)\n") do table.insert(data,dataline) end
     if #data~=#sel then mispaste(sel) end
-    overloop(sel)
+    overloop(subs,sel)
     for x,i in ipairs(sel) do
       if data[x] then
 	line=subs[i]
@@ -330,11 +330,11 @@ function mispaste(sel)
 	if P=="Paste all "..#data.." lines" then over=true end
 end
 
-function overloop(sel)
+function overloop(subs,sel)
 	if over then
 	  ldiff=#data-#sel
 	  last=#sel
-	  for a=1,ldiff do table.insert(sel,sel[last]+a)end
+	  for a=1,ldiff do if sel[last]+a<=#subs then table.insert(sel,sel[last]+a) end end
 	end
 	if loop then
 	  y=1
@@ -527,7 +527,7 @@ function pastec(subs,sel)
     
     -- PASTE ANY TAG --
     if not special then
-    overloop(sel)
+    overloop(subs,sel)
     warningstyles=""
     for x,i in ipairs(sel) do
       if data[x] then
