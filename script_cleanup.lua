@@ -1,16 +1,17 @@
--- removes comments and other unneeded stuff from selected lines
+-- Removes comments and other unneeded stuff from selected lines.
+-- Manuals for all my scripts: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm
 
 script_name="Script Cleanup"
 script_description="Removes unwanted stuff from script"
 script_author="unanimated"
-script_version="2.91"
+script_version="3.0"
 
 dont_delete_empty_tags=false	-- option to not delete {}
 
 function cleanlines(subs,sel)
     if res.all then res.nocom=true res.clear_a=true res.clear_e=true res.layers=true 
 	    res.cleantag=true res.overlap=true res.clear_a=true res.spaces=true res.ctrans=true end
-    for x, i in ipairs(sel) do
+    for x,i in ipairs(sel) do
 	progress("Processing line: "..x.."/"..#sel)
 	prog=math.floor(x/#sel*100)
  	aegisub.progress.set(prog)
@@ -34,8 +35,7 @@ function cleanlines(subs,sel)
 	    
 	    if res.cleantag and text:match("{\\") then
 	    text=text:gsub("{\\\\k0}","") :gsub("{(\\[^}]-)}{(\\r[^}]-)}","{%2}") :gsub("^{\\r([\\}])","{%1")
-	    repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
+	    repeat text,r=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") until r==0
 	    text=text:gsub("({\\[^}]-){(\\[^}]-})","%1%2")
 	    :gsub("^{(\\[^}]-)\\frx0\\fry0([\\}])","{%1%2")
 	    repeat text=text:gsub("(\\fad%([%d,]+%))(.-)\\fad%([%d,]+%)","%1%2")
@@ -44,8 +44,7 @@ function cleanlines(subs,sel)
 	    for tgs in text:gmatch("{\\[^}]-}") do
   	      tgs2=tgs
   	      tgs2=tgs2
-	      :gsub("\\\\","\\")
-	      :gsub("\\}","}")
+	      :gsub("\\[\\}]","%1")
 	      :gsub("(\\%a+)([%d%-]+%.%d+)",function(a,b) if not a:match("\\fn") then b=rnd2dec(b) end return a..b end)
 	      :gsub("(\\%a+)%(([%d%-]+%.%d+),([%d%-]+%.%d+)%)",function(a,b,c) b=rnd2dec(b) c=rnd2dec(c) return a.."("..b..","..c..")" end)
 	      :gsub("(\\%a+)%(([%d%-]+%.%d+),([%d%-]+%.%d+),([%d%-]+%.%d+),([%d%-]+%.%d+)",function(a,b,c,d,e) 
@@ -255,9 +254,17 @@ function nostyle(subs,sel)
 	return sel
 end
 
+-- switch true/false
+function ft(x) if x then return false else return true end end
+
 -- kill everything
 function killemall(subs,sel)
-    for x, i in ipairs(sel) do
+    if res.inverse then
+	for k,v in ipairs(cleanup_cfg) do
+	  if v.x>3 and v.y>0 then res[v.name]=ft(res[v.name]) end
+	end
+    end
+    for x,i in ipairs(sel) do
       progress("Processing line: "..x.."/"..#sel)
       line=subs[i]
       text=line.text
@@ -406,10 +413,9 @@ cleanup_cfg=
 
 {x=3,y=0,width=1,height=13,class="label",label="| \n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|"},
 
-{x=4,y=0,class="label",label="Kill tags:   ",},
-
-{x=5,y=0,class="checkbox",name="skill",label="start",value=true},
-{x=6,y=0,class="checkbox",name="ikill",label="inline",value=true},
+{x=4,y=0,class="checkbox",name="skill",label="[start]",value=true},
+{x=5,y=0,class="checkbox",name="ikill",label="[inline]",value=true},
+{x=6,y=0,class="checkbox",name="inverse",label="[inverse]",hint="kill all except checked ones"},
 
 {x=4,y=1,class="checkbox",name="border",label="bord",hint="includes xbord and ybord"},
 {x=4,y=2,class="checkbox",name="shadow",label="shad",hint="includes xshad and yshad"},
@@ -458,7 +464,7 @@ cleanup_cfg=
 	if P=="Tags" then res.notag=true cleanlines(subs,sel) end
 	if P=="Dial 5" then res.layers=true cleanlines(subs,sel) end
 	if P=="Clean Tags" then res.cleantag=true cleanlines(subs,sel) end
-	if P=="Run selected" then 
+	if P=="Run selected" then
 	    if res["all"] then 
 		for key,v in ipairs(cleanup_cfg) do  if v.x==2 then res[v.name]=false end  end
 		cleanlines(subs,sel)
@@ -475,7 +481,7 @@ cleanup_cfg=
 	end
 	if act>#subs then act=#subs end
 	aegisub.set_undo_point(script_name)
-	return sel, act
+	return sel,act
 end
 
-aegisub.register_macro(script_name, script_description, cleanup)
+aegisub.register_macro(script_name,script_description,cleanup)
