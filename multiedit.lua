@@ -123,6 +123,7 @@ aegisub.progress.title("Loading Editor...")
 		elseif not captest:match("%u") then res.dat=res.dat:gsub("(.-)\n",function(a) return uppercase(a).."\n" end)
 		else res.dat=res.dat:gsub("(.-)\n",function(a) return lowercase(a).."\n" end)
 		end
+		res.dat=res.dat:gsub("\n$","")
 	    end
 	    if P=="Remove \\N" then res.dat=res.dat:gsub("%s*\\N%s*"," ") end
 	    if P=="Remove tags" then res.dat=res.dat:gsub("{%*?\\[^}]-}","") end
