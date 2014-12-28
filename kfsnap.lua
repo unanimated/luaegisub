@@ -3,7 +3,7 @@
 script_name="Snap"
 script_description="Snaps to nearby keyframes"
 script_author="unanimated"
-script_version="1.1"
+script_version="1.2"
 
 -- SETTINGS
 
@@ -14,7 +14,7 @@ kfea=15		-- ends after
 
 -- END OF SETTINGS
 
-function keyframesnap(subs, sel)
+function keyframesnap(subs,sel)
     keyframes=aegisub.keyframes()
     ms2fr=aegisub.frame_from_ms
     fr2ms=aegisub.ms_from_frame
@@ -28,7 +28,7 @@ function keyframesnap(subs, sel)
 	{x=1,y=0,width=1,height=1,class="floatedit",name="sb",value=6},
 	{x=1,y=1,width=1,height=1,class="floatedit",name="eb",value=10},
 	{x=1,y=2,width=1,height=1,class="floatedit",name="sa",value=8},
-	{x=1,y=3,width=1,height=1,class="floatedit",name="ea",value=12},
+	{x=1,y=3,width=1,height=1,class="floatedit",name="ea",value=15},
 	}
 	buttons={"OK","Cancel"}
 	pressed,res=aegisub.dialog.display(gui,buttons,{ok='OK',close='Cancel'})
@@ -39,7 +39,7 @@ function keyframesnap(subs, sel)
 	kfea=res.ea
     end
     
-    for z, i in ipairs(sel) do
+    for z,i in ipairs(sel) do
 	line=subs[i]
 	start=line.start_time
 	endt=line.end_time
@@ -52,6 +52,7 @@ function keyframesnap(subs, sel)
 	startkf=keyframes[1]
 	endkf=keyframes[#keyframes]
 	
+	-- snap to keyframes
 	for k,kf in ipairs(keyframes) do
 	    if kf>=startf-kfsa and kf<=startf+kfsb then
 		sdiff=math.abs(startf-kf)
@@ -61,6 +62,24 @@ function keyframesnap(subs, sel)
 		ediff=math.abs(endf-kf)
 		if ediff<diffe then diffe=ediff endkf=kf endtn=fr2ms(endkf) end
 	    end
+	end
+	
+	-- snap to adjacent lines
+	if startn==nil or startn==start then
+	  if subs[i-1].class=="dialogue" then
+	    prevend=subs[i-1].end_time
+	    pref=ms2fr(prevend)
+	    sdiff=startf-pref
+	    if sdiff<=kfsa and sdiff>0 or sdiff<0 and sdiff<=kfsb then startn=prevend end
+	 end
+	end
+	if endtn==nil or endtn==endt then
+	  if subs[i+1] then
+	    nextart=subs[i+1].start_time
+	    nesf=ms2fr(nextart)
+	    ediff=nesf-endf
+	    if ediff<=kfea and ediff>0 or ediff<0 and ediff<=kfeb then endtn=nextart end
+	  end
 	end
 	
 	if startn==nil then startn=start end
