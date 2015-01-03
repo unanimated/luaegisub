@@ -4,7 +4,7 @@
 script_name="ShiftCut"
 script_description="Time Machine."
 script_author="unanimated"
-script_version="2.61"
+script_version="2.7"
 
 
 function style(subs)
@@ -56,6 +56,7 @@ function cutin(subs,sel)
 		  start=(start-inn)	-- add
 		  if res.preventcut and prevline.class=="dialogue" and start<prevend then start=prevend end
 		end
+	    start=fr2ms(ms2fr(start))
 	    line.start_time=start
 	    subs[i]=line
 	    end
@@ -88,6 +89,7 @@ function cutout(subs,sel)
 		  endt=(endt+ut)	-- add
 		  if res.preventcut and i<#subs and endt>nextart and start<nextart then endt=nextart end
 		end
+	    endt=fr2ms(ms2fr(endt))
 	    line.end_time=endt
 	    subs[i]=line
 	    end
@@ -111,6 +113,8 @@ function shiift(subs,sel)
 		start=(start+shift)
 		endt=(endt+shift)
 		end
+	    start=fr2ms(ms2fr(start))
+	    endt=fr2ms(ms2fr(endt))
 	    line.start_time=start
 	    line.end_time=endt
 	    subs[i]=line
@@ -158,6 +162,8 @@ function linklines(subs,sel)
 		endt=nextart+diffo
 		markover=1
 		end
+	    start=fr2ms(ms2fr(start))
+	    endt=fr2ms(ms2fr(endt))
 	    line.start_time=start
 	    line.end_time=endt
 	    if res.mark then if line.start_time~=s1 or line.end_time~=e1 then line.effect=line.effect.."[linked]" end end
@@ -193,10 +199,11 @@ snapd=0
 		if z~=#sel then nextline=subs[i+1]
 		nextart=nextline.start_time end
 		if z~=1 then prevline=subs[i-1]
-		prevend=prevline.end_time end
+		prevend=prevline.end_time else prevend=0 end
 		
 		startf=ms2fr(start)		-- startframe
 		endf=ms2fr(endt)		-- endframe
+		fr1=endf-startf
 		
 		diff=250
 		diffe=250
@@ -229,8 +236,26 @@ snapd=0
 			end
 		
 		end
-	    line.start_time=start
-	    if endt-start>450 then line.end_time=endt end
+		
+		-- CPS check
+		startok=true
+		endok=true
+		if res.cps>0 then
+		  char=line.text:gsub("{[^}]-}","")	:gsub("\\[Nn]","*")	:gsub("%s?%*+%s?"," ")	:gsub("[%s%p]","")
+		  linelen=char:len()
+		  startf2=ms2fr(start)
+		  endf2=ms2fr(endt)
+		  dura1=(line.end_time-start)/1000
+		  cps1=math.ceil(linelen/dura1)
+		  dura2=(endt-start)/1000
+		  if startf2-startf>3 and line.start_time>=prevend and cps1>res.cps then
+		    startok=false line.effect=line.effect.."[cps1]" dura2=(endt-line.start_time)/1000 end
+		  cps2=math.ceil(linelen/dura2)		  
+		  if endf-endf2>3 and cps2>res.cps then endok=false line.effect=line.effect.."[cps2]" end
+		end
+		
+	    if startok then line.start_time=start end
+	    if endok and endt-start>450 then line.end_time=endt end
 	    startf2=ms2fr(line.start_time)	    endf2=ms2fr(line.end_time)
 	    if res.mark then if startf2~=startf or endf2~=endf then line.effect=line.effect.."[snapped]" end end
 	    if res.info then if startf2~=startf or endf2~=endf then snapd=snapd+1 end end
@@ -337,71 +362,74 @@ kf_snap_presets={"1,1,1,1","2,2,2,2","6,6,6,10","6,6,8,12","6,6,10,12","6,10,8,1
 	style(subs)
 	gui=
 	{
-	    {x=0,y=0,width=2,height=1,class="label",label="ShiftCut v"..script_version },
-	    {x=2,y=0,width=2,height=1,class="dropdown",name="slct",items={"Apply to selected","Apply to all lines"},value="Apply to selected"},
+	    {x=0,y=0,width=2,class="label",label="ShiftCut v"..script_version },
+	    {x=2,y=0,width=2,class="dropdown",name="slct",items={"Apply to selected","Apply to all lines"},value="Apply to selected"},
 	    
-	    {x=0,y=1,width=2,height=1,class="label",label="Styles to aply to:" },
-	    {x=2,y=1,width=2,height=1,class="dropdown",name="stail",items=styles,value="All Default"},
-	    {x=4,y=1,width=3,height=1,class="edit",name="plustyle",value="",hint="Additional style"},
+	    {x=0,y=1,width=2,class="label",label="Styles to aply to:" },
+	    {x=2,y=1,width=2,class="dropdown",name="stail",items=styles,value="All Default"},
+	    {x=4,y=1,width=3,class="edit",name="plustyle",value="",hint="Additional style"},
 	    
-	    {x=4,y=0,width=4,height=1,class="checkbox",name="info",label="Info (link/snap)"},
-	    {x=8,y=0,width=2,height=1,class="checkbox",name="mark",label="Mark changed lines",
+	    {x=4,y=0,width=4,class="checkbox",name="info",label="Info (link/snap)"},
+	    {x=8,y=0,width=2,class="checkbox",name="mark",label="Mark changed lines",
 		hint="linking/snapping - marks changed lines in effect"},
 
 	    -- shift
-	    {x=0,y=2,width=1,height=1,class="label",label="SHIFT backward"},
-	    {x=2,y=2,width=2,height=1,class="floatedit",name="shifft",value=0},
-	    {x=4,y=2,width=1,height=1,class="label",label="ms"},
-	    {x=5,y=2,width=2,height=1,class="checkbox",name="shit",label="Shift forward"},
+	    {x=0,y=2,class="label",label="SHIFT backward"},
+	    {x=2,y=2,width=2,class="floatedit",name="shifft",value=0},
+	    {x=4,y=2,class="label",label="ms"},
+	    {x=5,y=2,width=2,class="checkbox",name="shit",label="Shift forward"},
 
 	    -- add/cut
-	    {x=0,y=3,width=1,height=1,class="checkbox",name="IN",label="Add lead in"},
-	    {x=2,y=3,width=2,height=1,class="floatedit",name="inn",value=0},
-	    {x=4,y=3,width=1,height=1,class="label",label="ms"},
-	    {x=5,y=3,width=2,height=1,class="checkbox",name="cutin",label="Cut lead in"},
+	    {x=0,y=3,class="checkbox",name="IN",label="Add lead in"},
+	    {x=2,y=3,width=2,class="floatedit",name="inn",value=0},
+	    {x=4,y=3,class="label",label="ms"},
+	    {x=5,y=3,width=2,class="checkbox",name="cutin",label="Cut lead in"},
 	    
-	    {x=0,y=4,width=1,height=1,class="checkbox",name="OUT",label="Add lead out"},
-	    {x=2,y=4,width=2,height=1,class="floatedit",name="utt",value=0},
-	    {x=4,y=4,width=1,height=1,class="label",label="ms"},
-	    {x=5,y=4,width=2,height=1,class="checkbox",name="cutout",label="Cut lead out"},
+	    {x=0,y=4,class="checkbox",name="OUT",label="Add lead out"},
+	    {x=2,y=4,width=2,class="floatedit",name="utt",value=0},
+	    {x=4,y=4,class="label",label="ms"},
+	    {x=5,y=4,width=2,class="checkbox",name="cutout",label="Cut lead out"},
 	    
-	    {x=0,y=5,width=3,height=1,class="checkbox",name="preventcut",
+	    {x=0,y=5,width=3,class="checkbox",name="preventcut",
 	    label="prevent overlaps from adding leads",value=true},
-	    {x=3,y=5,width=4,height=1,class="checkbox",name="holdkf",
+	    {x=3,y=5,width=4,class="checkbox",name="holdkf",
 	    label="don't add leads on keyframes"},
 
 	    -- linking
-	    {x=0,y=6,width=2,height=1,class="label",label="Line linking:  Max gap:"},
-	    {x=2,y=6,width=2,height=1,class="floatedit",name="link",value=400,min=0},
-	    {x=4,y=6,width=1,height=1,class="label",label="ms   "},
-	    {x=5,y=6,width=1,height=1,class="label",label="Bias:  "},
-	    {x=6,y=6,width=1,height=1,class="dropdown",name="bias",items=BIAS,value="0.8",hint="higher number=closer to 2nd line"},
+	    {x=0,y=6,width=2,class="label",label="Line linking:  Max gap:"},
+	    {x=2,y=6,width=2,class="floatedit",name="link",value=400,min=0},
+	    {x=4,y=6,class="label",label="ms   "},
+	    {x=5,y=6,class="label",label="Bias:  "},
+	    {x=6,y=6,class="dropdown",name="bias",items=BIAS,value="0.8",hint="higher number=closer to 2nd line"},
 
 	    -- overlaps
-	    {x=0,y=7,width=2,height=1,class="checkbox",name="over",label="Fix overlaps up to:",
+	    {x=0,y=7,width=2,class="checkbox",name="over",label="Fix overlaps up to:",
 		hint="This is part of line linking.\nIf you want only overlaps, set linking gap to 0."},
-	    {x=2,y=7,width=2,height=1,class="floatedit",name="overlap",value=500,min=0 },
-	    {x=4,y=7,width=1,height=1,class="label",label="ms   "},
-	    {x=5,y=7,width=1,height=1,class="label",label="Bias:  "},
-	    {x=6,y=7,width=1,height=1,class="dropdown",name="bios",items=BIAS,value="0.5",hint="higher number=closer to 2nd line"},
+	    {x=2,y=7,width=2,class="floatedit",name="overlap",value=500,min=0 },
+	    {x=4,y=7,class="label",label="ms   "},
+	    {x=5,y=7,class="label",label="Bias:  "},
+	    {x=6,y=7,class="dropdown",name="bios",items=BIAS,value="0.5",hint="higher number=closer to 2nd line"},
 
 	    -- keyframes
-	    {x=8,y=1,width=1,height=1,class="label",label="Keyframes"},
+	    {x=8,y=1,class="label",label="Keyframes"},
+	    {x=9,y=1,class="checkbox",name="prevent",label="Prevent overlaps",value=true},
 	    
-	    {x=8,y=2,width=1,height=1,class="label",label="Starts before:"},
-	    {x=8,y=3,width=1,height=1,class="label",label="Ends before:"},
-	    {x=8,y=4,width=1,height=1,class="label",label="Starts after:"},
-	    {x=8,y=5,width=1,height=1,class="label",label="Ends after:"},
+	    {x=8,y=2,class="label",label="Starts before:"},
+	    {x=8,y=3,class="label",label="Ends before:"},
+	    {x=8,y=4,class="label",label="Starts after:"},
+	    {x=8,y=5,class="label",label="Ends after:"},
 	    
-	    {x=9,y=2,width=1,height=1,class="floatedit",name="sb",value=0,min=0,max=250,hint="frames, not ms"},
-	    {x=9,y=3,width=1,height=1,class="floatedit",name="eb",value=0,min=0,max=250,hint="frames, not ms"},
-	    {x=9,y=4,width=1,height=1,class="floatedit",name="sa",value=0,min=0,max=250,hint="frames, not ms"},
-	    {x=9,y=5,width=1,height=1,class="floatedit",name="ea",value=0,min=0,max=250,hint="frames, not ms"},
+	    {x=9,y=2,class="floatedit",name="sb",value=0,min=0,max=250,hint="frames, not ms"},
+	    {x=9,y=3,class="floatedit",name="eb",value=0,min=0,max=250,hint="frames, not ms"},
+	    {x=9,y=4,class="floatedit",name="sa",value=0,min=0,max=250,hint="frames, not ms"},
+	    {x=9,y=5,class="floatedit",name="ea",value=0,min=0,max=250,hint="frames, not ms"},
 	    
-	    {x=8,y=6,width=1,height=1,class="checkbox",name="pres",label="Preset:",value=true},
-	    {x=9,y=6,width=1,height=1,class="dropdown",name="preset",items=kf_snap_presets,value="6,10,8,12"},
+	    {x=8,y=6,class="checkbox",name="pres",label="Preset:",value=true},
+	    {x=9,y=6,class="dropdown",name="preset",items=kf_snap_presets,value="6,10,8,12"},
 	    
-	    {x=8,y=7,width=2,height=1,class="checkbox",name="prevent",label="Prevent overlaps by snapping",value=true},
+	    {x=8,y=7,class="label",label="Max CPS:"},
+	    {x=9,y=7,class="floatedit",name="cps",value=24,min=0,hint="don't snap if CPS would exceed the limit (0=disable)"},
+	    
 	}
 	loadconfig()
 	P,res=ADD(gui,{"Lead in/out","Link lines","Shift times","Keyframe snap","All","Save config","Cancel"},{cancel='Cancel'})
