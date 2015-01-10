@@ -3,9 +3,9 @@ script_description="Import stuff, number stuff, chapter stuff, replace stuff, do
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/import.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/import.lua"
-script_version="2.5"
+script_version="2.6"
 
-require "clipboard"
+clipboard=require("aegisub.clipboard")
 re=require'aegisub.re'
 
 
@@ -43,7 +43,7 @@ function important(subs,sel,act)
 	if script_path=="absolute" then path=absolute_path end
 
 	-- IMPORT -- 
-	if res.mega:match("import") then
+	if res.mega:match("import sign") then
 	    
 	    noshift=false	defect=false	keeptxt=false	deline=false
 	    
@@ -225,6 +225,28 @@ function important(subs,sel,act)
 	    end
 	    file:close()
 	    end
+	end
+	
+	-- IMPORT CHAPTERS
+	if res.mega=="import chptrs" then
+	  xml=aegisub.dialog.open("Chapters file (xml)","",scriptpath.."\\","*.xml",false,true)
+	  if xml==nil then ak() end
+	  file=io.open(xml)
+	  xmlc=file:read("*all")
+	  io.close(file)
+	  chc=0
+	  for ch in xmlc:gmatch("<ChapterAtom>(.-)</ChapterAtom>") do
+		chnam=ch:match("<ChapterString>(.-)</ChapterString>")
+		chtim=ch:match("<ChapterTimeStart>(.-)</ChapterTimeStart>")
+		chtim=chtim:gsub("(%d%d):(%d%d):(%d%d)%.(%d%d%d?)",function(a,b,c,d) if d:len()==2 then d=d.."0" end return d+c*1000+b*60000+a*3600000 end)
+		l2=aline
+		l2.start_time=fr2ms(ms2fr(chtim))
+		l2.end_time=fr2ms(ms2fr(chtim)+1)
+		l2.actor="chptr"
+		l2.text="{"..chnam.."}"
+		subs.insert(act+chc,l2)
+		chc=chc+1
+	  end
 	end
 
 	-- Update Lyrics
@@ -1131,6 +1153,7 @@ function stuff(subs,sel)
 	    if text:match("\\clip%(m") then
 	      if not text:match("\\pos") then text=getpos(subs,text) end
 	      if not rez.keepblur then text=addtag("\\blur"..mblur,text) end
+	      text=text:gsub("{%*?\\[^}]-}",function(tg) return duplikill(tg) end)
 	      c1,c2,c3,c4=text:match("\\clip%(m ([%-%d%.]+) ([%-%d%.]+) l ([%-%d%.]+) ([%-%d%.]+)")
 	      if c1==nil then t_error("There seems to be something wrong with your clip",true) end
 	      text=text:gsub("\\clip%b()","")
@@ -2114,7 +2137,8 @@ The first line of the saved file works as a reference point, so use a "First fra
 "keep line" will keep your current line and comment it. Otherwise the line gets deleted.
 
 IMPORT SIGN / IMPORT SIGNS - works like OP/ED, but you have to input the sign's name.
-The difference between the two is:\nSIGN - each sign must be saved in its own .ass file.
+The difference between the two is:
+SIGN - each sign must be saved in its own .ass file.
 In the GUI, input the sign's/file's name, for example "eptitle"[.ass].
 SIGNS - all signs must be saved in signs.ass.
 They are distinguished by what's in the "effect" field - that's the sign's name.
@@ -2124,7 +2148,8 @@ for SIGNS, put "eptitle" or "eyecatch" in the effect field, and put all the sign
 The GUI will then show you a list of signs that it gets from the effect fields.
 I recommend using SIGNS, as it's imo more efficient (but SIGN was written first and I didn't nuke it).
 
-Options:\nWith nothing checked, stuff is shifted to the first frame of your active line (like OP/ED).
+Options:
+With nothing checked, stuff is shifted to the first frame of your active line (like OP/ED).
 (SIGN) File name: "custom" will use what you type below. The other ones are presets.
 "keep current line's times" - all imported lines will have the start/end time of your active line
 "keep current line's text" - all imported lines will have their text (not tags) replaced with your active line's text
@@ -2142,7 +2167,9 @@ Effect field must contain the signs' names.
 You can use relative or absolute paths. (Check the settings below.)
 Default is the script's folder. If you want the default to be one folder up, use "..\".
 You can use an absolute path, have one huge signs.ass there,
-and have all the signs marked "show_name-sign_name" in the effect field.\n\n]]
+and have all the signs marked "show_name-sign_name" in the effect field.
+
+IMPORT CHPTRS - Imports chapters from xml files - creates lines with "chptr" in actor and {ch. name} as text]]
 
 help_u=[[
 UPDATE LYRICS
@@ -2284,7 +2311,8 @@ The direction is determined from the first 2 points of a vectorial clip (like wi
 Select lines with the same text but different tags,
 and they will be merged into one line with tags from all of them.
 For example:
-{\bord2}AB{\shad3}C\nA{\fs55}BC
+{\bord2}AB{\shad3}C
+A{\fs55}BC
 -> {\bord2}A{\fs55}B{\shad3}C
 
 - Add Comment -
@@ -2321,7 +2349,8 @@ This lets you do things with each letter separately.
 - Explode -
 This splits the line into letters and makes each of them move in a different direction and fade out.
 
-- Dissolve Text -\nVarious modes of dissolving text. Has its own Help.
+- Dissolve Text -
+Various modes of dissolving text. Has its own Help.
 
 - Randomized Transforms -
 Various modes of randomly transforming text. Has its own Help.
@@ -2357,7 +2386,7 @@ msg={"If it breaks, it's your fault.","This should be doing something...","Break
 rm=math.random(1,#msg)	msge=msg[rm]
 if lastimp then dropstuff=lastuff lok=lastlog zerozz=lastzeros fld=lastfield
 else dropstuff="replacer" lok=false zerozz="01" fld="effect" end
-g_impex={"import OP","import ED","import sign","import signs","export sign","update lyrics"}
+g_impex={"import OP","import ED","import sign","import signs","export sign","import chptrs","update lyrics"}
 g_stuff={"save/load","replacer","lua calc","jump to next","alpha shift","motion blur","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","reverse text","reverse words","reverse transforms","fake capitals","format dates","split into letters","explode","dissolve text","randomized transforms","clone clip","what is the Matrix?","time by frames","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"}
 unconfig={
 	-- Sub --
