@@ -3,7 +3,7 @@ script_description="Import stuff, number stuff, chapter stuff, replace stuff, do
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/import.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/import.lua"
-script_version="2.6"
+script_version="2.61"
 
 clipboard=require("aegisub.clipboard")
 re=require'aegisub.re'
@@ -211,7 +211,8 @@ function important(subs,sel,act)
 	    newsgn=reslt.newsign:gsub("%.ass$","")
 	    if reslt.addsign=="Add to signs.ass" then 
 		file=io.open(path.."signs.ass")
-		sign=file:read("*all")
+		if not file then file=io.open(path.."signs.ass","w") end
+		sign=file:read("*all") or ""
 		file:close()
 		exportsign=exportsign:gsub("(%u%a+: %d+,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-),[^,]-,(.-)\n","%1,"..reslt.newsign..",%2\n")
 		sign=sign:gsub("%u%a+:.-,"..esc(reslt.newsign)..",.-\n","") :gsub("^\n*","")
