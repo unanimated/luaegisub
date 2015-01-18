@@ -13,7 +13,7 @@
 script_name="Line Breaker"
 script_description="insert/shift linebreaks"
 script_author="unanimated"
-script_version="2.2"
+script_version="2.22"
 
 re=require'aegisub.re'
 
@@ -137,7 +137,7 @@ function nnn(subs, sel)
 	tags=text:match("^{\\[^}]-}")
 	if tags==nil then tags="" end
 	stekst=text	:gsub("^{\\[^}]-}","")
-	repeat stekst=stekst:gsub("{[^\\}]-}$","") until not stekst:match("{[^\\}]-}$")
+	repeat stekst,r=stekst:gsub("{[^\\}]-}$","") until r==0
 	tekst=stekst
 	-- fill spaces in comments
 	for s in tekst:gmatch("{[^\\}]-}") do
@@ -185,9 +185,9 @@ function nnn(subs, sel)
 	    if wrd>5 then testxt=tekst:gsub("^[%w%p]+ [%w%p]+(.-)[%w%p]+ [%w%p]+$","%1") else testxt=tekst end
 
 	    -- if no linebreak in line, put breaks before selected words, in 3 rounds
-	    words1={" but "," and "," if "," when "," because "," 'cause "," yet "," unless "," with "," without "," whether "}
-	    words2={" or "," nor "," for "," from "," before "," at "," that "," since "," until "," while "," behind "," than "}
-	    words3={" about "," into "," to "," is "," isn't "," was "," wasn't "," are "," aren't "," were "," weren't "}
+	    words1={" but "," and "," if "," when "," because "," 'cause "," yet "," unless "," with "," without "," whether "," where "}
+	    words2={" or "," nor "," for "," from "," before ","after"," at "," that "," since "," until "," while "," behind "," than "," over "}
+	    words3={" about "," into "," to "," how "," is "," isn't "," was "," wasn't "," are "," aren't "," were "," weren't "}
 	    tekst=words(words1)
 	    tekst=words(words2)
 	    tekst=words(words3)
@@ -199,8 +199,7 @@ function nnn(subs, sel)
 		diff=250	stop=0
 		while stop==0 do
 		  last=tekst
-		  repeat tekst=tekst:gsub("\\N({[^}]-})","%1\\N") tekst=tekst:gsub("\\N([^%s{}]+)","%1\\N")
-		  until not tekst:match("\\N{[^}]-}") and not tekst:match("\\N([^%s{}]+)")
+		  repeat tekst,r1=tekst:gsub("\\N({[^}]-})","%1\\N") tekst,r2=tekst:gsub("\\N([^%s{}]+)","%1\\N") until r1==0 and r2==0
 		  tekst=tekst:gsub("\\N%s"," \\N")
 		  btxt=tekst:gsub("{[^}]-}","")
 		  beforespace=btxt:match("^(.-)\\N")	beforelength=beforespace:len()
@@ -223,7 +222,7 @@ function nnn(subs, sel)
 	    tekstb=balance(tekst)
 	    if tekstb~=tekst then tekst=backup2 end
 	    
-	    double={"so that","no one","ought to","now that","it was","he was","she was","will be","there is","there are","there was","there were","get to","sort of","kind of","put it","each other","each other's","have to","has to","had to","having to","want to","wanted to","used to","able to","going to","supposed to","allowed to","tend to","due to","forward to","thanks to","not to","has been","have been","had been","filled with","full of","out of","into the","onto the","part with","more than","less than","even if","make sure","give up","would be","wipe out","wiped out","real life","no matter","based on","bring up","think of","thought of"}
+	    double={"so that","no one","ought to","now that","it was","he was","she was","will be","there is","there are","there was","there were","get to","sort of","kind of","put it","each other","each other's","have to","has to","had to","having to","want to","wanted to","used to","able to","going to","supposed to","allowed to","tend to","due to","forward to","thanks to","not to","has been","have been","had been","filled with","full of","out of","into the","onto the","part with","more than","less than","make sure","give up","would be","wipe out","wiped out","real life","no matter","based on","bring up","think of","thought of","even if","even when","even though","grow up","grew up","grown up"}
 	    for d=1,#double do
 		dbl=double[d]
 		d1,d2=dbl:match("([%a']+) ([%a']+)")
@@ -235,7 +234,12 @@ function nnn(subs, sel)
 		    else tekst=tekst:gsub(" "..d1.." \\N"..d2.." "," "..d1.." "..d2.." \\N") end
 		end
 	    end
-	    tekst=re.sub(tekst," (a|a[sn]|by|I|I'm|I'd|I've|I'll|the|for|o[nfr]|i[nf]|who) \\\\N([\\w\\-']+) "," \\\\N\\1 \\2 ")
+	    nobreak={"sort of","kind of","full of","out of","based on","think of","thought of","even if","even when"}
+	    nb=0
+	    for b=1,#nobreak do
+	      if tekst:match(nobreak[b].." \\N") then nb=1 end
+	    end
+	    if nb==0 then tekst=re.sub(tekst," (a|a[sn]|by|I|I'm|I'd|I've|I'll|the|for|o[nfr]|i[nf]|who) \\\\N([\\w\\-']+) "," \\\\N\\1 \\2 ") end
 	    if tekst:match(" by %a+ing \\N") then
 		beforethat=tekst:match("^(.-)by %a+ing \\N")	beforethat=beforethat:gsub("{[^}]-}","")	befrlgth=beforethat:len()
 		afterthat=tekst:match("by %a+ing \\N(.-)$")	afterthat=afterthat:gsub("{[^}]-}","")		afterlgth=afterthat:len()
@@ -274,7 +278,7 @@ function nnn(subs, sel)
 		text=tags..res.txt
 		if line.effect=="n" then line.effect="" end
 		end
-		if pressed=="All spaces" then res.txt=res.txt:gsub("%s+"," \\N") text=tags..res.txt end
+		if pressed=="All spaces" then res.txt=res.txt:gsub("%s+"," \\N") :gsub("\\N\\N","\\N") text=tags..res.txt end
 	    end
     end
 
@@ -287,7 +291,7 @@ end
 
 function balance(tekst)
     if balance_checks and tekst:match("\\N") and not tekst:match("\\N%-") and wrd>4 then
-	beforespace=tekst:match("^(.-)\\N")	beforespace=beforespace:gsub("{[^}]-}","")	beforelength=beforespace:len()
+	beforespace=tekst:match("^(.-)%s*\\N")	beforespace=beforespace:gsub("{[^}]-}","")	beforelength=beforespace:len()
 	afterspace=tekst:match("\\N(.-)$")	afterspace=afterspace:gsub("{[^}]-}","")	afterlength=afterspace:len()
 	if beforelength>afterlength then ratio=beforelength/afterlength else ratio=afterlength/beforelength end
 	difflength=math.abs(beforelength-afterlength)
@@ -318,7 +322,7 @@ end
 function words(tab)
     if not tekst:match("\\N") and wrd>4 then 
 	for w=1,#tab do ord=tab[w]
-	  if testxt:match(ord) then tekst=tekst:gsub(ord," \\N"..ord) :gsub("\\N ","\\N") end
+	  if testxt:match(ord) then tekst=tekst:gsub(ord," \\N"..ord) :gsub("\\N ","\\N") :gsub("({\\[^}]-}) \\N","\\N%1") end
 	end
 	tekst=reduce(tekst)
 	tekst=balance(tekst)
@@ -352,7 +356,7 @@ function stylechk(subs,stylename)
   return styleref
 end
 
-function nshift(subs, sel)
+function nshift(subs,sel)
     for x, i in ipairs(sel) do
         line=subs[i]
         text=line.text
@@ -361,8 +365,7 @@ function nshift(subs, sel)
 		text=text:gsub("\\N([^%s{}]+%s?)$","%1")		-- end
 		text=text:gsub("\\N([^%s{}]+%s?{[^}]-}%s?)$","%1") 	-- end
 		text=text:gsub("\\N%s"," \\N")
-		repeat text=text:gsub("\\N({[^}]-})","%1\\N") text=text:gsub("\\N([^%s{}]+)","%1\\N")
-		until not text:match("\\N{[^}]-}") and not text:match("\\N([^%s{}]+)")
+		repeat text,r1=text:gsub("\\N({[^}]-})","%1\\N") text,r2=text:gsub("\\N([^%s{}]+)","%1\\N") until r1==0 and r2==0
 		text=text:gsub("\\N%s"," \\N")
 		text=text:gsub("\\N$","")
 	line.text=text
@@ -381,8 +384,7 @@ function backshift(subs, sel)
 		text=text:gsub("^({[^}]-}%s?[^%s{}]+%s?)\\N","%1")	-- start
 		text=text:gsub("^([^%s{}]+%s?)\\N","%1")		-- start
 		text=text:gsub("%s\\N","\\N ")
-		repeat text=text:gsub("({[^}]-})\\N","\\N%1") text=text:gsub("([^%s{}]+)\\N","\\N%1")
-		until not text:match("({[^}]-})\\N") and not text:match("([^%s{}]+)\\N")
+		repeat text,r1=text:gsub("({[^}]-})\\N","\\N%1") text,r2=text:gsub("([^%s{}]+)\\N","\\N%1") until r1==0 and r2==0
 		text=text:gsub("^\\N","")
 	line.text=text
 	subs[i]=line
