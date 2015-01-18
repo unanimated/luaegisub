@@ -3,7 +3,7 @@ script_description="Import stuff, number stuff, chapter stuff, replace stuff, do
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/import.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/import.lua"
-script_version="2.61"
+script_version="2.7"
 
 clipboard=require("aegisub.clipboard")
 re=require'aegisub.re'
@@ -241,8 +241,9 @@ function important(subs,sel,act)
 		chtim=ch:match("<ChapterTimeStart>(.-)</ChapterTimeStart>")
 		chtim=chtim:gsub("(%d%d):(%d%d):(%d%d)%.(%d%d%d?)",function(a,b,c,d) if d:len()==2 then d=d.."0" end return d+c*1000+b*60000+a*3600000 end)
 		l2=aline
-		l2.start_time=fr2ms(ms2fr(chtim))
-		l2.end_time=fr2ms(ms2fr(chtim)+1)
+		if fr2ms(1)==nil then chs=chtim else chs=fr2ms(ms2fr(chtim)) end
+		l2.start_time=chs
+		l2.end_time=chs+1
 		l2.actor="chptr"
 		l2.text="{"..chnam.."}"
 		subs.insert(act+chc,l2)
@@ -470,20 +471,41 @@ function chopters(subs,sel)
 	{x=0,y=1,width=35,height=20,class="textbox",name="copytext",value=chapters},
 	{x=0,y=21,width=35,height=1,class="label",label="File will be saved in the same folder as the .ass file."},}
 	
-    pressed,reslt=ADD(chdialog,{"Save xml file","Cancel","Copy to clipboard",},{cancel='Cancel'})
-    if pressed=="Copy to clipboard" then    clipboard.set(chapters) end
-    if pressed=="Save xml file" then    
+    pressed,reslt=ADD(chdialog,{"Save xml file","mp4-compatible chapters","Cancel","Copy to clipboard"},{cancel='Cancel'})
+    if pressed=="Copy to clipboard" then clipboard.set(chapters) end
 	scriptpath=ADP("?script")
 	scriptname=aegisub.file_name()
 	scriptname=scriptname:gsub("%.ass","")
-	
 	if ch_script_path=="relative" then path=scriptpath.."\\"..relative_path end
 	if ch_script_path=="absolute" then path=absolute_path end
-	
 	if res.sav=="script" then filename=scriptname else filename=videoname end
-	local file=io.open(path.."\\"..filename..".xml", "w")
+	
+    if pressed=="Save xml file" then
+	local file=io.open(path.."\\"..filename..".xml","w")
 	file:write(chapters)
 	file:close()
+    end
+    if pressed=="mp4-compatible chapters" then
+	mp4chap=""
+	m4c=1
+	for ch in chapters:gmatch("<ChapterAtom>(.-)</ChapterAtom>") do
+		chnam=ch:match("<ChapterString>(.-)</ChapterString>")
+		chtim=ch:match("<ChapterTimeStart>(.-)</ChapterTimeStart>")
+		num=tostring(m4c)
+		if num:len()==1 then num="0"..num end
+		chnum="CHAPTER"..num
+		mp4chap=mp4chap..chnum.."="..chtim.."\n"..chnum.."NAME="..chnam.."\n\n"
+		m4c=m4c+1
+	end
+	chapters=mp4chap:gsub("\n\n$","")
+	chdialog[2].value=chapters
+	pressed,reslt=ADD(chdialog,{"Save txt file","Cancel","Copy to clipboard"},{cancel='Cancel'})
+	if pressed=="Copy to clipboard" then clipboard.set(chapters) end
+	if pressed=="Save txt file" then
+	  local file=io.open(path.."\\"..filename.."chapters.txt","w")
+	  file:write(chapters)
+	  file:close()
+	end
     end
   end
 end
@@ -2244,7 +2266,11 @@ This will be a subchapter of "Part A" called "Scene 5".
 If you want a different LANGUAGE than 'eng', set it in the textbox below "chapter mark"
 
 CHAPTER MARK: Sets the selected chapter for selected line(s). Uses marker and name. (Doesn't create xml.)
-If you want a custom chapter name, type it in the textbox below this.]]
+If you want a custom chapter name, type it in the textbox below this.
+
+mp4-compatible chapters: switches to this format:
+CHAPTER01=00:00:00.033
+CHAPTER01NAME=Intro]]
 
 help_n=[[
 - NUMBERS -
