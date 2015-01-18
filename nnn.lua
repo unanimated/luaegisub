@@ -13,7 +13,7 @@
 script_name="Line Breaker"
 script_description="insert/shift linebreaks"
 script_author="unanimated"
-script_version="2.22"
+script_version="2.23"
 
 re=require'aegisub.re'
 
@@ -186,7 +186,7 @@ function nnn(subs, sel)
 
 	    -- if no linebreak in line, put breaks before selected words, in 3 rounds
 	    words1={" but "," and "," if "," when "," because "," 'cause "," yet "," unless "," with "," without "," whether "," where "}
-	    words2={" or "," nor "," for "," from "," before ","after"," at "," that "," since "," until "," while "," behind "," than "," over "}
+	    words2={" or "," nor "," for "," from "," before "," after "," at "," that "," since "," until "," while "," behind "," than "," over "}
 	    words3={" about "," into "," to "," how "," is "," isn't "," was "," wasn't "," are "," aren't "," were "," weren't "}
 	    tekst=words(words1)
 	    tekst=words(words2)
@@ -222,7 +222,7 @@ function nnn(subs, sel)
 	    tekstb=balance(tekst)
 	    if tekstb~=tekst then tekst=backup2 end
 	    
-	    double={"so that","no one","ought to","now that","it was","he was","she was","will be","there is","there are","there was","there were","get to","sort of","kind of","put it","each other","each other's","have to","has to","had to","having to","want to","wanted to","used to","able to","going to","supposed to","allowed to","tend to","due to","forward to","thanks to","not to","has been","have been","had been","filled with","full of","out of","into the","onto the","part with","more than","less than","make sure","give up","would be","wipe out","wiped out","real life","no matter","based on","bring up","think of","thought of","even if","even when","even though","grow up","grew up","grown up"}
+	    double={"so that","no one","ought to","now that","it was","he was","she was","will be","there is","there are","there was","there were","get to","sort of","kind of","put it","each other","each other's","have to","has to","had to","having to","want to","wanted to","used to","able to","going to","supposed to","allowed to","tend to","due to","forward to","thanks to","not to","has been","have been","had been","filled with","full of","out of","into the","onto the","part with","more than","less than","make sure","give up","would be","wipe out","wiped out","real life","no matter","based on","bring up","think of","thought of","even if","even when","even though","grow up","grew up","grown up","other than"}
 	    for d=1,#double do
 		dbl=double[d]
 		d1,d2=dbl:match("([%a']+) ([%a']+)")
@@ -320,7 +320,7 @@ function reduce(tekst)
 end
 
 function words(tab)
-    if not tekst:match("\\N") and wrd>4 then 
+    if not tekst:match("\\N") and wrd>4 then
 	for w=1,#tab do ord=tab[w]
 	  if testxt:match(ord) then tekst=tekst:gsub(ord," \\N"..ord) :gsub("\\N ","\\N") :gsub("({\\[^}]-}) \\N","\\N%1") end
 	end
