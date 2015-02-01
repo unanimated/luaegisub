@@ -13,7 +13,7 @@
 script_name="Line Breaker"
 script_description="insert/shift linebreaks"
 script_author="unanimated"
-script_version="2.23"
+script_version="2.24"
 
 re=require'aegisub.re'
 
@@ -322,7 +322,7 @@ end
 function words(tab)
     if not tekst:match("\\N") and wrd>4 then
 	for w=1,#tab do ord=tab[w]
-	  if testxt:match(ord) then tekst=tekst:gsub(ord," \\N"..ord) :gsub("\\N ","\\N") :gsub("({\\[^}]-}) \\N","\\N%1") end
+	  if testxt:match(ord) then tekst=tekst:gsub(ord," \\N"..ord) :gsub("\\N ","\\N") end
 	end
 	tekst=reduce(tekst)
 	tekst=balance(tekst)
