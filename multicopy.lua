@@ -1,7 +1,7 @@
 ﻿script_name="MultiCopy"
 script_description="Copy and paste just about anything from/to multiple lines"
 script_author="unanimated"
-script_version="3.02"
+script_version="3.03"
 
 -- Use the Help button for info
 
@@ -148,7 +148,7 @@ function crmod(subs,sel)
 
 	-- nuke tags from signs, set actor to "Sign", add timecode
 	if not style:match("Defa") then
-	text=text:gsub("{[^\\}]*}","")
+	text=text:gsub("{[^}]-}","")
 	actor="Sign"
 	timecode=math.floor(line.start_time/1000)
 	tc1=math.floor(timecode/60)
@@ -604,8 +604,7 @@ function textmod(text2)
     tk={}
     tg={}
 	text=text:gsub("{\\\\k0}","")
-	repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-	  until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
+	repeat text,r=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") until r==0
 	vis=text2:gsub("%b{}","")
 	ltrmatches=re.find(vis,".")
 	  for l=1,#ltrmatches do
