@@ -7,19 +7,49 @@
 script_name="Jump to Next"
 script_description="Jumps to next 'sign' in the subtitle grid"
 script_author="unanimated"
-script_version="1.21"
+script_version="1.3"
 
 --OPTIONS--
 default_marker="text"	-- "text" looks for text (without tags/comments) / "style" looks for style
 --THE END--
 
-function nextsel(subs, sel)
+function nextsel(subs,sel)
+getinfo(subs,sel)
+if j==#subs then aegisub.cancel() end
+count=1
+repeat
+  line=subs[j+count]
+  markers()
+  ch=0
+  for m=1,#marks do if marks[m]==hit then ch=1 end end
+  if ch==0 or j+count==#subs then sel={j+count} end
+  count=count+1
+until ch==0 or hit==nil or j+count>#subs
+return sel
+end
+
+function prevsel(subs,sel)
+getinfo(subs,sel)
+if subs[i-1].class~="dialogue" then aegisub.cancel() end
+count=1
+repeat
+  line=subs[i-count]
+  markers()
+  ch=0
+  for m=1,#marks do if marks[m]==hit then ch=1 end end
+  if ch==0 or subs[i-count-1].class~="dialogue" then sel={i-count} end
+  count=count+1
+until ch==0 or hit==nil or subs[i-count].class~="dialogue"
+return sel
+end
+
+function getinfo(subs,sel)
 marker=default_marker
 lm=nil
 i=sel[1]
 j=sel[#sel]
 marks={}
-for x,i in ipairs(sel) do
+ for x,i in ipairs(sel) do
   rine=subs[i]
   txt=rine.text:gsub("{[^}]-}","")
   sty=rine.style
@@ -32,24 +62,15 @@ for x,i in ipairs(sel) do
   if marker=="effect" then mark=eff end
   if mark~=lm then table.insert(marks,mark) end
   lm=mark
+ end
 end
-count=1
-repeat
-  line=subs[j+count]
-  txt2=line.text:gsub("{[^}]-}","")
-  sty2=line.style
-  act2=line.actor
-  eff2=line.effect
-  if marker=="text" then hit=txt2 end
-  if marker=="style" then hit=sty2 end
-  if marker=="actor" then hit=act2 end
-  if marker=="effect" then hit=eff2 end
-  ch=0
-  for m=1,#marks do if marks[m]==hit then ch=1 end end
-  if ch==0 or j+count==#subs then sel={j+count} end
-  count=count+1
-until ch==0 or hit==nil or j+count>#subs
-return sel
+
+function markers()
+  if marker=="text" then hit=line.text:gsub("{[^}]-}","") end
+  if marker=="style" then hit=line.style end
+  if marker=="actor" then hit=line.actor end
+  if marker=="effect" then hit=line.effect end
 end
 
 aegisub.register_macro(script_name,script_description,nextsel)
+aegisub.register_macro("Jump to Previous","Jumps to previous 'sign' in the subtitle grid",prevsel)
