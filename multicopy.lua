@@ -1,7 +1,7 @@
 ﻿script_name="MultiCopy"
 script_description="Copy and paste just about anything from/to multiple lines"
 script_author="unanimated"
-script_version="3.03"
+script_version="3.1"
 
 -- Use the Help button for info
 
@@ -204,13 +204,31 @@ end
 -- COPY BETWEEN COLUMNS
 
 function copycol(subs,sel)
+    if res.attach then
+	atgui={
+	{x=1,y=1,class="edit",name="merge"},
+	{x=0,y=0,class="label",label="Before / "},
+	{x=1,y=0,class="checkbox",name="after",label="After"},
+	{x=0,y=1,class="label",label="Link: "},
+	}
+	pres,rez=ADD(atgui,{"OK","Cancel"},{ok='OK',close='Cancel'})
+	if pres=="Cancel" then ak() end
+	merge=rez.merge
+    end
     for x,i in ipairs(sel) do
 	line=subs[i]
 	source=line[res.copyfrom]
 	target=line[res.copyto]
 	if type(target)=="number" then data=tonumber(source) else data=source end
-	if data then line[res.copyto]=data end
-	if res.switch then
+	if data then
+	  if res.attach then
+	    if rez.after then data=target..merge..data
+	    else data=data..merge..target
+	    end
+	  end
+	  line[res.copyto]=data
+	end
+	if res.switch and not res.attach then
 	  if type(source)=="number" then data2=tonumber(target) else data2=target end
 	  if data2 then line[res.copyfrom]=data2 end
 	end
@@ -778,6 +796,7 @@ fields={"style","actor","effect","text","layer","start_time","end_time","margin_
 	{x=4,y=17,class="label",label="       to"},
 	{x=5,y=17,width=2,class="dropdown",name="copyto",value=CT or "effect",items=fields},
 	{x=7,y=17,width=2,class="checkbox",name="switch",label="Switch"},
+	{x=9,y=17,class="checkbox",name="attach",label="Attach"},
 	
 	{x=0,y=18,class="checkbox",name="c1",label="\\c",value=true},
 	{x=1,y=18,class="checkbox",name="c2",label="\\2c"},
@@ -810,9 +829,9 @@ fields={"style","actor","effect","text","layer","start_time","end_time","margin_
 COPY part copies specified things line by line. PASTE part pastes these things line by line.
 The main idea is to copy something from X lines and paste it to another X lines.
 'Copy from-to' is a quick copy function between columns. 'Switch' switches them. Copying strings to number fields does nothing.
+'Attach' adds the copied value to the target value by combining them.
 
-tags = initial tags
-text = text AFTER initial tags (will include inline tags)
+tags = initial tags; text = text AFTER initial tags (will include inline tags)
 all = tags+text, ie. everything in the Text field
 any tag = copies whatever tag(s) you specify by typing in this field, like "org", "fad", "t", or "blur,c,alpha".
 
