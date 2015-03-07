@@ -13,7 +13,7 @@
 script_name="Line Breaker"
 script_description="insert/shift linebreaks"
 script_author="unanimated"
-script_version="2.24"
+script_version="2.25"
 
 re=require'aegisub.re'
 
@@ -261,6 +261,7 @@ function nnn(subs, sel)
 	-- apply changes
 	tekst=tekst:gsub("__"," ")
 	stekst=esc(stekst)
+	tekst=tekst:gsub("%%","%%%%")
 	text=text:gsub(stekst,tekst)
 	
 	    -- GUI for manual breaking
@@ -301,7 +302,7 @@ function balance(tekst)
 	if ratio>max_ratio then tekst=db(tekst) end
 	if nocomlength>50 and ratio>(max_ratio*0.95) or ratiop>(max_ratio*0.95) then tekst=db(tekst) end
 	if nocomlength>70 and ratio>(max_ratio*0.9) or ratiop>(max_ratio*0.9) then tekst=db(tekst) end
-	    --aegisub.log("\n ratio: "..ratio.."     length: "..nocomlength)    aegisub.log("\n ratiop: "..ratiop)
+	--    aegisub.log("\n ratio: "..ratio.."     length: "..nocomlength)    aegisub.log("\n ratiop: "..ratiop)
       -- prevent 3-liners
 	if wb>=vidth or wa>=vidth then tekst=db(tekst) end
     end
@@ -331,18 +332,20 @@ function words(tab)
 end
 
 function db(t) t=t:gsub("\\N","") return t end
+function logg(m) aegisub.log("\n "..m) end
 
 function esc(str)
-str=str:gsub("%%","%%%%")
-str=str:gsub("%(","%%%(")
-str=str:gsub("%)","%%%)")
-str=str:gsub("%[","%%%[")
-str=str:gsub("%]","%%%]")
-str=str:gsub("%.","%%%.")
-str=str:gsub("%*","%%%*")
-str=str:gsub("%-","%%%-")
-str=str:gsub("%+","%%%+")
-str=str:gsub("%?","%%%?")
+str=str
+:gsub("%%","%%%%")
+:gsub("%(","%%%(")
+:gsub("%)","%%%)")
+:gsub("%[","%%%[")
+:gsub("%]","%%%]")
+:gsub("%.","%%%.")
+:gsub("%*","%%%*")
+:gsub("%-","%%%-")
+:gsub("%+","%%%+")
+:gsub("%?","%%%?")
 return str
 end
 
