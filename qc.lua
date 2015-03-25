@@ -1,19 +1,19 @@
 ﻿script_name="Quality Check"
 script_description="Quality Check"
 script_author="unanimated"
-script_version="2.7"
+script_version="2.9"
 
-require "clipboard"
+clipboard=require("aegisub.clipboard")
 
-function qc(subs, sel)
+function qc(subs,sel)
 
 sorted=0	mblur=0		layer=0		malf=0		inside=0	comment=0	dialog=0	bloped=0	contr=0	
 dis=0		over=0		gap=0		dspace=0	dword=0		outside=0	op=0		ed=0		sign=0
 italics=0	lbreak=0	hororifix=0	zeroes=0	badita=0	dotdot=0	comfail=0	oneframe=0	trf=0
 zerot=0		halfsek=0	readableh=0	unreadable=0	saurosis=0	dupli=0		negadur=0	empty=0		orgline=0
-tdura=0		tlength=0	tcps=0		trilin=0	par=0		apo=0		dash=0		endash=0
-report=""	styles=", "	misstyles=", "	fontlist=""	fontable={}
-det_2sp=""	det_2p=""	det_2w=""	det_apo=""	det_dash=""	det_ita=""	det_quot=""
+tdura=0		tlength=0	tcps=0		trilin=0	par=0		apo=0		dash=0		endash=0	rept=0
+report=""	styles=", "	misstyles=", "	fontlist=""	fontable={}	spacestyle=""
+det_2sp=""	det_2p=""	det_2w=""	det_apo=""	det_dash=""	det_ita=""	det_quot=""	det_rpt=""
 longtext=nil	longline=nil	highcps=nil
 
 tugs1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
@@ -23,9 +23,9 @@ tugs3={"pos","move","org","fad"}
 cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt","thats","heres","theres","wheres","cant","dont","wouldnt","couldnt","shouldnt","hasnt","havent","ive"}
 
   if pressed=="Clear QC" then
-    for i=1, #subs do
+    for i=1,#subs do
         if subs[i].class=="dialogue" then
-            local line=subs[i]
+            line=subs[i]
 		line.actor=line.actor
 		:gsub("%s?%.%.%.timer pls","")
 		:gsub("%s?%[time gap %d+ms%]","")
@@ -40,7 +40,8 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
 		:gsub("%s?%[parentheses fail%]","")
 		:gsub("%s?%.%.%.sort by time pls","")
 		:gsub("%s?%[doublespace%]","")
-		:gsub("%s?%[double word%]","")
+		:gsub("%s?%[double word.-%]","")
+		:gsub("%s?%[repeated text%]","")
 		:gsub("%s?%[missing apostrophe%]","")
 		:gsub("%s?%[notanemdash%]","")
 		:gsub("%s?%[italics fail%]","")
@@ -68,13 +69,15 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
     for i=1,#subs do
       aegisub.progress.title(string.format("Checking styles/info: %d/%d",i,#subs))
       if subs[i].class=="style" then
+	st=subs[i].name
 	table.insert(styletab,subs[i])
 	if subs[i].name=="Default" then dstyleref=subs[i] end
 	fname=subs[i].fontname
 	fnam=esc(fname)
  	if not fontlist:match(fnam) then fontlist=fontlist..fname.."\n" table.insert(fontable,fname) end
-	styles=styles..subs[i].name..", "
+	styles=styles..st..", "
 	redstyles=styles
+	if st:match("^ ") or st:match(" $") then spacestyle=spacestyle.."\""..st.."\" " end
       end
       if subs[i].class=="info" then
 	    local k=subs[i].key
@@ -91,9 +94,8 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
     
     if res.distill=="" then distill="xxxxxxxx" else distill=res.distill end
 
-    for x, i in ipairs(sel) do
-	cancelled=aegisub.progress.is_cancelled()
-	if cancelled then aegisub.cancel() end
+    for x,i in ipairs(sel) do
+	if aegisub.progress.is_cancelled() then aegisub.cancel() end
 	aegisub.progress.title(string.format("Checking line: %d/%d",x,#sel))
 	prog=math.floor(x/#sel*100)
  	aegisub.progress.set(prog)
@@ -238,8 +240,8 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
 	  diff=3000	stop=0
 	    while stop==0 do
 	      last=btxt
-	      lastwb=wb
-	      lastwa=wa
+	      lastwb=wb or 0
+	      lastwa=wa or 0
 	      tekst=tekst:gsub("\\N([^%s{}]+%s)","%1\\N")
 	      btxt=tekst:gsub(" \\N","\\N")
 	      bspace=btxt:match("^(.-)\\N")
@@ -274,12 +276,18 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
 	    for derp in visible2w:gmatch("%s?([%w%s\']+)[%p]") do
 	    derp2=derp:gsub("^[%a\']+","")
 		for a,b in derp:gmatch("([%a\']+)%s([%a\']+)") do
-		if a==b and not a:match("^%u") then eff(" [double word]") dword=dword+1 det_2w=det_2w..vis.."\n" end
+		if a==b and not a:match("^%u") and a~="had" then eff(" [double word: "..a.."]") dword=dword+1 det_2w=det_2w..vis.."\n" end
 		end
 		for a,b in derp2:gmatch("([%a\']+)%s([%a\']+)") do
-		if a==b and not a:match("^%u") then eff(" [double word]") dword=dword+1 det_2w=det_2w..vis.."\n" end
+		if a==b and not a:match("^%u") and a~="had" then eff(" [double word: "..a.."]") dword=dword+1 det_2w=det_2w..vis.."\n" end
 		end
 	    end
+	end
+
+	-- check for repeated text			[Dialogue]
+	if res.repetxt and def==1 then 
+	    if lastext==text and i==lasti+1 then rept=rept+1 eff(" [repeated text]") det_rpt=det_rpt..text.." ["..x.."]\n" end
+	    lastext=text	lasti=i
 	end
 
 	-- check for bad italics - {\i1}   {\i1}
@@ -472,7 +480,7 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
 	line.text=text
         subs[i]=line
     end
-    aegisub.progress.title(string.format("Processing data..."))
+    aegisub.progress.title("Processing data...")
     if stitle~=nil then report=report.."Script Title:	"..stitle.."\n" end
     if video~=nil then report=report.."Video File:	"..video.."\n" end
     if colorspace~=nil then report=report.."Colorspace:	"..colorspace.."\n" end
@@ -506,6 +514,7 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
     if sorted==1 then report=report.."NOT SORTED BY TIME.\n" end
     if colorspace=="TV.601" then report=report.."COLORSPACE IS TV.601. Use TV.709 or Daiz will haunt you!\n" end
     if misstyles~=", " then misstyles=misstyles:gsub("^, ",""):gsub(", $","") report=report.."MISSING STYLES: "..misstyles.."\n" end
+    if spacestyle~="" then report=report.."Styles with a leading/trailing space: "..spacestyle.."\n" end
     if mblur~=0 then report=report.."Non-dialogue lines with missing blur... "..mblur.."\n" end
     if bloped~=0 then report=report.."Out of those OP/ED... "..bloped.."\n" end
     if malf~=0 then report=report.."Malformed tags found... "..malf.."    "..mlf.."\n" end
@@ -521,6 +530,7 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
     if dspace~=0 then report=report.."Dialogue lines with double spaces... "..dspace.."\n" end
     if dword~=0 then report=report.."Dialogue lines with a double word... "..dword.."\n" end
     if dotdot~=0 then report=report.."Dialogue lines with double periods... "..dotdot.."\n" end
+    if rept~=0 then report=report.."Dialogue lines with repeated text... "..rept.."\n" end
     if apo~=0 then report=report.."Missing apostrophes... "..apo.."\n" end
     if dash~=0 then report=report.."Regular dashes at the end of line... "..dash.."\n" end
     if endash~=0 then report=report.."En-dashes at the end of line... "..endash.."\n" end
@@ -538,14 +548,14 @@ cont={"im","youre","hes","shes","theyre","isnt","arent","wasnt","werent","didnt"
     if saurosis>99 and saurosis<500 then report=report.."Total lines with faggosaurosis... "..saurosis.." -- You're doing it wrong!\n" end
     if saurosis>499 then report=report.."Total lines with faggosaurosis... "..saurosis.." -- WARNING: YOUR FAGGOSAUROSIS LEVELS ARE TOO HIGH!\n" end
     if layer~=0 and sign ~=0 and #sel>dialog then report=report.."Dialogue may overlap with TS. Set to higher layer to avoid.\n" end
-    if sorted==0 and mblur==0 and malf==0 and dis==0 and par==0 and over==0 and gap==0 and dspace==0 and apo==0 and dotdot==0 and badita==0 and comfail==0 and unreadable==0 and misstyles==", " and colorspace~="TV.601" then
+    if sorted==0 and mblur==0 and malf==0 and dis==0 and par==0 and over==0 and gap==0 and dspace==0 and apo==0 and dotdot==0 and badita==0 and comfail==0 and unreadable==0 and misstyles==", " and spacestyle=="" and colorspace~="TV.601" then
     report=report.."\nCongratulations. No serious problems found." else
     if saurosis<500 then report=report.."\nPlease fix the problems and try again." end
     if saurosis>499 then report=report.."\nWHAT ARE YOU DOING?! FIX THAT SHIT, AND DON'T FUCK IT UP AGAIN NEXT TIME!" end
     end
     brcount=0
     for brk in report:gmatch("\n") do brcount=brcount+1 end
-    aegisub.progress.title(string.format("Done"))
+    aegisub.progress.title("Done")
         reportdialog=
 	{{x=0,y=0,width=50,height=1,class="label",label="Text to export:"},
 	{x=0,y=1,width=50,height=brcount/2+6,class="textbox",name="copytext",value=report},}
@@ -568,14 +578,15 @@ function details()
     if det_dash~="" then detailist=detailist.."+ Messed up em-dashes +\n\n"..det_dash.."\n\n" end
     if det_ita~="" then detailist=detailist.."+ Bad Italics +\n\n"..det_ita.."\n\n" end
     if det_quot~="" then detailist=detailist.."+ Commas/periods around quotation marks:\n\n"..det_quot.."\n\n" end
+    if det_rpt~="" then detailist=detailist.."+ Repeated text:\n\n"..det_rpt.."\n\n" end
     if detailist=="" then detailist="Nothing to report." end
     return detailist
 end
 
 function dial5(subs)
-    for i=1, #subs do
+    for i=1,#subs do
       if subs[i].class=="dialogue" then
-	local line=subs[i]
+	line=subs[i]
 	if line.style:match("Defa") or line.style:match("Alt") or line.style:match("Main") then
 	  if line.layer<5 then line.layer=line.layer+5 end
 	end
@@ -613,54 +624,55 @@ end
 
 qderp={"Fuck this","Yeah, no","pls no","Get out","QC my ass","Derp","Shut up","nope.avi",". . .","???","No, wait...","button"}
 
-function konfig(subs, sel)
+function konfig(subs,sel)
 qr=math.random(1,#qderp)
 qcgui={
-	{x=1,y=0,width=1,height=1,class="label",label="Note: Dialogue styles must match 'Defa' or 'Alt' or: "},
-	{x=2,y=0,width=1,height=1,class="edit",name="distill",},
-	{x=3,y=0,width=1,height=1,class="label",label=" QC Version:"..script_version},
-	{x=1,y=1,width=1,height=1,class="label",label="Analysis [applies to SELECTED lines]:"   },
-        {x=1,y=2,width=1,height=1,class="checkbox",name="sorted",label="Check if sorted by time",value=false},
-	{x=1,y=3,width=1,height=1,class="checkbox",name="blur",label="Check for missing blur in signs",value=true},
-	{x=1,y=4,width=1,height=1,class="checkbox",name="bloped",label="Check for missing blur in OP/ED",value=true},
+	{x=1,y=0,width=1,class="label",label="Note: Dialogue styles must match 'Defa' or 'Alt' or: "},
+	{x=2,y=0,width=1,class="edit",name="distill",},
+	{x=3,y=0,width=1,class="label",label=" QC Version:"..script_version},
+	{x=1,y=1,width=1,class="label",label="Analysis [applies to SELECTED lines]:"   },
+        {x=1,y=2,width=1,class="checkbox",name="sorted",label="Check if sorted by time",value=false},
+	{x=1,y=3,width=1,class="checkbox",name="blur",label="Check for missing blur in signs",value=true},
+	{x=1,y=4,width=1,class="checkbox",name="bloped",label="Check for missing blur in OP/ED",value=true},
 	
-	{x=1,y=5,width=1,height=1,class="checkbox",name="overlap",label="Check for overlaps / gaps / zero-time lines",value=true},
-	{x=1,y=6,width=1,height=1,class="checkbox",name="malformed",label="Check for malformed tags - \\blur.5, \\alphaFF, \\\\",value=true},
-	{x=1,y=7,width=1,height=1,class="checkbox",name="disjointed",label="Check for disjointed tags - {\\tags...}{\\tags...}",value=true},
-	{x=1,y=8,width=1,height=1,class="checkbox",name="doublespace",label="Check for double spaces/periods in dialogue",value=true},
-	{x=1,y=9,width=1,height=1,class="checkbox",name="doubleword",label="Check for double words in dialogue",value=true},
-	{x=1,y=10,width=1,height=1,class="checkbox",name="apo",label="Check for missing apostrophes",value=true},
-	{x=1,y=11,width=1,height=1,class="checkbox",name="mdash",label="Check for messed up em-dashes",value=true},
-	{x=1,y=12,width=1,height=1,class="checkbox",name="tril",label="Check for three-liners (slowish, needs video res)",value=true},
-	{x=1,y=13,width=1,height=1,class="checkbox",name="read",label="Check for hard-to-read lines",value=true},
-	{x=1,y=14,width=1,height=1,class="checkbox",name="noread",label="Check for unreadable lines",value=true},
-	{x=1,y=15,width=1,height=1,class="checkbox",name="halfsec",label="Check for dialogue lines under 0.5s",value=true,hint="but over 1 frame and over 8 characters"},
-	{x=1,y=16,width=1,height=1,class="checkbox",name="redundant",label="Check for redundant tags",value=true},
-	{x=1,y=17,width=1,height=1,class="checkbox",name="failita",label="Check for bad italics",value=true},
-	{x=1,y=18,width=1,height=1,class="checkbox",name="mistyle",label="Check for missing styles",value=true},
-	{x=1,y=19,width=1,height=1,class="checkbox",name="dlayer",label="Check dialogue layer",value=true},
-	{x=1,y=20,width=1,height=1,class="checkbox",name="quo",label="Check commas/periods around quotation marks",value=true},
+	{x=1,y=5,width=1,class="checkbox",name="overlap",label="Check for overlaps / gaps / zero-time lines",value=true},
+	{x=1,y=6,width=1,class="checkbox",name="malformed",label="Check for malformed tags - \\blur.5, \\alphaFF, \\\\",value=true},
+	{x=1,y=7,width=1,class="checkbox",name="disjointed",label="Check for disjointed tags - {\\tags...}{\\tags...}",value=true},
+	{x=1,y=8,width=1,class="checkbox",name="doublespace",label="Check for double spaces/periods in dialogue",value=true},
+	{x=1,y=9,width=1,class="checkbox",name="doubleword",label="Check for double words in dialogue",value=true},
+	{x=1,y=10,width=1,class="checkbox",name="apo",label="Check for missing apostrophes",value=true},
+	{x=1,y=11,width=1,class="checkbox",name="mdash",label="Check for messed up em-dashes",value=true},
+	{x=1,y=12,width=1,class="checkbox",name="tril",label="Check for three-liners (slowish, needs video res)",value=true},
+	{x=1,y=13,width=1,class="checkbox",name="read",label="Check for hard-to-read lines",value=true},
+	{x=1,y=14,width=1,class="checkbox",name="noread",label="Check for unreadable lines",value=true},
+	{x=1,y=15,width=1,class="checkbox",name="halfsec",label="Check for dialogue lines under 0.5s",value=true,hint="but over 1 frame and over 8 characters"},
+	{x=1,y=16,width=1,class="checkbox",name="redundant",label="Check for redundant tags",value=true},
+	{x=1,y=17,width=1,class="checkbox",name="failita",label="Check for bad italics",value=true},
+	{x=1,y=18,width=1,class="checkbox",name="repetxt",label="Check for repeated text",value=false},
+	{x=1,y=19,width=1,class="checkbox",name="dlayer",label="Check dialogue layer",value=true},
+	{x=1,y=20,width=1,class="checkbox",name="mistyle",label="Check for missing/misnamed styles",value=true},
+	{x=1,y=21,width=1,class="checkbox",name="quo",label="Check commas/periods around quotation marks",value=true},
 	
-	{x=2,y=1,width=2,height=1,class="label",label="More useless statistics..."},
-	{x=2,y=2,width=2,height=1,class="checkbox",name="italix",label="Count dialogue lines with italics tag",value=false},
-	{x=2,y=3,width=2,height=1,class="checkbox",name="lbreax",label="Count dialogue lines with linebreaks",value=false},
-	{x=2,y=4,width=2,height=1,class="checkbox",name="honorifix",label="Count honorifics (-san, -kun, -chan)",value=false},
-	{x=2,y=5,width=2,height=1,class="checkbox",name="zero",label="Count lines with 0 time",value=false},
-	{x=2,y=6,width=2,height=1,class="checkbox",name="empty",label="Count empty lines",value=false},
-	{x=2,y=7,width=2,height=1,class="checkbox",name="oneframe",label="Count lines that last 1 frame",value=false},
-	{x=2,y=8,width=2,height=1,class="checkbox",name="transline",label="Count lines with transforms",value=false},
-	{x=2,y=9,width=2,height=1,class="checkbox",name="orgline",label="Count lines with \\org",value=false},
-	{x=2,y=10,width=2,height=1,class="checkbox",name="longtext",label="Line with longest text",value=true},
-	{x=2,y=11,width=2,height=1,class="checkbox",name="longline",label="Line with longest duration",value=true},
-	{x=2,y=12,width=2,height=1,class="checkbox",name="highcps",label="Line with highest CPS",value=true},
-	{x=2,y=13,width=2,height=1,class="checkbox",name="cps",label="Write CPS",value=false},
-	{x=2,y=14,width=2,height=1,class="checkbox",name="quot",label="Mark lines with in/out quotation marks",value=false},
-	{x=2,y=15,width=2,height=1,class="checkbox",name="fontcheck",label="List used fonts",value=false},
-	{x=2,y=16,width=2,height=1,class="checkbox",name="uselesstyle",label="List unused styles",value=false},
-	{x=2,y=17,width=2,height=1,class="checkbox",name="sauro",label="Count lines with faggosaurosis",value=true},
+	{x=2,y=1,width=2,class="label",label="More useless statistics..."},
+	{x=2,y=2,width=2,class="checkbox",name="italix",label="Count dialogue lines with italics tag",value=false},
+	{x=2,y=3,width=2,class="checkbox",name="lbreax",label="Count dialogue lines with linebreaks",value=false},
+	{x=2,y=4,width=2,class="checkbox",name="honorifix",label="Count honorifics (-san, -kun, -chan)",value=false},
+	{x=2,y=5,width=2,class="checkbox",name="zero",label="Count lines with 0 time",value=false},
+	{x=2,y=6,width=2,class="checkbox",name="empty",label="Count empty lines",value=false},
+	{x=2,y=7,width=2,class="checkbox",name="oneframe",label="Count lines that last 1 frame",value=false},
+	{x=2,y=8,width=2,class="checkbox",name="transline",label="Count lines with transforms",value=false},
+	{x=2,y=9,width=2,class="checkbox",name="orgline",label="Count lines with \\org",value=false},
+	{x=2,y=10,width=2,class="checkbox",name="longtext",label="Line with longest text",value=true},
+	{x=2,y=11,width=2,class="checkbox",name="longline",label="Line with longest duration",value=true},
+	{x=2,y=12,width=2,class="checkbox",name="highcps",label="Line with highest CPS",value=true},
+	{x=2,y=13,width=2,class="checkbox",name="cps",label="Write CPS",value=false},
+	{x=2,y=14,width=2,class="checkbox",name="quot",label="Mark lines with in/out quotation marks",value=false},
+	{x=2,y=15,width=2,class="checkbox",name="fontcheck",label="List used fonts",value=false},
+	{x=2,y=16,width=2,class="checkbox",name="uselesstyle",label="List unused styles",value=false},
+	{x=2,y=17,width=2,class="checkbox",name="sauro",label="Count lines with faggosaurosis",value=true},
 	
-	{x=1,y=21,width=2,height=1,class="label",label=""},
-	{x=1,y=22,width=3,height=1,class="label",label="This is to help you spot mistakes. If you're using this INSTEAD of QC, you're dumb."},
+	{x=1,y=22,width=2,class="label",label=""},
+	{x=1,y=23,width=3,class="label",label="This is to help you spot mistakes. If you're using this INSTEAD of QC, you're dumb."},
 }
 	buttons={">QC","Clear QC","Dial 5","Check all","Uncheck",qderp[qr]}
 	
@@ -676,13 +688,13 @@ qcgui={
 	pressed,res=aegisub.dialog.display(qcgui,buttons,{ok='>QC',cancel=qderp[qr]})
 	until pressed~="Check all" and pressed~="Uncheck"
 	
-	if pressed==">QC" or pressed=="Clear QC" then qc(subs, sel) end
+	if pressed==">QC" or pressed=="Clear QC" then qc(subs,sel) end
 	if pressed=="Dial 5" then dial5(subs) end
 	if pressed==qderp[qr] then aegisub.cancel() end
 end
 
-function kyuusii(subs, sel)
-    konfig(subs, sel)
+function kyuusii(subs,sel)
+    konfig(subs,sel)
     aegisub.set_undo_point(script_name)
     return sel
 end
