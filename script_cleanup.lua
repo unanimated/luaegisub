@@ -1,16 +1,19 @@
--- Removes comments and other unneeded stuff from selected lines.
+-- Removes selected stuff from selected lines.
 -- Manuals for all my scripts: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm
+-- Disclaimer:
+-- RTFM! (Read the Fucking Manual)
+-- If you get unexpected results because you didn't read what the script does, it's your fault.
 
 script_name="Script Cleanup"
 script_description="Removes unwanted stuff from script"
 script_author="unanimated"
-script_version="3.0"
+script_version="3.1"
 
 dont_delete_empty_tags=false	-- option to not delete {}
 
 function cleanlines(subs,sel)
     if res.all then res.nocom=true res.clear_a=true res.clear_e=true res.layers=true 
-	    res.cleantag=true res.overlap=true res.clear_a=true res.spaces=true res.ctrans=true end
+	    res.cleantag=true res.overlap=true res.clear_a=true res.spaces=true res.alphacol=true res.info=true end
     for x,i in ipairs(sel) do
 	progress("Processing line: "..x.."/"..#sel)
 	prog=math.floor(x/#sel*100)
@@ -38,12 +41,10 @@ function cleanlines(subs,sel)
 	    repeat text,r=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") until r==0
 	    text=text:gsub("({\\[^}]-){(\\[^}]-})","%1%2")
 	    :gsub("^{(\\[^}]-)\\frx0\\fry0([\\}])","{%1%2")
-	    repeat text=text:gsub("(\\fad%([%d,]+%))(.-)\\fad%([%d,]+%)","%1%2")
-	    until not text:match("\\fad%([%d,]+%).-\\fad%([%d,]+%)")
+	    repeat text,r=text:gsub("(\\fad%([%d,]+%))(.-)\\fad%([%d,]+%)","%1%2") until r==0
 	    text=text:gsub("\\fad%(0,0%)","") :gsub("{\\[^}]-}$","")
 	    for tgs in text:gmatch("{\\[^}]-}") do
   	      tgs2=tgs
-  	      tgs2=tgs2
 	      :gsub("\\[\\}]","%1")
 	      :gsub("(\\%a+)([%d%-]+%.%d+)",function(a,b) if not a:match("\\fn") then b=rnd2dec(b) end return a..b end)
 	      :gsub("(\\%a+)%(([%d%-]+%.%d+),([%d%-]+%.%d+)%)",function(a,b,c) b=rnd2dec(b) c=rnd2dec(c) return a.."("..b..","..c..")" end)
@@ -121,8 +122,7 @@ function cleanlines(subs,sel)
 	    :gsub("%s?{\\i0}\\N{\\i1}%s?"," ")
 	    :gsub("%*","_ast_")
 	    :gsub("\\[Nn]","*")
-	    :gsub("%s?%*+%s?"," ")
-	    :gsub("%s%s+"," ")
+	    :gsub("%s*%*+%s*"," ")
 	    :gsub("_ast_","*")
 	    end
 	    
@@ -170,8 +170,14 @@ function cleanlines(subs,sel)
 	
 	text=text:gsub("^%s*","") :gsub("\\t%([^\\%)]-%)","") :gsub("{%*}","")
 	if not dont_delete_empty_tags then text=text:gsub("{}","") end
+	if line.text~=text then chng=chng+1 end
 	line.text=text
 	subs[i]=line
+    end
+    if res.info then
+	infodialog=
+	{{class="label",label="Lines with modified Text field: "..chng}}
+	P,res=aegisub.dialog.display(infodialog,{"OK"},{close='OK'})
     end
     aegisub.set_undo_point(script_name)
     return sel
@@ -347,14 +353,7 @@ function cleantr(tags)
 	trnsfrm=""
 	for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
 	tags=tags:gsub("\\t%b()","")
-
-	cleant=""
-	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-)%)") do cleant=cleant..ct end
-	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-%b()[^%)]-)%)") do cleant=cleant..ct end
-	trnsfrm=trnsfrm:gsub("\\t%(\\[^%(%)]+%)","")
-	trnsfrm=trnsfrm:gsub("\\t%((\\[^%(%)]-%b()[^%)]-)%)","")
-	if cleant~="" then trnsfrm="\\t("..cleant..")"..trnsfrm end
-	tags=tags:gsub("^({[^}]*)}","%1"..trnsfrm.."}")
+	:gsub("^({[^}]*)}","%1"..trnsfrm.."}")
 	return tags
 end
 
@@ -382,6 +381,7 @@ function logg(m) aegisub.log("\n "..m) end
 
 function cleanup(subs,sel,act)
 if act==0 then act=sel[1] end
+chng=0
 cleanup_cfg=
 {
 {x=0,y=0,class="checkbox",name="nots",label="Remove TS timecodes",hint="Removes timecodes like {TS 12:36}"},
@@ -393,8 +393,9 @@ cleanup_cfg=
 {x=0,y=6,class="checkbox",name="overlap",label="Fix 1-frame gaps/overlaps"},
 {x=0,y=7,class="checkbox",name="nocomline",label="Delete commented lines"},
 {x=0,y=8,class="checkbox",name="noempty",label="Delete empty lines"},
-{x=0,y=9,class="checkbox",name="ctrans",label="Clean up && sort transforms"},
+{x=0,y=9,class="checkbox",name="alphacol",label="Try to fix alpha / colour tags"},
 {x=0,y=10,class="checkbox",name="spaces",label="Fix start/end/double spaces"},
+{x=0,y=11,class="checkbox",name="info",label="Print info"},
 {x=0,y=12,class="checkbox",name="all",label="ALL OF THE ABOVE"},
 
 {x=2,y=0,class="checkbox",name="allcol",label="Remove all colour tags"},
@@ -407,7 +408,7 @@ cleanup_cfg=
 {x=2,y=7,class="checkbox",name="hspace",label="Remove hard spaces - \\h"},
 {x=2,y=8,class="checkbox",name="nostyle",label="Delete unused styles"},
 {x=2,y=9,class="checkbox",name="nostyle2",label="Delete unused styles (leave Default)"},
-{x=2,y=10,class="checkbox",name="alphacol",label="Try to fix alpha / colour tags"},
+{x=2,y=10,class="checkbox",name="ctrans",label="Move transforms to end of tag block"},
 {x=2,y=11,class="checkbox",name="inline",label="Remove inline tags"},
 {x=2,y=12,class="checkbox",name="notag",label="Remove all {\\tags} from selected lines "},
 
