@@ -7,7 +7,7 @@
 script_name="Script Cleanup"
 script_description="Removes unwanted stuff from script"
 script_author="unanimated"
-script_version="3.1"
+script_version="3.2"
 
 dont_delete_empty_tags=false	-- option to not delete {}
 
@@ -37,15 +37,16 @@ function cleanlines(subs,sel)
 	    end
 	    
 	    if res.cleantag and text:match("{\\") then
+	    txt2=text
 	    text=text:gsub("{\\\\k0}","") :gsub("{(\\[^}]-)}{(\\r[^}]-)}","{%2}") :gsub("^{\\r([\\}])","{%1")
 	    repeat text,r=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") until r==0
 	    text=text:gsub("({\\[^}]-){(\\[^}]-})","%1%2")
 	    :gsub("^{(\\[^}]-)\\frx0\\fry0([\\}])","{%1%2")
 	    repeat text,r=text:gsub("(\\fad%([%d,]+%))(.-)\\fad%([%d,]+%)","%1%2") until r==0
 	    text=text:gsub("\\fad%(0,0%)","") :gsub("{\\[^}]-}$","")
-	    for tgs in text:gmatch("{\\[^}]-}") do
+	     for tgs in text:gmatch("{\\[^}]-}") do
   	      tgs2=tgs
-	      :gsub("\\[\\}]","%1")
+	      :gsub("\\([\\}])","%1")
 	      :gsub("(\\%a+)([%d%-]+%.%d+)",function(a,b) if not a:match("\\fn") then b=rnd2dec(b) end return a..b end)
 	      :gsub("(\\%a+)%(([%d%-]+%.%d+),([%d%-]+%.%d+)%)",function(a,b,c) b=rnd2dec(b) c=rnd2dec(c) return a.."("..b..","..c..")" end)
 	      :gsub("(\\%a+)%(([%d%-]+%.%d+),([%d%-]+%.%d+),([%d%-]+%.%d+),([%d%-]+%.%d+)",function(a,b,c,d,e) 
@@ -53,7 +54,8 @@ function cleanlines(subs,sel)
 	      tgs2=duplikill(tgs2)
 	      tgs=esc(tgs)
 	      text=text:gsub(tgs,tgs2)
-	    end
+	     end
+	    if txt2~=text then kleen=kleen+1 end
 	    end
 	    
 	    if res.overlap then
@@ -175,8 +177,10 @@ function cleanlines(subs,sel)
 	subs[i]=line
     end
     if res.info then
+	infotxt="Lines with modified Text field: "..chng
+	if res.cleantag then infotxt=infotxt.."\nChanges from Clean Tags: "..kleen end
 	infodialog=
-	{{class="label",label="Lines with modified Text field: "..chng}}
+	{{class="label",label=infotxt}}
 	P,res=aegisub.dialog.display(infodialog,{"OK"},{close='OK'})
     end
     aegisub.set_undo_point(script_name)
@@ -333,19 +337,26 @@ tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fsc
 tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
 
 function duplikill(tagz)
+	aftert=tagz:match("^{.*\\t%b()(.-)}$") or ""
+	tagz=tagz:gsub(esc(aftert),"")
 	tf=""
 	for t in tagz:gmatch("\\t%b()") do tf=tf..t end
 	tagz=tagz:gsub("\\t%b()","")
 	for i=1,#tags1 do
 	    tag=tags1[i]
 	    tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%1%2")
+	    if aftert:match("\\"..tag.."[%d%.%-]") then tagz=tagz:gsub("\\"..tag.."[%d%.%-]+","") tf=tf:gsub("\\"..tag.."[%d%.%-]+","") end
 	end
 	tagz=tagz:gsub("\\1c&","\\c&")
 	for i=1,#tags2 do
 	    tag=tags2[i]
 	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%1%2")
+	    if aftert:match("\\"..tag.."&") then tagz=tagz:gsub("\\"..tag.."&H%x+&","") tf=tf:gsub("\\"..tag.."&H%x+&","") end
 	end
-	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf.."}")
+	tagz=tagz:gsub("(\\i?clip%b())(.-)(\\i?clip%b())",
+	  function(a,b,c) if a:match("m") and c:match("m") or not a:match("m") and not c:match("m") then
+	  return b..c else return a..b..c end end)
+	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf..aftert.."}")
 	return tagz
 end
 
@@ -381,7 +392,7 @@ function logg(m) aegisub.log("\n "..m) end
 
 function cleanup(subs,sel,act)
 if act==0 then act=sel[1] end
-chng=0
+chng=0 kleen=0
 cleanup_cfg=
 {
 {x=0,y=0,class="checkbox",name="nots",label="Remove TS timecodes",hint="Removes timecodes like {TS 12:36}"},
