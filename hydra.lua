@@ -1,9 +1,11 @@
-﻿script_name="HYDRA"
+﻿-- Manuals for all my scripts: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm
+
+script_name="HYDRA"
 script_description="A multi-headed typesetting tool"
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/hydra.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/hydra.lua"
-script_version="4.0"
+script_version="4.04"
 
 order="\\r\\fad\\fade\\an\\q\\blur\\be\\bord\\shad\\fn\\fs\\fsp\\fscx\\fscy\\frx\\fry\\frz\\c\\2c\\3c\\4c\\alpha\\1a\\2a\\3a\\4a\\xbord\\ybord\\xshad\\yshad\\pos\\move\\org\\clip\\iclip\\b\\i\\u\\s\\p"
 
@@ -60,11 +62,7 @@ function hh9(subs,sel)
 	    text=text:gsub("({\\[^}]*)}","%1\\t("..tin..","..tout..","..res.accel..",\\alltagsgohere)}")
 	end
 	if tmode==1 then
-	  if text:match("^{[^}]-\\t%(\\") and tin==0 and tout==0 and res.accel==1 then
-	    text=text:gsub("^({[^}]*\\t%()\\","%1\\alltagsgohere\\")
-	  else
 	    text=text:gsub("^({\\[^}]*)}","%1".."\\t("..tin..","..tout..","..res.accel..",\\alltagsgohere)}") 
-	  end
 	end
 	
 	transform=""
@@ -89,7 +87,7 @@ function hh9(subs,sel)
 		    eval=esc(val)
 		    transform2=transform:gsub(tag..eval,tag..newval)
 		    tg=tg:gsub(transform,transform2)
-		    logg(tg)
+		    --logg(tg)
 		end
 	      end
 	    return cleantr(tg) end)
@@ -139,7 +137,7 @@ function hh9(subs,sel)
 		tags2=""
 		for tg in tags:gmatch("\\%d?%a+") do
 		  txt1=text:match("^.-"..esc(place)) or ""
-		  local tg2=txt1:match("^.*("..tg.."[^\\}]+).-$") or tg
+		  local tg2=txt1:match("^.*("..tg.."[^\\}%a]+).-$") or tg
 		  tags2=tags2..tg2
 		end
 		text=text:gsub("^(.-)("..esc(place).."%s*)(.*)$","%1{"..tags.."}%2{"..tags2.."}%3")
@@ -358,27 +356,21 @@ function special(subs,sel)
 	    trnsfrm=""
 	    for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
 	    tags=tags:gsub("\\t%b()","")
-	  trans=trnsfrm:gsub("\\t%(","") :gsub("%)$","")
-	  tab={tags,trans}
-	  ord={"",""}
-	    -- go through tags, save them in ordered, and delete from tags
-	    for x=1,2 do
+	  ord=""
+	    -- go through tags, save them in order, and delete from tags
 	      for tg in order:gmatch("\\[%a%d]+") do
-		tag=tab[x]:match("("..tg.."[^\\}]-)[\\}]")
-		if tg=="\\fs" then tag=tab[x]:match("(\\fs%d[^\\}]-)[\\}]") end
-		if tg=="\\fad" then tag=tab[x]:match("(\\fad%([^\\}]-)[\\}]") end
-		if tg=="\\c" then tag=tab[x]:match("(\\c&[^\\}]-)[\\}]") end
-		if tg=="\\i" then tag=tab[x]:match("(\\i[^%a\\}]-)[\\}]") end
-		if tg=="\\s" then tag=tab[x]:match("(\\s[^%a\\}]-)[\\}]") end
-		if tg=="\\p" then tag=tab[x]:match("(\\p[^%a\\}]-)[\\}]") end
-		if tag then ord[x]=ord[x]..tag etag=esc(tag) tab[x]=tab[x]:gsub(etag,"") end
+		tag=tags:match("("..tg.."[^\\}]-)[\\}]")
+		if tg=="\\fs" then tag=tags:match("(\\fs%d[^\\}]-)[\\}]") end
+		if tg=="\\fad" then tag=tags:match("(\\fad%([^\\}]-)[\\}]") end
+		if tg=="\\c" then tag=tags:match("(\\c&[^\\}]-)[\\}]") end
+		if tg=="\\i" then tag=tags:match("(\\i[^%a\\}]-)[\\}]") end
+		if tg=="\\s" then tag=tags:match("(\\s[^%a\\}]-)[\\}]") end
+		if tg=="\\p" then tag=tags:match("(\\p[^%a\\}]-)[\\}]") end
+		if tag then ord=ord..tag etag=esc(tag) tags=tags:gsub(etag,"") end
 	      end
-	    end
 	    -- attach whatever got left
-	    if tab[1]~="{}" then ord[1]=ord[1]..tab[1]:match("{(.-)}") end
-	    if tab[2]~="" then ord[2]="\\t("..ord[2]..tab[2]..")" end
-	    -- put saved transforms at the end of ordered + add { }
-	    ordered="{"..ord[1]..ord[2].."}"
+	    if tags~="{}" then ord=ord..tags:match("{(.-)}") end
+	    ordered="{"..ord..trnsfrm.."}"
 	    orig=esc(orig)
 	    text=text:gsub(orig,ordered)
 	  end
@@ -594,36 +586,33 @@ function cleantr(tags)
 	trnsfrm=""
 	for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
 	tags=tags:gsub("\\t%b()","")
-
-	cleant=""
-	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-)%)") do cleant=cleant..ct end
-	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-%b()[^%)]-)%)") do cleant=cleant..ct end
-	trnsfrm=trnsfrm:gsub("\\t%(\\[^%(%)]+%)","")
-	trnsfrm=trnsfrm:gsub("\\t%((\\[^%(%)]-%b()[^%)]-)%)","")
-	if cleant~="" then trnsfrm="\\t("..cleant..")"..trnsfrm end
-	tags=tags:gsub("^({[^}]*)}","%1"..trnsfrm.."}")
+	:gsub("^({[^}]*)}","%1"..trnsfrm.."}")
 	return tags
 end
 
 function duplikill(tagz)
-	tf=""
+	aftert=tagz:match("^{.*\\t%b()(.-)}$") or ""
+	tagz=tagz:gsub(esc(aftert),"")
+	local tf=""
 	for t in tagz:gmatch("\\t%b()") do tf=tf..t end
-	tagz=tagz:gsub("\\t%b()","")
 	tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
+	tagz=tagz:gsub("\\t%b()","")
 	for i=1,#tags1 do
 	    tag=tags1[i]
-	    tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1")
+	    tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%1%2")
+	    if aftert:match("\\"..tag.."[%d%.%-]") then tagz=tagz:gsub("\\"..tag.."[%d%.%-]+","") tf=tf:gsub("\\"..tag.."[%d%.%-]+","") end
 	end
-	tagz=tagz:gsub("\\1c&","\\c&")
 	tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
+	tagz=tagz:gsub("\\1c&","\\c&")
 	for i=1,#tags2 do
 	    tag=tags2[i]
-	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1")
+	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%1%2")
+	    if aftert:match("\\"..tag.."&") then tagz=tagz:gsub("\\"..tag.."&H%x+&","") tf=tf:gsub("\\"..tag.."&H%x+&","") end
 	end
 	tagz=tagz:gsub("(\\i?clip%b())(.-)(\\i?clip%b())",
 	  function(a,b,c) if a:match("m") and c:match("m") or not a:match("m") and not c:match("m") then
 	  return b..c else return a..b..c end end)
-	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf.."}")
+	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf..aftert.."}")
 	return tagz
 end
 
