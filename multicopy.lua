@@ -1,9 +1,10 @@
 ﻿script_name="MultiCopy"
 script_description="Copy and paste just about anything from/to multiple lines"
 script_author="unanimated"
-script_version="3.1"
+script_version="3.2"
 
 -- Use the Help button for info
+-- Manuals for all my scripts: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm
 
 clipboard=require("aegisub.clipboard")
 re=require'aegisub.re'
@@ -266,7 +267,43 @@ function pastet(subs,sel)	-- text
 	line=subs[i]
 	text=subs[i].text
 	tags=text:match("^{\\[^}]*}") or ""
-	text=tags..data[x]
+	text=text:gsub(esc(tags),"")
+	txt2=data[x]
+	matchfail=false
+	-- using orig. line's inline tags
+	if text:match(" {\\[^}]*}%w%w+") and not txt2:match("{%*?\\.-}") then
+	  -- match same words if found
+	  for tgs,wrd in text:gmatch(" ({\\[^}]*})(%w%w+)") do
+	    if txt2:match("^"..wrd.."%W") or txt2:match(" "..wrd.."%W") or txt2:match(" "..wrd.."$") then
+	      txt2=txt2:gsub(wrd,tgs..wrd)
+	    else matchfail=true
+	    end
+	  end
+	  -- apply tags by word count
+	  if txt2==data[x] or matchfail then
+	    txt2=data[x]
+	    text=text:gsub("{[^\\}]-}","")
+	    words=0
+	    tagtab={}
+	    for w in text:gmatch("%S+") do
+	      words=words+1
+	      tag1=w:match("^{\\[^}]*}")
+	      tag2=w:match("{\\[^}]*}$")
+	      tagtab[words]={t1=tag1,t2=tag2}
+	    end
+	    wrds2=0
+	    txt3=""
+	    for w in txt2:gmatch("%S+") do
+	      wrds2=wrds2+1
+	      if tagtab[wrds2] and tagtab[wrds2].t1 then w=tagtab[wrds2].t1..w end
+	      if tagtab[wrds2] and tagtab[wrds2].t2 then w=w..tagtab[wrds2].t2 end
+	      txt3=txt3..w.." "
+	    end
+	    txt2=txt3:gsub(" $","")
+	  end
+	end
+	text=tags..txt2
+	text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 	line.text=text
 	subs[i]=line
       end
@@ -702,21 +739,28 @@ tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
 tags3={"pos","move","org","fad"}
 
 function duplikill(tagz)
+	aftert=tagz:match("^{.*\\t%b()(.-)}$") or ""
+	tagz=tagz:gsub(esc(aftert),"")
 	tf=""
 	for t in tagz:gmatch("\\t%b()") do tf=tf..t end
+	tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
 	tagz=tagz:gsub("\\t%b()","")
 	for i=1,#tags1 do
-	  tag=tags1[i]
-	  tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1")
+	    tag=tags1[i]
+	    tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%1%2")
+	    if aftert:match("\\"..tag.."[%d%.%-]") then tagz=tagz:gsub("\\"..tag.."[%d%.%-]+","") tf=tf:gsub("\\"..tag.."[%d%.%-]+","") end
 	end
+	tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
 	tagz=tagz:gsub("\\1c&","\\c&")
 	for i=1,#tags2 do
-	  tag=tags2[i]
-	  tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1")
+	    tag=tags2[i]
+	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%1%2")
+	    if aftert:match("\\"..tag.."&") then tagz=tagz:gsub("\\"..tag.."&H%x+&","") tf=tf:gsub("\\"..tag.."&H%x+&","") end
 	end
-	tagz=tagz
-	:gsub("\\i?clip%b()([^}]-)(\\i?clip%b())","%1%2")
-	:gsub("({\\[^}]-)}","%1"..tf.."}")
+	tagz=tagz:gsub("(\\i?clip%b())(.-)(\\i?clip%b())",
+	  function(a,b,c) if a:match("m") and c:match("m") or not a:match("m") and not c:match("m") then
+	  return b..c else return a..b..c end end)
+	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf..aftert.."}")
 	return tagz
 end
 
@@ -773,7 +817,7 @@ function logg(m) aegisub.log("\n "..m) end
 cbut={"OK","Copy to clipboard"}
 copydialog=
 {{class="label",label="Text to export:"},
-{x=1,idth=49,class="label"},
+{x=1,width=49,class="label"},
 {y=1,width=50,height=20,class="textbox",name="copytext"}}
 
 -- GUI PART
