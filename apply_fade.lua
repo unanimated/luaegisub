@@ -18,10 +18,12 @@ Extra functions:
 Fade between 0 and 1 gives you that fraction of the line's duration, so fade in 0.2 with 1 second is \fad(200,0).
 Negative fade gives you the inverse with respect to duration, so if dur=3000 and fade in is -500, you get \fad(2500,0), or to 500 from end.]]
 
+-- Manuals for all my scripts: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm
+
 script_name="Apply fade"
 script_description="Applies fade to selected lines"
 script_author="unanimated"
-script_version="3.8"
+script_version="3.9"
 
 re=require'aegisub.re'
 
@@ -174,23 +176,40 @@ if res.vin or res.vout then vfcheck() vt=math.floor((fr2ms(vframe+1)+fr2ms(vfram
 	  -- fade from colour
 	    if res.crl then
 		if kolora~="" then
-		  text=text:gsub("^{\\[^}]-}",function(a) return a:gsub("\\[34]?c&H%x+&","") end)
+		  text=text:gsub("^{\\[^}]-}",function(a)
+		    if a:match("\\t") then
+		    nt=""
+		    for n,t in a:gmatch("(.-)(\\t%b())") do nt=nt..n:gsub("\\[34]?c&H%x+&","")..t end
+		    nt=nt..a:match(".*\\t%b()(.-)$"):gsub("\\[34]?c&H%x+&","")
+		    return nt
+		    else return a:gsub("\\[34]?c&H%x+&","") end end)
 		  text=text:gsub("^{}","{\\arfa}")
-		  text=text:gsub("^({\\[^}]-)}",
-		  "%1"..kolora..blin.."\\t(0,"..fadin..","..res.inn..","..see1..see3..see4..lineblur..")}")
+		  tfc=kolora..blin.."\\t(0,"..fadin..","..res.inn..","..see1..see3..see4..lineblur..")"
+		  text=text:gsub("^({\\[^}]-)}",function(a)
+		    if a:match("\\t") then
+		    return a:gsub("^(.-)(\\t.*)","%1"..tfc.."%2}")
+		    else return a..tfc.."}" end end)
 		end
 		-- inline colour tags
 		for t in text:gmatch(".({\\[^}]-})") do
-		  if t:match("\\[13]?c") then
-		    col1=t:match("(\\c&H%x+&)") or ""	if col1==kolora1 then col1="" end
-		    col3=t:match("(\\3c&H%x+&)") or ""	if col3==kolora3 then col3="" end
-		    col4=t:match("(\\4c&H%x+&)") or ""	if col4==kolora4 then col4="" end
+		  det=t:gsub("\\t%b()","")
+		  if det:match("\\[13]?c") then
+		    col1=det:match("(\\c&H%x+&)") or ""	if col1==kolora1 then col1="" end
+		    col3=det:match("(\\3c&H%x+&)") or ""	if col3==kolora3 then col3="" end
+		    col4=det:match("(\\4c&H%x+&)") or ""	if col4==kolora4 then col4="" end
 		    if (col1..col3..col4):len()>0 then
-		      t2=t
-		      :gsub("\\c&H%x+&",kolora1)
-		      :gsub("\\3c&H%x+&",kolora3)
-		      :gsub("\\4c&H%x+&",kolora4)
-		      :gsub("({[^}]-)}","%1\\t(0,"..fadin..","..res.inn..","..col1..col3..col4..")}")
+		      tfic="\\t(0,"..fadin..","..res.inn..","..col1..col3..col4..")"
+		      if t:match("\\t") then
+			t2=""
+			for n,tf in t:gmatch("(.-)(\\t%b())") do
+			  t2=t2..n:gsub("\\c&H%x+&",kolora1):gsub("\\3c&H%x+&",kolora3):gsub("\\4c&H%x+&",kolora4)..tf end
+			t2=t2..t:match(".*\\t%b()(.-)$"):gsub("\\c&H%x+&",kolora1):gsub("\\3c&H%x+&",kolora3):gsub("\\4c&H%x+&",kolora4)
+			t2=t2:gsub("^(.-)(\\t.*)","%1"..tfic.."%2")
+		      else
+			t2=t:gsub("\\c&H%x+&",kolora1):gsub("\\3c&H%x+&",kolora3):gsub("\\4c&H%x+&",kolora4)
+			t2=t2:gsub("({[^}]-)}","%1"..tfic.."}")
+		      end
+		      
 		      t=esc(t)
 		      text=text:gsub(t,t2)
 		    end
@@ -199,10 +218,11 @@ if res.vin or res.vout then vfcheck() vt=math.floor((fr2ms(vframe+1)+fr2ms(vfram
 	    else
 	    -- fade from alpha
 		subalf=false
-		st_alf=text:match("^{[^}]-(\\alpha&H%x%x&)")
-		st_a1=text:match("^{[^}]-(\\1a&H%x%x&)")
-		st_a3=text:match("^{[^}]-(\\3a&H%x%x&)")
-		st_a4=text:match("^{[^}]-(\\4a&H%x%x&)")
+		notft=text:gsub("\\t%b()","")
+		st_alf=notft:match("^{[^}]-(\\alpha&H%x%x&)")
+		st_a1=notft:match("^{[^}]-(\\1a&H%x%x&)")
+		st_a3=notft:match("^{[^}]-(\\3a&H%x%x&)")
+		st_a4=notft:match("^{[^}]-(\\4a&H%x%x&)")
 		if st_alf==nil then toalf=a00 else toalf=st_alf end
 		tosub=toalf:match("&H%x%x&")
 		if st_a1==nil then toa1="\\1a"..tosub else subalf=true toa1=st_a1 end
@@ -210,20 +230,39 @@ if res.vin or res.vout then vfcheck() vt=math.floor((fr2ms(vframe+1)+fr2ms(vfram
 		if st_a4==nil then toa4="\\4a"..tosub else subalf=true toa4=st_a4 end
 		if subalf then toalf=toa1..toa3..toa4 else toalf=toalf end
 		fromalf=toalf:gsub("&H%x%x&","&HFF&")
-		text=text:gsub("^({[^}]-)\\alpha&H%x%x&","%1")
-		:gsub("^{\\[^}]-}",function(a) return a:gsub("\\[134]a&H%x+&","") end)
-		:gsub("^{(\\[^}]-)}","{%1"..blin..fromalf.."\\t(0,"..fadin..","..res.inn..","..lineblur..toalf..")}")
+		text=text:gsub("^{\\[^}]-}",function(a)
+		    if a:match("\\t") then
+		    nt=""
+		    for n,t in a:gmatch("(.-)(\\t%b())") do nt=nt..n:gsub("\\%w+a&H%x+&","")..t end
+		    nt=nt..a:match(".*\\t%b()(.-)$"):gsub("\\%w+a&H%x+&","")
+		    return nt
+		    else return a:gsub("\\%w+a&H%x+&","") end end)
+		tfa=blin..fromalf.."\\t(0,"..fadin..","..res.inn..","..lineblur..toalf..")"
+		text=text:gsub("^({\\[^}]-)}",function(a)
+		    if a:match("\\t") then
+		    return a:gsub("^(.-)(\\t.*)","%1"..tfa.."%2}")
+		    else return a..tfa.."}" end end)
 		-- inline alpha tags
 		for t in text:gmatch(".({\\[^}]-})") do
-		    arfa=t:match("(\\alpha&H%x+&)") or ""
-		    arf1=t:match("(\\1a&H%x+&)") or ""
-		    arf3=t:match("(\\3a&H%x+&)") or ""
-		    arf4=t:match("(\\4a&H%x+&)") or ""
+		    det=t:gsub("\\t%b()","")
+		    arfa=det:match("(\\alpha&H%x+&)") or ""
+		    arf1=det:match("(\\1a&H%x+&)") or ""
+		    arf3=det:match("(\\3a&H%x+&)") or ""
+		    arf4=det:match("(\\4a&H%x+&)") or ""
 		    toarfa=arfa..arf1..arf3..arf4
 		    if toarfa~="" then
 		      fromarfa=toarfa:gsub("&H%x%x&","&HFF&")
-		      t2=t:gsub("\\alpha&H%x+&","") :gsub("\\[134]a&H%x+&","")
-		      t2=t2:gsub("({[^}]-)}","%1"..fromarfa.."\\t(0,"..fadin..","..res.inn..","..toarfa..")}")
+		      tfia=fromarfa.."\\t(0,"..fadin..","..res.inn..","..toarfa..")"
+		      if t:match("\\t") then
+			t2=""
+			for n,tf in t:gmatch("(.-)(\\t%b())") do
+			  t2=t2..n:gsub("\\alpha&H%x+&","") :gsub("\\[134]a&H%x+&","")..tf end
+			t2=t2..t:match(".*\\t%b()(.-)$"):gsub("\\alpha&H%x+&","") :gsub("\\[134]a&H%x+&","")
+			t2=t2:gsub("^(.-)(\\t.*)","%1"..tfia.."%2")
+		      else
+			t2=t:gsub("\\alpha&H%x+&","") :gsub("\\[134]a&H%x+&","")
+			t2=t2:gsub("({[^}]-)}","%1"..tfia.."}")
+		      end
 		      t=esc(t)
 		      text=text:gsub(t,t2)
 		    end
@@ -456,8 +495,7 @@ function textmod(orig)
     tk={}
     tg={}
 	text=text:gsub("{\\\\k0}","")
-	repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
+	repeat text,r=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") until r==0
 	vis=text:gsub("{[^}]-}","")
 	ltrmatches=re.find(vis,".")
 	  for l=1,#ltrmatches do
