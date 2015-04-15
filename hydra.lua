@@ -5,7 +5,7 @@ script_description="A multi-headed typesetting tool"
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/hydra.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/hydra.lua"
-script_version="4.04"
+script_version="4.05"
 
 order="\\r\\fad\\fade\\an\\q\\blur\\be\\bord\\shad\\fn\\fs\\fsp\\fscx\\fscy\\frx\\fry\\frz\\c\\2c\\3c\\4c\\alpha\\1a\\2a\\3a\\4a\\xbord\\ybord\\xshad\\yshad\\pos\\move\\org\\clip\\iclip\\b\\i\\u\\s\\p"
 
@@ -62,7 +62,19 @@ function hh9(subs,sel)
 	    text=text:gsub("({\\[^}]*)}","%1\\t("..tin..","..tout..","..res.accel..",\\alltagsgohere)}")
 	end
 	if tmode==1 then
-	    text=text:gsub("^({\\[^}]*)}","%1".."\\t("..tin..","..tout..","..res.accel..",\\alltagsgohere)}") 
+	    if place:match("*") then
+		initags=text:match("^{\\[^}]-}") or ""
+		orig=text
+		replace=place:gsub("%*","{".."\\t("..tin..","..tout..","..res.accel..",\\alltagsgohere)}")
+		v1=text:gsub("{[^}]-}","")
+		v2=replace:gsub("{[^}]-}","")
+		if v1==v2 then
+		  text=textmod(orig,replace)
+		  text=initags..text
+		end
+	    else
+		text=text:gsub("^({\\[^}]*)}","%1".."\\t("..tin..","..tout..","..res.accel..",\\alltagsgohere)}")
+	    end
 	end
 	
 	transform=""
@@ -87,7 +99,6 @@ function hh9(subs,sel)
 		    eval=esc(val)
 		    transform2=transform:gsub(tag..eval,tag..newval)
 		    tg=tg:gsub(transform,transform2)
-		    --logg(tg)
 		end
 	      end
 	    return cleantr(tg) end)
@@ -120,13 +131,13 @@ function hh9(subs,sel)
 	    -- SOMEWHERE IN THE MIDDLE
 		clean=text:gsub("{[^}]-}","") :gsub("%s?\\[Nn]%s?"," ")
 		text=text:gsub("%*","_ast_")
-		lngth=math.floor(clean:len()*fak)		--aegisub.log("\n lngth "..lngth)
+		lngth=math.floor(clean:len()*fak)
 		text="*"..text
 		text=text:gsub("%*({\\[^}]-})","%1*")
 		m=0
 		if lngth>0 then
 		  repeat text=text:gsub("%*({[^}]-})","%1*") :gsub("%*(.)","%1*") :gsub("%*(%s?\\[Nn]%s?)","%1*") m=m+1
-		  until m==lngth	end	--aegisub.log("\n text "..text)
+		  until m==lngth	end
 		text=text:gsub("%*","{"..tags.."}") :gsub("({"..tags.."})({[^}]-})","%2%1") 
 		:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") :gsub("_ast_","*")
 	    elseif res.tagpres=="custom pattern" then
@@ -964,7 +975,7 @@ hh3={
 	if res.tmode=="add2all" then tmode=3 end
 	if res.tmode=="all tag blocks" then tmode=4 end
 	if res.tagpres=="in the middle" then fak=0.5 end
-	if sm==3 and res.tagpres:match("of text") then fa,fb=res.tagpres:match("(%d)/(%d)") fak=fa/fb end
+	if loaded==3 and res.tagpres:match("of text") then fa,fb=res.tagpres:match("(%d)/(%d)") fak=fa/fb end
 	if res.aonly then res.alfas=true end
 	
 	if pressed=="Apply" then trans=0 hh9(subs,sel) end
