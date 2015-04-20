@@ -5,11 +5,12 @@
 -- Mirror: intended for mirroring mocha data. Applied to fbf lines with pos going from 200 to 260, it will go from 200 to 140.
 --   Works with position, origin, rotations, and rectangular clip. If clip changes size/shape, results will be weird.
 --   Also works with move (though that makes pretty much no sense to use) and fax/fay.
+-- Manuals for all my scripts: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm
 
 script_name="Recalculator"
 script_description="recalculates things"
 script_author="unanimated"
-script_version="2.2"
+script_version="2.3"
 
 -- SETTINGS: type the names of checkboxes you want checked by default as you see them in the GUI, separated by commas
 
@@ -32,6 +33,44 @@ function calc2(num)
     return num
 end
 
+function recalc(text,tg,c)
+	if not res.regtag and not res.tftag then
+		t_error("For "..tg..", you must select 'regular tags' or 'tags in transforms' or both.",true) end
+	if c==1 then kalk=calc else kalk=calc2 end
+	if neg==0 then val="([%d%.%-]+)" else val="([%d%.]+)" end
+	-- split into non-tf/tf segments if there are transforms
+	segments={}
+	if text:match("\\t%b()") then
+		for seg1,seg2 in text:gmatch("(.-)(\\t%b())") do table.insert(segments,seg1) table.insert(segments,seg2) end
+		table.insert(segments,text:match("^.*\\t%b()(.-)$"))
+	else table.insert(segments,text)
+	end
+	-- change non-tf/tf/all segments
+	for q=1,#segments do
+		if res.regtag and not segments[q]:match("\\t%b()") then
+			segments[q]=segments[q]:gsub(tg.."("..val..")",function(a) return tg..kalk(tonumber(a)) end)
+		end
+		if res.tftag and segments[q]:match("\\t%b()") then
+			segments[q]=segments[q]:gsub(tg.."("..val..")",function(a) return tg..kalk(tonumber(a)) end)
+		end
+	end
+	nt=""
+	for q=1,#segments do nt=nt..segments[q] end
+	return nt
+end
+
+function recalc2(text,tg,c)
+	if neg==0 then val="([%d%.%-]+)" else val="([%d%.]+)" end
+	if c==1 then
+	  text=text:gsub(tg.."%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b) return tg.."("..calc(tonumber(a))..","..b..")" end)
+	else
+	  text=text:gsub(tg.."%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b) return tg.."("..a..","..calc2(tonumber(b))..")" end)
+	end
+	return text
+end
+
+function addtag(tag,text) text=text:gsub("^{(\\[^}]-})","{"..tag.."%1") return text end
+
 function multiply(subs,sel)
     c=(res.pc-100)/100
     oc=res.pc/100
@@ -49,62 +88,54 @@ function multiply(subs,sel)
 	styleref=stylechk(line.style)
 	if not text:match("^{\\") then text="{\\rec}"..text end
 
-		scx=styleref.scale_x
-	if res.fscx and not text:match("\\fscx") then text=text:gsub("^({\\[^}]*)}","%1\\fscx"..scx.."}") end
-		scy=styleref.scale_y
-	if res.fscy and not text:match("\\fscy") then text=text:gsub("^({\\[^}]*)}","%1\\fscy"..scy.."}") end
-		fsize=styleref.fontsize
-	if res.fs and not text:match("\\fs%d") then text=text:gsub("^({\\[^}]*)}","%1\\fs"..fsize.."}") end 
-		brdr=styleref.outline
-	if res.bord and not text:match("\\bord") and brdr~=0 then text=text:gsub("^({\\[^}]*)}","%1\\bord"..brdr.."}") end
-		shdw=styleref.shadow
-	if res.shad and not text:match("\\shad") and shdw~=0 then text=text:gsub("^({\\[^}]*)}","%1\\shad"..shdw.."}") end
-		spac=styleref.spacing
-	if res.fsp and not text:match("\\fsp") and spac~=0 then text=text:gsub("^({\\[^}]*)}","%1\\fsp"..spac.."}") end
+	notf=text:gsub("\\t%b()","")
+	scx=styleref.scale_x	if res.fscx and not notf:match("\\fscx") then text=addtag("\\fscx"..scx,text) end
+	scy=styleref.scale_y	if res.fscy and not notf:match("\\fscy") then text=addtag("\\fscy"..scy,text) end
+	fsize=styleref.fontsize	if res.fs and not notf:match("\\fs%d") then text=addtag("\\fs"..fsize,text) end
+	brdr=styleref.outline	if res.bord and not notf:match("\\bord") and brdr~=0 then text=addtag("\\bord"..brdr,text) end
+	shdw=styleref.shadow	if res.shad and not notf:match("\\shad") and shdw~=0 then text=addtag("\\shad"..shdw,text) end
+	spac=styleref.spacing	if res.fsp and not notf:match("\\fsp") and spac~=0 then text=addtag("\\fsp"..spac,text) end
 
-	if res.fscx then neg=0 text=text:gsub("\\fscx([%d%.]+)",function(a) return "\\fscx"..calc(tonumber(a)) end) end
-	if res.fscy then neg=0 text=text:gsub("\\fscy([%d%.]+)",function(a) return "\\fscy"..calc2(tonumber(a)) end) end
-	if res.fs then neg=0 text=text:gsub("\\fs([%d%.]+)",function(a) return "\\fs"..calc(tonumber(a)) end) end
-	if res.fsp then neg=1 text=text:gsub("\\fsp([%d%.%-]+)",function(a) return "\\fsp"..calc(tonumber(a)) end) end
-	if res.bord then neg=0 text=text:gsub("\\bord([%d%.]+)",function(a) return "\\bord"..calc(tonumber(a)) end) end
-	if res.shad then neg=0 text=text:gsub("\\shad([%d%.]+)",function(a) return "\\shad"..calc(tonumber(a)) end) end
-	if res.blur then neg=0 text=text:gsub("\\blur([%d%.]+)",function(a) return "\\blur"..calc(tonumber(a)) end) end
-	if res.be then neg=0 text=text:gsub("\\be([%d%.]+)",function(a) return "\\be"..calc(tonumber(a)) end) end
-	if res.xbord then neg=0 text=text:gsub("\\xbord([%d%.]+)",function(a) return "\\xbord"..calc(tonumber(a)) end) end
-	if res.ybord then neg=0 text=text:gsub("\\ybord([%d%.]+)",function(a) return "\\ybord"..calc2(tonumber(a)) end) end
-	if res.xshad then neg=1 text=text:gsub("\\xshad([%d%.%-]+)",function(a) return "\\xshad"..calc(tonumber(a)) end) end
-	if res.yshad then neg=1 text=text:gsub("\\yshad([%d%.%-]+)",function(a) return "\\yshad"..calc2(tonumber(a)) end) end
-	if res.frx then neg=1 text=text:gsub("\\frx([%d%.%-]+)",function(a) return "\\frx"..calc(tonumber(a)) end) end
-	if res.fry then neg=1 text=text:gsub("\\fry([%d%.%-]+)",function(a) return "\\fry"..calc2(tonumber(a)) end) end
-	if res.frz then neg=1 text=text:gsub("\\frz([%d%.%-]+)",function(a) return "\\frz"..calc(tonumber(a)) end) end
-	if res.fax then neg=1 text=text:gsub("\\fax([%d%.%-]+)",function(a) return "\\fax"..calc(tonumber(a)) end) end
-	if res.fay then neg=1 text=text:gsub("\\fay([%d%.%-]+)",function(a) return "\\fay"..calc2(tonumber(a)) end) end
+	if res.fscx then	neg=0 text=recalc(text,"\\fscx",1) end
+	if res.fscy then	neg=0 text=recalc(text,"\\fscy",2) end
+	if res.fs then		neg=0 text=recalc(text,"\\fs",1) end
+	if res.fsp then	neg=1 text=recalc(text,"\\fsp",1) end
+	if res.bord then	neg=0 text=recalc(text,"\\bord",1) end
+	if res.shad then	neg=0 text=recalc(text,"\\shad",1) end
+	if res.blur then	neg=0 text=recalc(text,"\\blur",1) end
+	if res.be then		neg=0 text=recalc(text,"\\be",1) end
+	if res.xbord then	neg=0 text=recalc(text,"\\xbord",1) end
+	if res.ybord then	neg=0 text=recalc(text,"\\ybord",2) end
+	if res.xshad then	neg=1 text=recalc(text,"\\xshad",1) end
+	if res.yshad then	neg=1 text=recalc(text,"\\yshad",2) end
+	if res.frx then	neg=1 text=recalc(text,"\\frx",1) end
+	if res.fry then	neg=1 text=recalc(text,"\\fry",2) end
+	if res.frz then	neg=1 text=recalc(text,"\\frz",1) end
+	if res.fax then	neg=1 text=recalc(text,"\\fax",1) end
+	if res.fay then	neg=1 text=recalc(text,"\\fay",2) end
+	
 	if res.kara then neg=0 text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 		:gsub("^({[^}]-\\[Kk][fo]?)([%d%.]+)",function(a,b) return a..calc(tonumber(b)) end) end
 
-	if res.posx then neg=1 text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b) 
-	return "\\pos("..calc(tonumber(a))..","..b..")" end) end
-	if res.posy then neg=1 text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b) 
-	return "\\pos("..a..","..calc2(tonumber(b))..")" end) end
+	if res.posx then neg=1 text=recalc2(text,"\\pos",1) end
+	if res.posy then neg=1 text=recalc2(text,"\\pos",2) end
 
-	if move==1 then neg=1 text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",function(a,b,c,d) 
+	if res.orgx then neg=1 text=recalc2(text,"\\org",1) end
+	if res.orgy then neg=1 text=recalc2(text,"\\org",2) end
+
+	if res.fad1 then neg=0 text=recalc2(text,"\\fad",1) end
+	if res.fad2 then neg=0 text=recalc2(text,"\\fad",2) end
+
+	if move==1 then neg=1 text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",function(a,b,c,d)
 		if res.mov1 then a=calc(tonumber(a)) end
 		if res.mov2 then b=calc2(tonumber(b)) end
 		if res.mov3 then c=calc(tonumber(c)) end
 		if res.mov4 then d=calc2(tonumber(d)) end
 	return "\\move("..a..","..b..","..c..","..d end) end
 
-	if res.orgx then neg=1 text=text:gsub("\\org%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b) 
-	return "\\org("..calc(tonumber(a))..","..b..")" end) end
-	if res.orgy then neg=1 text=text:gsub("\\org%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b) 
-	return "\\org("..a..","..calc2(tonumber(b))..")" end) end
-
-	if res.fad1 then neg=0 text=text:gsub("\\fad%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b) 
-	return "\\fad("..calc(tonumber(a))..","..b..")" end) end
-	if res.fad2 then neg=0 text=text:gsub("\\fad%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b) 
-	return "\\fad("..a..","..calc2(tonumber(b))..")" end) end
-
 	if clip==1 then neg=1
+		if not res.regtag and not res.tftag then t_error("You must select 'regular tags' or 'tags in transforms' or both.",true) end
+		orig=text
 		if res.anchor and P=="Multiply" then m=1/oc m2=1/ac
 		  text=text:gsub("clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
 		    function(a,b,c,d) x=0 y=0
@@ -134,6 +165,30 @@ function multiply(subs,sel)
 		return a.." "..b end)
 		ctext=ctext:gsub("%-","%%-")
 		text=text:gsub(ctext,ctext2)
+	      end
+		-- regular vs transforms: shitty, slow workaround because fuck if i'm gonna figure out what's going on above
+		origami={}
+		hybrid={}
+		textn=""
+	      if text:match("\\t%b()") then
+		-- transforms present
+		if not res.regtag or not res.tftag then
+			for seg1,seg2 in orig:gmatch("(.-)(\\t%b())") do table.insert(origami,seg1) table.insert(origami,seg2) end
+			table.insert(origami,orig:match("^.*\\t%b()(.-)$"))
+			for seg1,seg2 in text:gmatch("(.-)(\\t%b())") do table.insert(hybrid,seg1) table.insert(hybrid,seg2) end
+			table.insert(hybrid,text:match("^.*\\t%b()(.-)$"))
+			for q=1,#hybrid do
+				if hybrid[q]:match("\\t") then
+					if res.regtag then textn=textn..origami[q] else textn=textn..hybrid[q] end
+				else
+					if res.tftag then textn=textn..origami[q] else textn=textn..hybrid[q] end
+				end
+			end
+			text=textn
+		end
+	      else
+		-- no transforms present - only regular clips recalculated
+		if not res.regtag then text=orig end	-- yep, it was all for nothing
 	      end
 	end
 
@@ -323,6 +378,9 @@ function recalculator(subs,sel)
 
 	{x=0,y=10,width=4,height=1,class="checkbox",name="byline",label="multiply/add more with each line"},
 	{x=4,y=10,width=2,height=1,class="checkbox",name="anchor",label="anchor clip",hint="anchor clip with Multiply"},
+
+	{x=0,y=11,width=2,height=1,class="checkbox",name="regtag",label="regular tags",value=true},
+	{x=2,y=11,width=3,height=1,class="checkbox",name="tftag",label="tags in transforms",value=true},
 	}
 	chk=","..checked..","
 	chk=chk:gsub(" *, *",",") :gsub("\t","\\t")
@@ -335,6 +393,8 @@ function recalculator(subs,sel)
 		if val.class=="checkbox" and val.name~="anchor" then val.value=false end
 		if val.name=="anchor" then val.value=res.anchor end
 		if val.name=="alt" then val.value=res.alt end
+		if val.name=="regtag" then val.value=res.regtag end
+		if val.name=="tftag" then val.value=res.tftag end
 		if val.class:match("edit") then val.value=res[val.name] end
 	    end
 	  end
