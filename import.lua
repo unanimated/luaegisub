@@ -3,7 +3,7 @@ script_description="Import stuff, number stuff, chapter stuff, replace stuff, do
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/import.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/import.lua"
-script_version="2.71"
+script_version="2.73"
 
 clipboard=require("aegisub.clipboard")
 re=require'aegisub.re'
@@ -193,10 +193,10 @@ function important(subs,sel,act)
 	if res.mega=="export sign" then
 	    exportsign=""
 	    for x, i in ipairs(sel) do
-            line=subs[i]
-            text=line.text
-	    if x==1 then snam=line.effect end
-	    exportsign=exportsign..line.raw.."\n"
+              line=subs[i]
+              text=line.text
+	      if x==1 then snam=line.effect end
+	      exportsign=exportsign..line.raw.."\n"
 	    end
 	    press,reslt=ADD({
 		{x=0,y=0,class="label",label="Target:",},
@@ -215,7 +215,7 @@ function important(subs,sel,act)
 		sign=file:read("*all") or ""
 		file:close()
 		exportsign=exportsign:gsub("(%u%a+: %d+,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-),[^,]-,(.-)\n","%1,"..reslt.newsign..",%2\n")
-		sign=sign:gsub("%u%a+:.-,"..esc(reslt.newsign)..",.-\n","") :gsub("^\n*","")
+		sign=sign:gsub("%u%a+: [^\n]+,"..esc(reslt.newsign)..",.-\n","") :gsub("^\n*","")
 		sign=sign.."\n"..exportsign
 		file=io.open(path.."signs.ass","w")
 		file:write(sign)
@@ -1845,21 +1845,29 @@ return str
 end
 
 function duplikill(tagz)
+	aftert=tagz:match("^{.*\\t%b()(.-)}$") or ""
+	tagz=tagz:gsub(esc(aftert),"")
 	tf=""
 	for t in tagz:gmatch("\\t%b()") do tf=tf..t end
-	tagz=tagz:gsub("\\t%b()","")
 	tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
+	tagz=tagz:gsub("\\t%b()","")
 	for i=1,#tags1 do
 	    tag=tags1[i]
-	    tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1")
+	    tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%1%2")
+	    if aftert:match("\\"..tag.."[%d%.%-]") then tagz=tagz:gsub("\\"..tag.."[%d%.%-]+","") tf=tf:gsub("\\"..tag.."[%d%.%-]+","") end
 	end
-	tagz=tagz:gsub("\\1c&","\\c&")
 	tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
+	tagz=tagz:gsub("\\1c&","\\c&")
 	for i=1,#tags2 do
 	    tag=tags2[i]
-	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1")
+	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%1%2")
+	    if aftert:match("\\"..tag.."&") then tagz=tagz:gsub("\\"..tag.."&H%x+&","") tf=tf:gsub("\\"..tag.."&H%x+&","") end
 	end
-	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf.."}")
+	tagz=tagz:gsub("(\\i?clip%b())(.-)(\\i?clip%b())",
+	  function(a,b,c) if a:match("m") and c:match("m") or not a:match("m") and not c:match("m") then
+	  return b..c else return a..b..c end end)
+	tagz=tagz:gsub("\\pos%b().-(\\pos%b())","%1")
+	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf..aftert.."}")
 	return tagz
 end
 
@@ -1867,14 +1875,7 @@ function cleantr(tags)
 	trnsfrm=""
 	for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
 	tags=tags:gsub("\\t%b()","")
-
-	cleant=""
-	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-)%)") do cleant=cleant..ct end
-	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-%b()[^%)]-)%)") do cleant=cleant..ct end
-	trnsfrm=trnsfrm:gsub("\\t%(\\[^%(%)]+%)","")
-	trnsfrm=trnsfrm:gsub("\\t%((\\[^%(%)]-%b()[^%)]-)%)","")
-	trnsfrm="\\t("..cleant..")"..trnsfrm
-	tags=tags:gsub("^({[^}]*)}","%1"..trnsfrm.."}")
+	:gsub("^({[^}]*)}","%1"..trnsfrm.."}")
 	return tags
 end
 
