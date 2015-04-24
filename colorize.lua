@@ -1,7 +1,7 @@
 ﻿script_name="Colorize"
 script_description="Does things with colours"
 script_author="unanimated"
-script_version="4.3"
+script_version="4.4"
 
 --[[
 
@@ -60,6 +60,8 @@ script_version="4.3"
  
    "Save config"
  Saves a config file in your Application Data folder with current settings.
+
+ Manuals for all my scripts: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm
 
 --]]
 
@@ -167,39 +169,68 @@ function ctune(subs,sel)
 	  lbls={{label="primary"},{label="2ndary"},{label="border"},{label="shadow"}}
 	  for l=1,4 do lbls[l].class="label" lbls[l].x=l end
 	  tekst={}
+	  ccheck={}
 	  colortunegui={{class="label",label="#"..i}}
-	  for t,col in text:gmatch("(.-)(\\[1234]c&H%x%x%x%x%x%x&)") do
-	    cType,B,G,R=col:match("\\([1234])c&H(%x%x)(%x%x)(%x%x)&")
-	    ctNo=tonumber(cType)
-	    C="#"..R..G..B
-	    if chk[ctNo]==0 then table.insert(colortunegui,lbls[ctNo]) chk[ctNo]=1 end
-	    table.insert(colortunegui,{x=cType,y=wai[ctNo],class="color",name=cType..wai[ctNo],value=C})
-	    table.insert(tekst,t..col)
-	    wai[ctNo]=wai[ctNo]+1
-	  end
-	  final=text:match(".*\\[1234]c&H%x%x%x%x%x%x&(.-)$")
-	  
-  	  pressed,rez=ADD(colortunegui,{"OK","Cancel"},{ok='OK',close='Cancel'})
-	  if pressed=="Cancel" then ak() end
-	  
-	  text=""
-	  rezlt={1,1,1,1}
-	  for c=1,#tekst do
-	    nt=tekst[c]
-	    col=tekst[c]:match("\\[1234]c&H%x%x%x%x%x%x&")
+	  text=tunec(text) --<<<
+	end
+	line.text=text
+	subs[sel[i]]=line
+    end
+end
+
+function tunec(text)
+	segments={}
+	text=text:gsub("\\t%([^\\%)]-%)","")
+	if text:match("\\t%b()") then
+		for seg1,seg2 in text:gmatch("(.-)(\\t%b())") do table.insert(segments,seg1) table.insert(segments,seg2) end
+		table.insert(segments,text:match("^.*\\t%b()(.-)$"))
+	else table.insert(segments,text)
+	end
+	
+	for q=1,#segments do
+		if segments[q]:match("\\t%b()") and modetf then segments[q]=tune(segments[q])
+		elseif not segments[q]:match("\\t%b()") and modereg then segments[q]=tune(segments[q])
+		else table.insert(tekst,segments[q]) table.insert(ccheck,0) end
+	end
+	
+  	pressed,rez=ADD(colortunegui,{"OK","Cancel"},{ok='OK',close='Cancel'})
+	if pressed=="Cancel" then ak() end
+	
+	text=""
+	rezlt={1,1,1,1}
+	for c=1,#tekst do
+	  nt=tekst[c]
+	  if ccheck[c]==1 then
+	    col=nt:match("\\[1234]c&H%x%x%x%x%x%x&")
 	    cType,B,G,R=col:match("\\([1234])c&H(%x%x)(%x%x)(%x%x)&")
 	    ctNo=tonumber(cType)
 	    cor=esc(col)
 	    crep="\\"..cType.."c"..rez[cType..rezlt[ctNo]]:gsub("#(%x%x)(%x%x)(%x%x)","&H%3%2%1&")
 	    text=text..nt:gsub(cor,crep)
 	    rezlt[ctNo]=rezlt[ctNo]+1
+	  else text=text..nt
 	  end
-	  text=text..final
-	  text=text:gsub("\\1c&","\\c&")
 	end
-	line.text=text
-	subs[sel[i]]=line
-    end
+	text=text:gsub("\\1c&","\\c&")
+	return text
+end
+
+function tune(txt)
+	for t,col in txt:gmatch("(.-)(\\[1234]c&H%x%x%x%x%x%x&)") do
+	    cType,B,G,R=col:match("\\([1234])c&H(%x%x)(%x%x)(%x%x)&")
+	    ctNo=tonumber(cType)
+	    C="#"..R..G..B
+	    if chk[ctNo]==0 then table.insert(colortunegui,lbls[ctNo]) chk[ctNo]=1 end
+	    table.insert(colortunegui,{x=cType,y=wai[ctNo],class="color",name=cType..wai[ctNo],value=C})
+	    table.insert(tekst,t..col)
+	    table.insert(ccheck,1)
+	    wai[ctNo]=wai[ctNo]+1
+	end
+	final=txt:match(".*\\[1234]c&H%x%x%x%x%x%x&(.-)$")
+	if not final then final=txt end
+	table.insert(tekst,final)
+	table.insert(ccheck,0)
+	return txt
 end
 
 
@@ -504,37 +535,12 @@ function matchcolors(subs,sel)
 	      
 		-- R G B --
 		if pressed=="RGB" then
-		  for kol1,kol2,kol3 in text:gmatch(kl.."&H(%x%x)(%x%x)(%x%x)&") do
-		    kol1n=brightness(kol1,lvlb)
-		    kol2n=brightness(kol2,lvlg)
-		    kol3n=brightness(kol3,lvlr)
-		  text=text:gsub(kl.."&H"..kol1..kol2..kol3,kl.."&H"..kol1n..kol2n..kol3n)
-		  end
+		  text=rgbhslmod(text,kl,rgbm)
 		end
 		
-		-- H S B --
+		-- H S L --
 		if pressed=="HSL" then
-		  for kol1,kol2,kol3 in text:gmatch(kl.."&H(%x%x)(%x%x)(%x%x)&") do
-		  H1,S1,L1=RGB_to_HSL(kol3,kol2,kol1)
-		  H=H1+hue/255
-		  S=S1+sat/255
-		  L=L1+brite/255
-		  H,S,L=HSLround(H,S,L)
-		  if randomize then
-		    H2=H1-hue/255
-		    S2=S1-sat/255
-		    L2=L1-brite/255
-		    H2,S2,L2=HSLround(H2,S2,L2)
-		    H=math.random(H*1000,H2*1000)/1000
-		    S=math.random(S*1000,S2*1000)/1000
-		    L=math.random(L*1000,L2*1000)/1000
-		  end
-		  kol3n,kol2n,kol1n=HSL_to_RGB(H,S,L)
-		  kol3n=tohex(round(kol3n))
-		  kol2n=tohex(round(kol2n))
-		  kol1n=tohex(round(kol1n))
-		  text=text:gsub(kl.."&H"..kol1..kol2..kol3,kl.."&H"..kol1n..kol2n..kol3n)
-		  end
+		  text=rgbhslmod(text,kl,hslm)
 		end
 	    end
 	end
@@ -544,6 +550,58 @@ function matchcolors(subs,sel)
         subs[i]=line
     end
 end
+
+function rgbhslmod(text,kl,ef)
+	segments={}
+	if text:match("\\t%b()") then
+		for seg1,seg2 in text:gmatch("(.-)(\\t%b())") do table.insert(segments,seg1) table.insert(segments,seg2) end
+		table.insert(segments,text:match("^.*\\t%b()(.-)$"))
+	else table.insert(segments,text)
+	end
+	for q=1,#segments do
+		if segments[q]:match("\\t%b()") and modetf then segments[q]=ef(segments[q],kl) end
+		if not segments[q]:match("\\t%b()") and modereg then segments[q]=ef(segments[q],kl) end
+	end
+	nt=""
+	for q=1,#segments do nt=nt..segments[q] end
+	return nt
+end
+
+function rgbm(text,kl)
+  for kol1,kol2,kol3 in text:gmatch(kl.."&H(%x%x)(%x%x)(%x%x)&") do
+    kol1n=brightness(kol1,lvlb)
+    kol2n=brightness(kol2,lvlg)
+    kol3n=brightness(kol3,lvlr)
+  text=text:gsub(kl.."&H"..kol1..kol2..kol3,kl.."&H"..kol1n..kol2n..kol3n)
+  end
+  return text
+end
+
+function hslm(text,kl)
+  for kol1,kol2,kol3 in text:gmatch(kl.."&H(%x%x)(%x%x)(%x%x)&") do
+  H1,S1,L1=RGB_to_HSL(kol3,kol2,kol1)
+  H=H1+hue/255
+  S=S1+sat/255
+  L=L1+brite/255
+  H,S,L=HSLround(H,S,L)
+  if randomize then
+    H2=H1-hue/255
+    S2=S1-sat/255
+    L2=L1-brite/255
+    H2,S2,L2=HSLround(H2,S2,L2)
+    H=math.random(H*1000,H2*1000)/1000
+    S=math.random(S*1000,S2*1000)/1000
+    L=math.random(L*1000,L2*1000)/1000
+  end
+  kol3n,kol2n,kol1n=HSL_to_RGB(H,S,L)
+  kol3n=tohex(round(kol3n))
+  kol2n=tohex(round(kol2n))
+  kol1n=tohex(round(kol1n))
+  text=text:gsub(kl.."&H"..kol1..kol2..kol3,kl.."&H"..kol1n..kol2n..kol3n)
+  end
+  return text
+end
+
 
 
 --	GRADIENT	--
@@ -694,8 +752,7 @@ function textmod(orig)
     tk={}
     tg={}
 	text=text:gsub("{\\\\k0}","")
-	repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
+	repeat text,r=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") until r==0
 	vis=text:gsub("{[^}]-}","")
 	ltrmatches=re.find(vis,".")
 	  for l=1,#ltrmatches do
@@ -937,8 +994,7 @@ function colorize(subs,sel)
 ADD=aegisub.dialog.display
 ADP=aegisub.decode_path
 ak=aegisub.cancel
-	GUI=
-	{
+	GUI={
 	{x=0,y=0,class="label",label="Colours"},
 	{x=1,y=0,width=2,class="dropdown",name="clrs",items={"2","3","4","5"},value="2"},
 	
@@ -959,6 +1015,8 @@ ak=aegisub.cancel
 	{x=5,y=2,class="color",name="c3"},
 	{x=5,y=3,class="color",name="c4"},
 	{x=5,y=4,class="color",name="c5"},
+	
+	{x=5,y=6,class="dropdown",name="tfmode",items={"all","regular","transf"},value="all",hint="all tags / regular tags / tags in transforms\napplies to 'Tune colours' and RGB/HSL"},
 	
 	{x=0,y=3,width=3,class="checkbox",name="word",label="Colorize by word"},
 	{x=0,y=4,width=3,class="checkbox",name="join",label="Don't join with other tags"},
@@ -1022,6 +1080,8 @@ ak=aegisub.cancel
 	pressed,res=ADD(GUI,{"Colorize","Shift","Match Colours","RGB","HSL","Cancel"},{ok='Colorize',close='Cancel'})
 	if pressed=="Cancel" then ak() end
 	randomize=res.randoom
+	if res.tfmode=="all" or res.tfmode=="regular" then modereg=true else modereg=false end
+	if res.tfmode=="all" or res.tfmode=="transf" then modetf=true else modetf=false end
 	if pressed=="Colorize" then repetition() 
 	    if res.save then saveconfig()
 	    elseif res.gcl then gcolors(subs,sel)
