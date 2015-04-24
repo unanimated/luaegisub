@@ -3,19 +3,18 @@ script_description="Import stuff, number stuff, chapter stuff, replace stuff, do
 script_author="unanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/import.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/import.lua"
-script_version="2.73"
+script_version="2.8"
 
 clipboard=require("aegisub.clipboard")
 re=require'aegisub.re'
 
 
---	IMPORT/EXPORT	-------------------------------------------------------------------------------------
+--	IMPORT/EXPORT	-----------------------------------------------------------------------------------------
 function important(subs,sel,act)
 	aline=subs[act]
 	atext=aline.text
-	atags=atext:match("^{(\\[^}]-)}") 
-	if atags==nil then atags="" end
-	atags=atags:gsub("\\move%([^%)]+%)","")
+	atags=atext:match("^{(\\[^}]-)}") or ""
+	atags=atags:gsub("\\move%b()","")
 	atxt=atext:gsub("^{\\[^}]-}","")
 	-- create table from user data (lyrics)
 	sdata={}
@@ -170,11 +169,13 @@ function important(subs,sel,act)
 		if keeptags and actor~="x" then
 		    l2.text=addtag(atags,l2.text)
 		    l2.text=l2.text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
+		    :gsub("({%*?\\[^}]-})",function(tg) return extrakill(tg,2) end)
 		end
 		if addtags and actor~="x" then
 		    l2.text="{"..atags.."}"..l2.text
 		    l2.text=l2.text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
 		    :gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
+		    :gsub("({%*?\\[^}]-})",function(tg) return extrakill(tg,2) end)
 		end
 		
 		--aegisub.log("\n btext "..btext)
@@ -965,6 +966,14 @@ function stuff(subs,sel)
 	if frs==0 and fre==0 then t_error("Use Left/Right to input \nnumber of frames \nto shift by for start/end.",true) end
     end
     
+    if res.stuff=="duplicate and shift lines" then
+	FB=tonumber(res.rep1:match("^%d+")) or 0
+	FA=tonumber(res.rep2:match("^%d+")) or 0
+	if FA+FB==0 then t_error("Use the Left and Right fields to set how many times you want to duplicate the line.",true) end
+	FALL=FA+FB+1
+	FB1=FB+1
+    end
+    
     if res.stuff:match("replacer") then table.sort(sel,function(a,b) return a>b end) end
     
     -- LINES START HERE ----------------------------------------------------------------------
@@ -1552,6 +1561,47 @@ function stuff(subs,sel)
 	    line.end_time=fr2ms(fendt+(i-1)*fre)
 	end
 	
+	-- DUPLICATE AND SHIFT LINES
+	if res.stuff=="duplicate and shift lines" then
+	  SF=ms2fr(line.start_time)
+	  EF=ms2fr(line.end_time)
+	  l2=line
+	  effect=line.effect
+	  for x=FALL,1,-1 do
+	    F=x-FB1
+	    -- Main line
+	    if F==0 then
+		l2.start_time=fr2ms(SF)
+		l2.end_time=fr2ms(EF)
+		l2.effect=effect.."[0]"
+		l2.text=text
+	    end
+	    -- Before
+	    if F<0 then
+		l2.start_time=fr2ms(SF+F)
+		l2.end_time=fr2ms(SF+F+1)
+		l2.effect=effect.."["..F.."]"
+		l2.text=text
+		:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+).-%)","\\pos(%1,%2)")
+		:gsub("\\t%b()","")
+		:gsub("\\fad%b()","")
+	    end
+	    -- After
+	    if F>0 then
+		l2.start_time=fr2ms(EF+F-1)
+		l2.end_time=fr2ms(EF+F)
+		l2.effect=effect.."["..F.."]"
+		l2.text=text
+		:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+).-%)","\\pos(%3,%4)")
+		:gsub("\\t%b()",function(t) return t:gsub("\\t%([^\\]*",""):gsub("%)$","") end)
+		:gsub("\\fad%b()","")
+		l2.text=l2.text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
+	    end
+	    if res.rep3=="0" then l2.effect=effect end
+	    subs.insert(sel[#sel]+1,l2)
+	  end
+	end
+	
 	line.text=text
 	subs[sel[i]]=line
 	if res.stuff=="split into letters" or res.stuff=="explode" and not rez.excom then subs.delete(sel[i]) table.remove(sel,#sel) end
@@ -1561,9 +1611,19 @@ function stuff(subs,sel)
 	if repl==1 then rp=" modified line" else rp=" modified lines" end
 	press,reslt=ADD({},{repl..rp},{cancel=repl..rp})
     end
+    if res.stuff=="duplicate and shift lines" then
+	SEL=#sel
+	for i=#sel,1,-1 do
+	  subs.delete(sel[i])
+	end
+	for x=1,(FA+FB)*SEL do
+	  table.insert(sel,sel[SEL]+x)
+	end
+    end
     if res.stuff=="format dates" and rez.log then aegisub.log(datelog) end
     if noclip then t_error("Some lines weren't processed - missing clip.") noclip=nil end
     savetab=nil
+    return sel
 end
 
 
@@ -1654,7 +1714,7 @@ end
 
 
 
---	Merge inline tags	--
+--	Merge tags	--
 function merge(subs,sel)
     tk={}
     tg={}
@@ -1663,8 +1723,7 @@ function merge(subs,sel)
         line=subs[i]
         text=line.text
 	text=text:gsub("{\\\\k0}","")
-	repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
+	repeat text,c=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") until c==0
 	vis=text:gsub("{[^}]-}","")
 	if x==1 then rt=vis
 	ltrmatches=re.find(rt,".")
@@ -1673,8 +1732,8 @@ function merge(subs,sel)
 	  end
 	end
 	if vis~=rt then t_error("Error. Inconsistent text.",true) end
-	stags=text:match("^{(\\[^}]-)}")
-	if stags~=nil then stg=stg..stags stg=duplikill(stg) end
+	stags=text:match("^{(\\[^}]-)}") or ""
+	stg=stg..stags stg=duplikill(stg)
 	text=text:gsub("^{\\[^}]-}","") :gsub("{[^\\}]-}","")
 	count=0
 	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
@@ -1696,6 +1755,7 @@ function merge(subs,sel)
 	if newt~="" then newline=newline.."{"..newt.."}" end
     end
     newtext="{"..stg.."}"..newline
+    newtext=extrakill(newtext,2)
     line=subs[sel[1]]
     line.text=newtext
     subs[sel[1]]=line
@@ -1844,32 +1904,44 @@ str=str
 return str
 end
 
+tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
+tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
+tags3={"pos","move","org","fad"}
+
 function duplikill(tagz)
-	aftert=tagz:match("^{.*\\t%b()(.-)}$") or ""
-	tagz=tagz:gsub(esc(aftert),"")
-	tf=""
-	for t in tagz:gmatch("\\t%b()") do tf=tf..t end
-	tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
-	tagz=tagz:gsub("\\t%b()","")
+	tagz=tagz:gsub("\\t%b()",function(t) return t:gsub("\\","|") end)
 	for i=1,#tags1 do
 	    tag=tags1[i]
-	    tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%1%2")
-	    if aftert:match("\\"..tag.."[%d%.%-]") then tagz=tagz:gsub("\\"..tag.."[%d%.%-]+","") tf=tf:gsub("\\"..tag.."[%d%.%-]+","") end
+	    repeat tagz,c=tagz:gsub("|"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1") until c==0
+	    repeat tagz,c=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1") until c==0
 	end
-	tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
 	tagz=tagz:gsub("\\1c&","\\c&")
 	for i=1,#tags2 do
 	    tag=tags2[i]
-	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%1%2")
-	    if aftert:match("\\"..tag.."&") then tagz=tagz:gsub("\\"..tag.."&H%x+&","") tf=tf:gsub("\\"..tag.."&H%x+&","") end
+	    repeat tagz,c=tagz:gsub("|"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1") until c==0
+	    repeat tagz,c=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1") until c==0
 	end
-	tagz=tagz:gsub("(\\i?clip%b())(.-)(\\i?clip%b())",
+	repeat tagz,c=tagz:gsub("(\\i?clip%b())(.-)(\\i?clip%b())",
 	  function(a,b,c) if a:match("m") and c:match("m") or not a:match("m") and not c:match("m") then
-	  return b..c else return a..b..c end end)
-	tagz=tagz:gsub("\\pos%b().-(\\pos%b())","%1")
-	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf..aftert.."}")
+	  return b..c else return a..b..c end end) until c==0
+	tagz=tagz:gsub("|","\\"):gsub("\\t%([^\\%)]-%)","")
 	return tagz
 end
+
+function extrakill(text,o)
+	for i=1,#tags3 do
+	    tag=tags3[i]
+	    if o==2 then
+	    repeat text,c=text:gsub("(\\"..tag.."[^\\}]+)([^}]-)(\\"..tag.."[^\\}]+)","%3%2") until c==0
+	    else
+	    repeat text,c=text:gsub("(\\"..tag.."[^\\}]+)([^}]-)(\\"..tag.."[^\\}]+)","%1%2") until c==0
+	    end
+	end
+	repeat text,c=text:gsub("(\\pos[^\\}]+)([^}]-)(\\move[^\\}]+)","%1%2") until c==0
+	repeat text,c=text:gsub("(\\move[^\\}]+)([^}]-)(\\pos[^\\}]+)","%1%2") until c==0
+	return text
+end
+
 
 function cleantr(tags)
 	trnsfrm=""
@@ -2335,13 +2407,14 @@ By default you keep the existing blur for each line, but you can set a value to 
 If you use 3 lines, the 3rd one will be in the original position, i.e. in the middle.
 The direction is determined from the first 2 points of a vectorial clip (like with clip2frz/clip2fax).
 
-- Merge Inline Tags -
+- Merge Tags -
 Select lines with the same text but different tags,
 and they will be merged into one line with tags from all of them.
 For example:
 {\bord2}AB{\shad3}C
 A{\fs55}BC
 -> {\bord2}A{\fs55}B{\shad3}C
+If 2 lines have the same tag in the same place, the value of the later line overrides the earlier one.
 
 - Add Comment -
 Text that you type here in this box will be added as a {comment} at the end of selected lines.
@@ -2380,6 +2453,13 @@ This splits the line into letters and makes each of them move in a different dir
 - Dissolve Text -
 Various modes of dissolving text. Has its own Help.
 
+- Duplicate and Shift Lines -
+Duplicates selected lines as many times you want before and/or after the current line.
+Use Left/Right fields to set how many frames should be duplicated before/after the line.
+\move and \t --> lines before get \pos with start coordinates and state before transforms;
+lines after get end coordinates and state after transforms.
+Lines are automatically numbered in Effect field. You can disable that by typing 0 in Mod field.
+
 - Randomized Transforms -
 Various modes of randomly transforming text. Has its own Help.
 
@@ -2415,7 +2495,7 @@ rm=math.random(1,#msg)	msge=msg[rm]
 if lastimp then dropstuff=lastuff lok=lastlog zerozz=lastzeros fld=lastfield
 else dropstuff="replacer" lok=false zerozz="01" fld="effect" end
 g_impex={"import OP","import ED","import sign","import signs","export sign","import chptrs","update lyrics"}
-g_stuff={"save/load","replacer","lua calc","jump to next","alpha shift","motion blur","merge inline tags","add comment","add comment line by line","make comments visible","switch commented/visible","reverse text","reverse words","reverse transforms","fake capitals","format dates","split into letters","explode","dissolve text","randomized transforms","clone clip","what is the Matrix?","time by frames","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"}
+g_stuff={"save/load","replacer","lua calc","jump to next","alpha shift","motion blur","merge tags","add comment","add comment line by line","make comments visible","switch commented/visible","reverse text","reverse words","reverse transforms","fake capitals","format dates","split into letters","explode","dissolve text","duplicate and shift lines","randomized transforms","clone clip","what is the Matrix?","time by frames","honorificslaughterhouse","transform \\k to \\t\\alpha","convert framerate"}
 unconfig={
 	-- Sub --
 	{x=0,y=16,width=3,height=1,class="label",label="Left                                                    "},
@@ -2486,10 +2566,11 @@ unconfig={
 		end
 	  end
 	pressed,res=ADD(unconfig,
-	{"Import/Export","Do Stuff","Numbers","Chapters","Info","Help","Save Config","Cancel"},{ok='Import/Export',cancel='Cancel'})
+	{"Import/Export","Do Stuff","Numbers","Chapters","Repeat Last","Info","Help","Save Config","Cancel"},{ok='Import/Export',cancel='Cancel'})
 	until pressed~="Help" and pressed~="Info"
 	if pressed=="Cancel" then    ak() end
 	lastimp=true lastuff=res.stuff lastlog=res.log lastzeros=res.zeros lastfield=res.field
+	if pressed=="Repeat Last" then if not lastres then ak() end pressed=lastP res=lastres end
 	ms2fr=aegisub.frame_from_ms
 	fr2ms=aegisub.ms_from_frame
 	progress("Doing Stuff") aegisub.progress.task(msge)
@@ -2504,10 +2585,12 @@ unconfig={
 	    if res.stuff=="jump to next" then sel=nextsel(subs,sel)
 	    elseif res.stuff=="convert framerate" then framerate(subs)
 	    elseif res.stuff=="alpha shift" then alfashift(subs,sel)
-	    elseif res.stuff=="merge inline tags" then sel=merge(subs,sel)
+	    elseif res.stuff=="merge tags" then sel=merge(subs,sel)
 	    elseif res.stuff=="honorificslaughterhouse" then honorifix(subs,sel)
 	    else stuff(subs,sel) end
 	end
+	lastP=pressed
+	lastres=res
 	if pressed=="Save Config" then saveconfig() end
     
     aegisub.set_undo_point(script_name)
