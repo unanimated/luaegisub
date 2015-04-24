@@ -3,7 +3,7 @@
 script_name="Cycles"
 script_description="Cycles blur, border, shadow, alpha, alignment"
 script_author="unanimated"
-script_version="1.7"
+script_version="1.8"
 
 -- SETTINGS - You can change these sequences
 blur_sequence={"0.6","0.8","1","1.2","1.5","2","3","4","5","6","8","0.4","0.5"}
@@ -31,16 +31,7 @@ function cycle(subs,sel)
     for z,i in ipairs(sel) do
 	line=subs[i]
 	text=line.text
-	    tf=""
-	    if text:match("^{\\[^}]-}") then
-	    tags,after=text:match("^({\\[^}]-})(.*)")
-		if tags:match("\\t") then 
-		  for t in tags:gmatch("\\t%b()") do tf=tf..t end
-		  tags=tags:gsub("\\t%b()","")
-		  :gsub("{}","")
-		  text=tags..after
-		end
-	    end
+	text=text:gsub("\\t(%b())",function(t) return "\\t"..t:gsub("\\","|") end)
 
 	    if tag=="alpha" then val1=text:match("^{[^}]-\\alpha&H(%x%x)&") else val1=text:match("^{[^}]-\\"..tag.."(%-?[%d%.]+)") end
 	    if val1 then
@@ -67,7 +58,7 @@ function cycle(subs,sel)
 		:gsub("{(\\.-)}{\\","{%1\\")
 	    end
 
-	text=text:gsub("^({\\[^}]-)}","%1"..tf.."}")
+	text=text:gsub("{\\[^}]-}",function(t) return t:gsub("|","\\") end)
 	line.text=text
 	subs[i]=line
     end
