@@ -1,7 +1,7 @@
 script_name="Masquerade"
 script_description="Masquerade"
 script_author="unanimated"
-script_version="2.31"
+script_version="2.4"
 
 --[[
 
@@ -20,9 +20,21 @@ Shift Tags
 
 an8 / q2 (obvious)
 
-Mocha Scale
-	Recalculates fscx and fscy for a given font size.
-	"tag end" is an option to add the tags at the end of the line instead of beginning.
+Motion Blur
+	Creates motion blur by duplicating the line and using some alpha.
+	You can set a value for blur or keep the existing blur for each line.
+	'Distance' is the distance between the \pos coordinates of the resulting 2 lines.
+	If you use 3 lines, the 3rd one will be in the original position, i.e. in the middle.
+	The direction is determined from the first 2 points of a vectorial clip (like with clip2frz/clip2fax).
+
+Merge Tags
+	Select lines with the SAME TEXT but different tags,
+	and they will be merged into one line with tags from all of them.
+	For example:
+	{\bord2}AB{\shad3}C
+	A{\fs55}BC
+	-> {\bord2}A{\fs55}B{\shad3}C
+	If 2 lines have the same tag in the same place, the value of the later line overrides the earlier one.
 
 alpha shift
 	Makes text appear letter by letter on frame-by-frame lines using alpha&HFF& like this:
@@ -51,9 +63,13 @@ Strikealpha
 	{\s1}	->	{\alpha&H00&}
 	@E3@	->	{\alpha&HE3&}
 
+Manuals for all my scripts: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm
+
 --]]
 
-function addmask(subs, sel)
+re=require'aegisub.re'
+
+function addmask(subs,sel)
   for i=#sel,1,-1 do
     l=subs[sel[i]]
     text=l.text
@@ -64,7 +80,7 @@ function addmask(subs, sel)
 	  aegisub.dialog.display({{class="label",label="No clip...",x=1,y=0,width=5,height=2}},{"OK"},{close='OK'}) aegisub.cancel()
 	end
 	l.text=nopar("clip",l.text) end
-	subs.insert(sel[i]+1,l) 
+	subs.insert(sel[i]+1,l)
     end
     l.layer=l.layer-1
     if text:match("\\2c") then mcol="\\c"..text:match("\\2c(&H[%x]+&)") else mcol="" end
@@ -188,7 +204,7 @@ function t_error(message,cancel)
   if cancel then aegisub.cancel() end
 end
 
-function add_an8(subs, sel, act)
+function add_an8(subs,sel,act)
     for z, i in ipairs(sel) do
     line=subs[i]
     text=subs[i].text
@@ -209,7 +225,7 @@ function add_an8(subs, sel, act)
     end
 end
 
-function alfashift(subs, sel)
+function alfashift(subs,sel)
     count=1
     for x, i in ipairs(sel) do
     line=subs[i]
@@ -247,7 +263,7 @@ str=str
 return str
 end
 
-function strikealpha(subs, sel)
+function strikealpha(subs,sel)
     for x, i in ipairs(sel) do
         l=subs[i]
 	l.text=l.text
@@ -262,26 +278,93 @@ function strikealpha(subs, sel)
     end
 end
 
-function scale(subs, sel)
-    for z, i in ipairs(sel) do
-    l=subs[i]
-    text=l.text
-    sr=stylechk(subs,l.style)
-    rf=res.fs
-    fsize=(text:match("^{[^}]-\\fs([%d]+)") or sr.fontsize)
-    scx=(text:match("^{[^}]-\\fscx([%d%.]+)") or sr.scale_x)
-    scy=(text:match("^{[^}]-\\fscy([%d%.]+)") or sr.scale_y)
-    skale="{\\fs"..rf.."\\fscx"..round(fsize*scx/rf).."\\fscy"..round(fsize*scy/rf).."}"
-    text=text:gsub("\\fsc?[xy]?[%d%.]+","") :gsub("{}","")
-    text=skale..text
-    if res.mend then
-	text=text:gsub("^({\\[^}]-)}{\\","%1\\")
-    else
-	text=text:gsub("^{(\\[^}]-)}{(\\[^}]-)}","{%2%1}")
+--	Motion Blur	--
+function motionblur(subs,sel)
+mblur=res.mblur mbdist=res.mbdist mbalfa=res.mbalfa mb3=res.mb3 keepblur=res.keepblur
+    for i=#sel,1,-1 do
+        line=subs[sel[i]]
+        text=line.text
+	if text:match("\\clip%(m") then
+	      if not text:match("\\pos") then text=getpos(subs,text) end
+	      if not res.keepblur then text=addtag("\\blur"..mblur,text) end
+	      text=text:gsub("{%*?\\[^}]-}",function(tg) return duplikill(tg) end)
+	      c1,c2,c3,c4=text:match("\\clip%(m ([%-%d%.]+) ([%-%d%.]+) l ([%-%d%.]+) ([%-%d%.]+)")
+	      if c1==nil then t_error("There seems to be something wrong with your clip",true) end
+	      text=text:gsub("\\clip%b()","")
+	      text=addtag("\\alpha&H"..mbalfa.."&",text)
+	      cx=c3-c1
+	      cy=c4-c2
+	      cdist=math.sqrt(cx^2+cy^2)
+	      mbratio=cdist/mbdist*2
+	      mbx=round(cx/mbratio*100)/100
+	      mby=round(cy/mbratio*100)/100
+	      text2=text:gsub("\\pos%(([%-%d%.]+),([%-%d%.]+)",function(a,b) return "\\pos("..a-mbx..","..b-mby end)
+	      l2=line
+	      l2.text=text2
+	      subs.insert(sel[i]+1,l2)
+	      table.insert(sel,sel[#sel]+1)
+	      if res.mb3 then
+		line.text=text
+		subs.insert(sel[i]+1,line)
+		table.insert(sel,sel[#sel]+1)
+	      end
+	      text=text:gsub("\\pos%(([%-%d%.]+),([%-%d%.]+)",function(a,b) return "\\pos("..a+mbx..","..b+mby end)
+	else noclip=true
+	end
+	line.text=text
+	subs[sel[i]]=line
     end
-    l.text=text
-    subs[i]=l
+if noclip then t_error("Some lines weren't processed - missing clip.\n(2 points of a vectorial clip are needed for motion direction.)") noclip=nil end
+end
+
+--	Merge tags	--
+function merge(subs,sel)
+    tk={}
+    tg={}
+    stg=""
+    for x, i in ipairs(sel) do
+        line=subs[i]
+        text=line.text
+	text=text:gsub("{\\\\k0}","")
+	repeat text,c=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") until c==0
+	vis=text:gsub("{[^}]-}","")
+	if x==1 then rt=vis
+	ltrmatches=re.find(rt,".")
+	  for l=1,#ltrmatches do
+	    table.insert(tk,ltrmatches[l].str)
+	  end
+	end
+	if vis~=rt then t_error("Error. Inconsistent text.\nAll selected lines must contain the same text.",true) end
+	stags=text:match("^{(\\[^}]-)}") or ""
+	stg=stg..stags stg=duplikill(stg)
+	text=text:gsub("^{\\[^}]-}","") :gsub("{[^\\}]-}","")
+	count=0
+	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
+	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
+	    pos=re.find(chars,".")
+	    if pos==nil then ps=0+count else ps=#pos+count end
+	    tgl={p=ps,t=tak,a=as}
+	    table.insert(tg,tgl)
+	    count=ps
+	end
     end
+    newline=""
+    for i=1,#tk do
+	newline=newline..tk[i]
+	newt=""
+	for n, t in ipairs(tg) do
+	    if t.p==i then newt=newt..t.a..t.t newt=duplikill(newt) newt=newt:gsub("%*$","") end
+	end
+	if newt~="" then newline=newline.."{"..newt.."}" end
+    end
+    newtext="{"..stg.."}"..newline
+    newtext=extrakill(newtext,2)
+    line=subs[sel[1]]
+    line.text=newtext
+    subs[sel[1]]=line
+    for i=#sel,2,-1 do subs.delete(sel[i]) end
+    sel={sel[1]}
+    return sel
 end
 
 function shiftag(subs,sel,act)
@@ -328,27 +411,27 @@ function shiftag(subs,sel,act)
 	    if press=="All Inline Tags" then
 		for key,val in ipairs(shiftab) do
 		    if val.class=="checkbox" and val.x==3 then val.value=true end
-		    if val.class=="checkbox" and val.x<3 then val.value=rez[val.name] end
+		    if val.class=="checkbox" and val.x<3 then val.value=res[val.name] end
 		end
 	    end
-	press,rez=aegisub.dialog.display(shiftab,{"Shift Left","Shift Right","All Inline Tags","Cancel"},{ok='Shift Right',close='Cancel'})
+	press,res=aegisub.dialog.display(shiftab,{"Shift Left","Shift Right","All Inline Tags","Cancel"},{ok='Shift Right',close='Cancel'})
 	until press~="All Inline Tags"
 	if press=="Cancel" then aegisub.cancel() end
 	if press=="Shift Right" then R=true else R=false end
 	if press=="Shift Left" then L=true else L=false end
 	
 	-- nuke tags
-	if rez.nuke then
+	if res.nuke then
 	  for key,val in ipairs(shiftab) do
-	    if val.class=="checkbox" and rez[val.name]==true and val.x==0 and val.name~="nuke" then
+	    if val.class=="checkbox" and res[val.name]==true and val.x==0 and val.name~="nuke" then
 	      tagname=esc(val.realname)
 	      tags=tags:gsub(tagname,"")
-	      rez[val.name]=false
+	      res[val.name]=false
 	    end
-	    if val.class=="checkbox" and rez[val.name]==true and val.x==3 then
+	    if val.class=="checkbox" and res[val.name]==true and val.x==3 then
 	      tagname=esc(val.realname)
 	      cstext=cstext:gsub(tagname,"")
-	      rez[val.name]=false
+	      res[val.name]=false
 	    end
 	  end
 	end
@@ -356,10 +439,10 @@ function shiftag(subs,sel,act)
 	-- shift inline tags
 	if R then
 	  for s=#shiftab,1,-1 do stab=shiftab[s]
-	    if rez[stab.name]==true and stab.x==3 then stag=stab.realname etag=esc(stag)
+	    if res[stab.name]==true and stab.x==3 then stag=stab.realname etag=esc(stag)
 	    rep=0
 		repeat
-		if not rez.word then
+		if not res.word then
 		cstext=cstext
 		:gsub(etag.."(%s?[%w%p]%s?)","%1"..stag)
 		:gsub(etag.."(%s?\\N%s?)","%1"..stag)
@@ -373,15 +456,15 @@ function shiftag(subs,sel,act)
 		:gsub(etag.."(%s?\\N%s?)","%1"..stag)
 		end
 		rep=rep+1
-		until rep==rez.rept
+		until rep==res.rept
 	    end
 	  end
 	elseif L then
 	  for key,val in ipairs(shiftab) do
-	    if rez[val.name]==true and val.x==3 then stag=val.realname etag=esc(stag)
+	    if res[val.name]==true and val.x==3 then stag=val.realname etag=esc(stag)
 	    rep=0
 		repeat
-		if not rez.word then
+		if not res.word then
 		cstext=cstext
 		:gsub("([%w%p]%s?)"..etag,stag.."%1")
 		:gsub("(\\N%s?)"..etag,stag.."%1")
@@ -395,7 +478,7 @@ function shiftag(subs,sel,act)
 		:gsub("(\\N%s*)"..etag,stag.."%1")
 		end
 		rep=rep+1
-		until rep==rez.rept
+		until rep==res.rept
 	    end
 	  end
 	  cstext=cstext:gsub("{%*?(\\[^}]-)}{%*?(\\[^}]-)}","{%1%2}")
@@ -406,7 +489,7 @@ function shiftag(subs,sel,act)
 	--shift start tags
 	startags=""
 	for key,val in ipairs(shiftab) do
-	    if rez[val.name]==true and val.x==0 and val.name~="nuke" then stag=val.realname etag=esc(stag)
+	    if res[val.name]==true and val.x==0 and val.name~="nuke" then stag=val.realname etag=esc(stag)
 		if R then
 		startags=startags..stag
 		tags=tags:gsub(etag,"")
@@ -417,7 +500,7 @@ function shiftag(subs,sel,act)
 	if startags~="" and R then
 	    cstext="{_T_}"..cstext
 	    REP=0
-	    if not rez.word then
+	    if not res.word then
 		repeat
 		cstext=cstext
 		:gsub("{_T_}([%w%p]%s*)","%1{_T_}")
@@ -425,7 +508,7 @@ function shiftag(subs,sel,act)
 		:gsub("{_T_}({[^}]-}%s*)","%1{_T_}")
 		:gsub("{_T_}(\\N%s?)","%1{_T_}")
 		REP=REP+1
-		until REP==rez.rept
+		until REP==res.rept
 	    else
 		repeat
 		cstext=cstext
@@ -434,7 +517,7 @@ function shiftag(subs,sel,act)
 		:gsub("{_T_}({[^}]-})","%1{_T_}")
 		:gsub("{_T_}(%s?\\N%s?)","%1{_T_}")
 		REP=REP+1
-		until REP==rez.rept
+		until REP==res.rept
 	    end
 	    cstext=cstext
 	    :gsub("_T_",startags)
@@ -522,7 +605,7 @@ function alfatime(subs,sel)
 	  esctxt=esc(altxt)
 	  line.text=line.text:gsub("@","")
 	  line2=line
-	  tags=(line2.text:match("^{\\[^}]-}") or "")
+	  tags=line2.text:match("^{\\[^}]-}") or ""
 	  line2.text=data2
 	  :gsub("\n","")
 	  :gsub(esctxt,altxt.."{\\alpha&HFF&}")
@@ -546,33 +629,84 @@ function addtag2(tag,text) -- mask version
 	return text 
 end
 
-function round(num)
-	num=math.floor(num+0.5)
-	return num
-end
+function addtag(tag,text) text=text:gsub("^({\\[^}]-)}","%1"..tag.."}") return text end
+function round(num) num=math.floor(num+0.5) return num end
+function logg(m) return aegisub.log("\n "..m) end
+
+tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
+tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
+tags3={"pos","move","org","fad"}
 
 function duplikill(tagz)
-	tf=""
-	if tagz:match("\\t") then 
-	    for t in tagz:gmatch("(\\t%([^%(%)]-%))") do tf=tf..t end
-	    for t in tagz:gmatch("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","") do tf=tf..t end
-	    tagz=tagz:gsub("\\t%([^%(%)]+%)","")
-	    tagz=tagz:gsub("\\t%([^%(%)]-%([^%)]-%)[^%)]-%)","")
-	end
-	tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
+	tagz=tagz:gsub("\\t%b()",function(t) return t:gsub("\\","|") end)
 	for i=1,#tags1 do
 	    tag=tags1[i]
-	    tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%1%2")
+	    repeat tagz,c=tagz:gsub("|"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1") until c==0
+	    repeat tagz,c=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1") until c==0
 	end
 	tagz=tagz:gsub("\\1c&","\\c&")
-	tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
 	for i=1,#tags2 do
 	    tag=tags2[i]
-	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%1%2")
-	end	
-	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf.."}")
+	    repeat tagz,c=tagz:gsub("|"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1") until c==0
+	    repeat tagz,c=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1") until c==0
+	end
+	repeat tagz,c=tagz:gsub("(\\i?clip%b())(.-)(\\i?clip%b())",
+	  function(a,b,c) if a:match("m") and c:match("m") or not a:match("m") and not c:match("m") then
+	  return b..c else return a..b..c end end) until c==0
+	tagz=tagz:gsub("|","\\"):gsub("\\t%([^\\%)]-%)","")
 	return tagz
 end
+
+function extrakill(text,o)
+	for i=1,#tags3 do
+	    tag=tags3[i]
+	    if o==2 then
+	    repeat text,c=text:gsub("(\\"..tag.."[^\\}]+)([^}]-)(\\"..tag.."[^\\}]+)","%3%2") until c==0
+	    else
+	    repeat text,c=text:gsub("(\\"..tag.."[^\\}]+)([^}]-)(\\"..tag.."[^\\}]+)","%1%2") until c==0
+	    end
+	end
+	repeat text,c=text:gsub("(\\pos[^\\}]+)([^}]-)(\\move[^\\}]+)","%1%2") until c==0
+	repeat text,c=text:gsub("(\\move[^\\}]+)([^}]-)(\\pos[^\\}]+)","%1%2") until c==0
+	return text
+end
+
+function getpos(subs,text)
+    for i=1,#subs do
+	if subs[i].class=="info" then
+	    local k=subs[i].key
+	    local v=subs[i].value
+	    if k=="PlayResX" then resx=v end
+	    if k=="PlayResY" then resy=v end
+        end
+	if resx==nil then resx=0 end
+	if resy==nil then resy=0 end
+        if subs[i].class=="style" then
+            local st=subs[i]
+	    if st.name==line.style then
+		acleft=st.margin_l	if line.margin_l>0 then acleft=line.margin_l end
+		acright=st.margin_r	if line.margin_r>0 then acright=line.margin_r end
+		acvert=st.margin_t	if line.margin_t>0 then acvert=line.margin_t end
+		acalign=st.align	if text:match("\\an%d") then acalign=text:match("\\an(%d)") end
+		aligntop="789" alignbot="123" aligncent="456"
+		alignleft="147" alignright="369" alignmid="258"
+		if alignleft:match(acalign) then horz=acleft h_al="left"
+		elseif alignright:match(acalign) then horz=resx-acright h_al="right"
+		elseif alignmid:match(acalign) then horz=resx/2 h_al="mid" end
+		if aligntop:match(acalign) then vert=acvert v_al="top"
+		elseif alignbot:match(acalign) then vert=resy-acvert v_al="bottom"
+		elseif aligncent:match(acalign) then vert=resy/2 v_al="mid" end
+	    break
+	    end
+        end
+    end
+    if horz>0 and vert>0 then 
+	if not text:match("^{\\") then text="{\\rel}"..text end
+	text=text:gsub("^({\\[^}]-)}","%1\\pos("..horz..","..vert..")}") :gsub("\\rel","")
+    end
+    return text
+end
+
 
 function nopar(tag,t)
     t=t:gsub("\\"..tag.."%([^%)]-%)","") :gsub("{}","")
@@ -612,23 +746,28 @@ file=io.open(masker)
 	    {x=0,y=1,width=2,height=1,class="checkbox",name="masknew",label="create mask on a new line",value=true},
 	    {x=2,y=1,width=3,height=1,class="checkbox",name="remask",label="remask",value=false},
 	    
-	    {x=9,y=0,width=1,height=1,class="checkbox",name="save",label="Save/delete mask    ",value=false},
-	    {x=9,y=1,width=2,height=1,class="edit",name="maskname",value="mask name here",hint="Type name of the mask you want to save/delete"},
+	    {x=11,y=0,width=1,height=1,class="checkbox",name="save",label="Save/delete mask    ",value=false},
+	    {x=11,y=1,width=2,height=1,class="edit",name="maskname",value="mask name here",hint="Type name of the mask you want to save/delete"},
 
 	    {x=3,y=0,width=1,height=1,class="dropdown",name="an8",
 		items={"q2","an1","an2","an3","an4","an5","an6","an7","an8","an9"},value="an8"},
 		
-	    --{x=4,y=0,width=1,height=2,class="label",label="::\n::\n::",},
+	    {x=10,y=0,width=1,height=2,class="label",label=":\n:\n:",},
 	    
-	    {x=5,y=0,width=2,height=1,class="label",label="scaling ",},
-	    {x=5,y=1,width=1,height=1,class="label",label="\\fs:",},
-	    {x=6,y=1,width=2,height=1,class="intedit",name="fs",value=3,min=1},
-	    {x=7,y=0,width=1,height=1,class="checkbox",name="mend",label="tag end",value=false},
+	    {x=5,y=0,class="label",label="blur:"},
+	    {x=6,y=0,class="floatedit",name="mblur",value=mblur or 3,hint="motion blur"},
+	    {x=7,y=0,width=3,class="checkbox",name="keepblur",label="Keep current",value=keepblur,hint="keep current blur"},
 	    
-	    {x=10,y=0,width=1,height=0,class="label",label="Masquerade "..script_version},
+	    {x=5,y=1,class="label",label="dist:"},
+	    {x=6,y=1,class="floatedit",name="mbdist",value=mbdist or 6,hint="distance between positions"},
+	    {x=7,y=1,class="label",label="@ "},
+	    {x=8,y=1,class="dropdown",name="mbalfa",value=mbalfa or "80",items={"00","20","40","60","80","A0","C0","D0"},hint="alpha"},
+	    {x=9,y=1,class="checkbox",name="mb3",label="3L",value=mb3,hint="use 3 lines instead of 2"},
+	    
+	    {x=12,y=0,width=1,height=0,class="label",label="Masquerade "..script_version},
 	}
 	pressed, res=aegisub.dialog.display(dialog_config,
-	{"masquerade","shift tags","an8 / q2","mocha scale","alpha shift","alpha time","strikealpha","cancel"},{cancel='cancel'})
+	{"masquerade","shift tags","an8 / q2","motion blur","merge tags","alpha shift","alpha time","strikealpha","cancel"},{cancel='cancel'})
 	if pressed=="cancel" then aegisub.cancel() end
 	if pressed=="masquerade" and not res.save then addmask(subs,sel) end
 	if pressed=="masquerade" and res.save then savemask(subs,sel,act) end
@@ -636,7 +775,8 @@ file=io.open(masker)
 	if pressed=="an8 / q2" then add_an8(subs,sel,act) end
 	if pressed=="alpha shift" then alfashift(subs,sel) end
 	if pressed=="alpha time" then alfatime(subs,sel) end	
-	if pressed=="mocha scale" then scale(subs,sel) end
+	if pressed=="motion blur" then motionblur(subs,sel) end
+	if pressed=="merge tags" then sel=merge(subs,sel) end
 	if pressed=="shift tags" then shiftag(subs,sel,act) end
     aegisub.set_undo_point(script_name)
     return sel, act

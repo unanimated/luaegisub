@@ -10,7 +10,7 @@
 script_name="Recalculator"
 script_description="recalculates things"
 script_author="unanimated"
-script_version="2.3"
+script_version="2.4"
 
 -- SETTINGS: type the names of checkboxes you want checked by default as you see them in the GUI, separated by commas
 
@@ -37,7 +37,7 @@ function recalc(text,tg,c)
 	if not res.regtag and not res.tftag then
 		t_error("For "..tg..", you must select 'regular tags' or 'tags in transforms' or both.",true) end
 	if c==1 then kalk=calc else kalk=calc2 end
-	if neg==0 then val="([%d%.%-]+)" else val="([%d%.]+)" end
+	if neg==1 then val="([%d%.%-]+)" else val="([%d%.]+)" end
 	-- split into non-tf/tf segments if there are transforms
 	segments={}
 	if text:match("\\t%b()") then
@@ -60,7 +60,7 @@ function recalc(text,tg,c)
 end
 
 function recalc2(text,tg,c)
-	if neg==0 then val="([%d%.%-]+)" else val="([%d%.]+)" end
+	if neg==1 then val="([%d%.%-]+)" else val="([%d%.]+)" end
 	if c==1 then
 	  text=text:gsub(tg.."%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b) return tg.."("..calc(tonumber(a))..","..b..")" end)
 	else
@@ -89,12 +89,12 @@ function multiply(subs,sel)
 	if not text:match("^{\\") then text="{\\rec}"..text end
 
 	notf=text:gsub("\\t%b()","")
-	scx=styleref.scale_x	if res.fscx and not notf:match("\\fscx") then text=addtag("\\fscx"..scx,text) end
-	scy=styleref.scale_y	if res.fscy and not notf:match("\\fscy") then text=addtag("\\fscy"..scy,text) end
-	fsize=styleref.fontsize	if res.fs and not notf:match("\\fs%d") then text=addtag("\\fs"..fsize,text) end
-	brdr=styleref.outline	if res.bord and not notf:match("\\bord") and brdr~=0 then text=addtag("\\bord"..brdr,text) end
-	shdw=styleref.shadow	if res.shad and not notf:match("\\shad") and shdw~=0 then text=addtag("\\shad"..shdw,text) end
 	spac=styleref.spacing	if res.fsp and not notf:match("\\fsp") and spac~=0 then text=addtag("\\fsp"..spac,text) end
+	fsize=styleref.fontsize	if res.fs and not notf:match("\\fs%d") then text=addtag("\\fs"..fsize,text) end
+	scy=styleref.scale_y	if res.fscy and not notf:match("\\fscy") then text=addtag("\\fscy"..scy,text) end
+	scx=styleref.scale_x	if res.fscx and not notf:match("\\fscx") then text=addtag("\\fscx"..scx,text) end
+	shdw=styleref.shadow	if res.shad and not notf:match("\\shad") and shdw~=0 then text=addtag("\\shad"..shdw,text) end
+	brdr=styleref.outline	if res.bord and not notf:match("\\bord") and brdr~=0 then text=addtag("\\bord"..brdr,text) end
 
 	if res.fscx then	neg=0 text=recalc(text,"\\fscx",1) end
 	if res.fscy then	neg=0 text=recalc(text,"\\fscy",2) end
@@ -156,7 +156,7 @@ function multiply(subs,sel)
 	      text=text:gsub("clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c,d)
 		if res.clipx then a=calc(tonumber(a)) c=calc(tonumber(c)) end
 		if res.clipy then b=calc2(tonumber(b)) d=calc2(tonumber(d)) end
-	      return "clip("..a..","..b..","..c..","..d..")" end) 
+	      return "clip("..a..","..b..","..c..","..d..")" end)
 	      if text:match("clip%(m [%d%a%s%-%.]+%)") then
 		ctext=text:match("clip%(m ([%d%a%s%-%.]+)%)")
 		ctext2=ctext:gsub("([%d%-%.]+)%s([%d%-%.]+)",function(a,b)
@@ -195,7 +195,7 @@ function multiply(subs,sel)
 	if res.drawx or res.drawy then neg=1
 	      if text:match("\\p[1-9]") and text:match("}m [%d%a%s%-%.]+") then
 	      dtext=text:match("}m ([%d%a%s%-%.]+)")
-	      dtext2=dtext:gsub("([%d%-%.]+)%s([%d%-%.]+)",function(a,b) 
+	      dtext2=dtext:gsub("([%d%-%.]+)%s([%d%-%.]+)",function(a,b)
 		if res.drawx then xx=math.floor(calc(tonumber(a))+0.5) else xx=a end
 		if res.drawy then yy=math.floor(calc2(tonumber(b))+0.5) else yy=b end
 		return xx.." "..yy end)
@@ -204,9 +204,9 @@ function multiply(subs,sel)
 	      end
 	end
 
-	if res.ttim1 then neg=1 text=text:gsub("\\t%(([%d%.%-]+),([%d%.%-]+),",function(a,b) 
+	if res.ttim1 then neg=1 text=text:gsub("\\t%(([%d%.%-]+),([%d%.%-]+),",function(a,b)
 	return "\\t("..calc(tonumber(a))..","..b.."," end) end
-	if res.ttim2 then neg=1 text=text:gsub("\\t%(([%d%.%-]+),([%d%.%-]+),",function(a,b) 
+	if res.ttim2 then neg=1 text=text:gsub("\\t%(([%d%.%-]+),([%d%.%-]+),",function(a,b)
 	return "\\t("..a..","..calc2(tonumber(b)).."," end) end
 
 	text=text:gsub("\\rec","")
@@ -321,17 +321,17 @@ function logg(m) if m==nil then m="Nil" end aegisub.log("\n "..m) end
 function recalculator(subs,sel)
 	ak=aegisub.cancel
 	GUI={
-	{x=0,y=0,width=2,height=1,class="label",label="Change values to:",},
+	{x=0,y=0,width=2,height=1,class="label",label="Change values to:"},
 	{x=2,y=0,width=3,height=1,class="floatedit",name="pc",value=100,min=0,hint="Multiply"},
 	{x=5,y=0,class="label",label="%",},
 	
-	{x=0,y=1,width=2,height=1,class="label",label="Increase values by:",},
+	{x=0,y=1,width=2,height=1,class="label",label="Increase values by:"},
 	{x=2,y=1,width=3,height=1,class="floatedit",name="add",value=0,hint="Add (use negative to subtract)"},
 	
 	{x=2,y=2,width=3,height=1,class="floatedit",name="altval",value=0,hint="Multiply/Add based on button P"},
 	{x=0,y=2,width=2,height=1,class="checkbox",name="alt",label="Alternative 2nd value",value=false,hint="Affects fscy, ybord, yshad, fry, fay, all Y coordinates, fad2, t2"},
 	
-	{x=0,y=3,width=2,height=1,class="label",label="Rounding:",},
+	{x=0,y=3,width=2,height=1,class="label",label="Rounding:"},
 	{x=2,y=3,width=3,height=1,class="intedit",name="rnd",value=default_rounding,min=0,hint="How many decimals should be allowed"},
 	
 	{x=0,y=4,class="checkbox",name="fscx",label="fscx"},
@@ -380,7 +380,8 @@ function recalculator(subs,sel)
 	{x=4,y=10,width=2,height=1,class="checkbox",name="anchor",label="anchor clip",hint="anchor clip with Multiply"},
 
 	{x=0,y=11,width=2,height=1,class="checkbox",name="regtag",label="regular tags",value=true},
-	{x=2,y=11,width=3,height=1,class="checkbox",name="tftag",label="tags in transforms",value=true},
+	{x=2,y=11,width=2,height=1,class="checkbox",name="tftag",label="tags in transforms",value=true},
+	{x=4,y=11,width=2,height=1,class="checkbox",name="rpt",label="repeat last"},
 	}
 	chk=","..checked..","
 	chk=chk:gsub(" *, *",",") :gsub("\t","\\t")
@@ -401,14 +402,16 @@ function recalculator(subs,sel)
 	P, res=aegisub.dialog.display(GUI,{"Multiply","Add","Mirror","Clear","Cancel"},{ok='Multiply',cancel='Cancel'})
 	until P~="Clear"
 	if P=="Cancel" then ak() end
+	if res.rpt and lastres then res=lastres end
 	if res.allpos then
 		res.posx=true res.posy=true res.orgx=true res.orgy=true
 		res.mov1=true res.mov2=true res.mov3=true res.mov4=true
 	end
 	if P=="Multiply" or P=="Add" then styleget(subs) multiply(subs,sel) end
 	if P=="Mirror" then mirror(subs,sel) end
+	lastres=res
 	aegisub.set_undo_point(script_name)
 	return sel
 end
 
-aegisub.register_macro(script_name, script_description, recalculator)
+aegisub.register_macro(script_name,script_description,recalculator)
