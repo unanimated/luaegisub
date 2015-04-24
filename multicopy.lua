@@ -1,9 +1,9 @@
 ﻿script_name="MultiCopy"
 script_description="Copy and paste just about anything from/to multiple lines"
 script_author="unanimated"
-script_version="3.2"
+script_version="3.3"
 
--- Use the Help button for info
+-- Use the Help button for info.
 -- Manuals for all my scripts: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm
 
 clipboard=require("aegisub.clipboard")
@@ -22,7 +22,7 @@ function copy(subs,sel)	-- tags
     end
     copydialog[2].label=""
     copydialog[3].value=copytags
-    P,res=ADD(copydialog,cbut,{close='OK'})
+    P=ADD(copydialog,cbut,{close='OK'})
     if P=="Copy to clipboard" then clipboard.set(copytags) end
 end
 
@@ -32,13 +32,14 @@ function copyt(subs,sel)	-- text
     	progress("Copying from line: "..x.."/"..#sel)
 	text=subs[i].text
 	text=text:gsub("^{\\[^}]-}","")
+	if res.copymode=="visible text" then text=text:gsub("{[^}]-}","") end
 	copytekst=copytekst..text.."\n"
 	if x==#sel then copytekst=copytekst:gsub("\n$","") end
     end
     words=0 for t in copytekst:gmatch("%S+") do words=words+1 end
     copydialog[2].label="("..copytekst:len().." characters, "..words.." words)"
     copydialog[3].value=copytekst
-    P,res=ADD(copydialog,cbut,{close='OK'})
+    P=ADD(copydialog,cbut,{close='OK'})
     if P=="Copy to clipboard" then clipboard.set(copytekst) end
 end
 
@@ -107,7 +108,7 @@ function copyc(subs,sel)	-- any tags; layeractoreffectetc.
     copydialog[1].label="Data to export:"
     copydialog[2].label=""
     copydialog[3].value=cc
-    P,res=ADD(copydialog,cbut,{close='OK'})
+    P=ADD(copydialog,cbut,{close='OK'})
     if P=="Copy to clipboard" then clipboard.set(cc) end
 end
 
@@ -122,7 +123,7 @@ function copyall(subs,sel)	-- all
     words=0 for t in copylines:gmatch("%S+") do words=words+1 end
     copydialog[2].label="("..copylines:len().." characters, "..words.." words)"
     copydialog[3].value=copylines
-    P,res=ADD(copydialog,cbut,{close='OK'})
+    P=ADD(copydialog,cbut,{close='OK'})
     if P=="Copy to clipboard" then clipboard.set(copylines) end
 end
 
@@ -198,7 +199,7 @@ function crmod(subs,sel)
     words=0 for t in copylines:gmatch("%S+") do words=words+1 end
     copydialog[2].label="("..copylines:len().." characters, "..words.." words)"
     copydialog[3].value=copylines
-    P,res=ADD(copydialog,cbut,{close='OK'})
+    P=ADD(copydialog,cbut,{close='OK'})
     if P=="Copy to clipboard" then clipboard.set(copylines) end
 end
 
@@ -379,7 +380,7 @@ function mispaste(sel)
 	end
 	B1=B1:gsub(" 1 lines"," 1 line")
 	B2=B2:gsub(" 1 lines"," 1 line")
-	P,res=ADD(mispastegui,{B1,B2,"Cancel"},{close='Cancel'})
+	P=ADD(mispastegui,{B1,B2,"Cancel"},{close='Cancel'})
 	if P=="Cancel" then ak() end
 	if P=="Loop paste" then loop=true end
 	if P=="Paste all "..#data.." lines" then over=true end
@@ -512,7 +513,7 @@ function pastec(subs,sel)
 	{x=7,y=0,class="checkbox",name="cR",label="R"},
 	{x=8,y=0,class="checkbox",name="cV",label="V"},
 	{x=9,y=0,class="checkbox",name="ctext",label="text"},
-	 {x=10,y=0,class="label",label="<-- check columns to use"},
+	{x=10,y=0,class="label",label="<-- check columns to use"},
 	{x=0,y=spg+1,class="dropdown",name="dlay",value="layer",items={"layer","L","R","V","style","actor","effect","text"}},
 	{x=1,y=spg+1,class="dropdown",name="dstart",value="start time",items=seaet},
 	{x=2,y=spg+1,class="dropdown",name="dendt",value="end time",items=seaet},
@@ -523,8 +524,8 @@ function pastec(subs,sel)
 	{x=7,y=spg+1,class="dropdown",name="dR",value="R",items=lrvlaet},
 	{x=8,y=spg+1,class="dropdown",name="dV",value="V",items=lrvlaet},
 	{x=9,y=spg+1,class="dropdown",name="dtext",value="text",items=saet},
-	 {x=10,y=spg+1,class="label",label="<-- columns to apply to"},
-	 {x=0,y=spg+2,width=10,class="label",label="Paste over selected columns or copy the content of one column to another. (GUI shows only first 10 lines for reference.)"},
+	{x=10,y=spg+1,class="label",label="<-- columns to apply to"},
+	{x=0,y=spg+2,width=10,class="label",label="Paste over selected columns or copy the content of one column to another. (GUI shows only first 10 lines for reference.)"},
 	}
 	lines={}
 	for li=1,#data do dtext=data[li]
@@ -728,50 +729,46 @@ function string2line(str)
 end
 
 function string2time(timecode)
-	if timecode==nil then ADD({{class="label",label="Invalid timecode."}},{"OK"},{close='OK'})
-	ak() end
+	if timecode==nil then ADD({{class="label",label="Invalid timecode."}},{"OK"},{close='OK'}) ak() end
 	timecode=timecode:gsub("(%d):(%d%d):(%d%d)%.(%d%d)",function(a,b,c,d) return d*10+c*1000+b*60000+a*3600000 end)
 	return timecode
 end
 
-tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay","b","i"}
+tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
 tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
 tags3={"pos","move","org","fad"}
 
 function duplikill(tagz)
-	aftert=tagz:match("^{.*\\t%b()(.-)}$") or ""
-	tagz=tagz:gsub(esc(aftert),"")
-	tf=""
-	for t in tagz:gmatch("\\t%b()") do tf=tf..t end
-	tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
-	tagz=tagz:gsub("\\t%b()","")
+	tagz=tagz:gsub("\\t%b()",function(t) return t:gsub("\\","|") end)
 	for i=1,#tags1 do
 	    tag=tags1[i]
-	    tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%1%2")
-	    if aftert:match("\\"..tag.."[%d%.%-]") then tagz=tagz:gsub("\\"..tag.."[%d%.%-]+","") tf=tf:gsub("\\"..tag.."[%d%.%-]+","") end
+	    repeat tagz,c=tagz:gsub("|"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1") until c==0
+	    repeat tagz,c=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1") until c==0
 	end
-	tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
 	tagz=tagz:gsub("\\1c&","\\c&")
 	for i=1,#tags2 do
 	    tag=tags2[i]
-	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%1%2")
-	    if aftert:match("\\"..tag.."&") then tagz=tagz:gsub("\\"..tag.."&H%x+&","") tf=tf:gsub("\\"..tag.."&H%x+&","") end
+	    repeat tagz,c=tagz:gsub("|"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1") until c==0
+	    repeat tagz,c=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1") until c==0
 	end
-	tagz=tagz:gsub("(\\i?clip%b())(.-)(\\i?clip%b())",
+	repeat tagz,c=tagz:gsub("(\\i?clip%b())(.-)(\\i?clip%b())",
 	  function(a,b,c) if a:match("m") and c:match("m") or not a:match("m") and not c:match("m") then
-	  return b..c else return a..b..c end end)
-	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf..aftert.."}")
+	  return b..c else return a..b..c end end) until c==0
+	tagz=tagz:gsub("|","\\"):gsub("\\t%([^\\%)]-%)","")
 	return tagz
 end
 
-function extrakill(text)
+function extrakill(text,o)
 	for i=1,#tags3 do
-	  tag=tags3[i]
-	  text=text:gsub("(\\"..tag.."[^\\}]+)([^}]-)(\\"..tag.."[^\\}]+)","%3%2")
+	    tag=tags3[i]
+	    if o==2 then
+	    repeat text,c=text:gsub("(\\"..tag.."[^\\}]+)([^}]-)(\\"..tag.."[^\\}]+)","%3%2") until c==0
+	    else
+	    repeat text,c=text:gsub("(\\"..tag.."[^\\}]+)([^}]-)(\\"..tag.."[^\\}]+)","%1%2") until c==0
+	    end
 	end
-	text=text
-	:gsub("(\\pos%b())([^}]-)(\\move%b())","%3%2")
-	:gsub("(\\move%b())([^}]-)(\\pos%b())","%3%2")
+	repeat text,c=text:gsub("(\\pos[^\\}]+)([^}]-)(\\move[^\\}]+)","%1%2") until c==0
+	repeat text,c=text:gsub("(\\move[^\\}]+)([^}]-)(\\pos[^\\}]+)","%1%2") until c==0
 	return text
 end
 
@@ -825,7 +822,7 @@ copydialog=
 function multicopy(subs,sel)
 ADD=aegisub.dialog.display
 ak=aegisub.cancel
-copytab={"tags","text","all","------","export CR for pad","------","any tag","clip","position","blur","border","colour(s)","alpha","fscx","fscy","------","layer","duration","actor","effect","style","comments","# of characters","# of chars (no space)"}
+copytab={"tags","text","visible text","all","------","export CR for pad","------","any tag","clip","position","blur","border","colour(s)","alpha","fscx","fscy","------","layer","duration","actor","effect","style","comments","# of characters","# of chars (no space)"}
 pastab={"all","any tag","superpasta","gbc text","text mod.","de-irc","------","layer","duration","actor","effect","style","comments"}
 fields={"style","actor","effect","text","layer","start_time","end_time","margin_l","margin_r","margin_t"}
 	gui={
@@ -833,7 +830,7 @@ fields={"style","actor","effect","text","layer","start_time","end_time","margin_
 	{x=1,y=19,width=3,height=1,class="dropdown",name="copymode",value="tags",items=copytab},
 	{x=4,y=19,class="label",label="Paste extra:"},
 	{x=5,y=19,width=2,class="dropdown",name="pastemode",value="all",items=pastab},
-	{x=0,y=0,width=11,height=17,class="textbox",name="dat"},
+	{x=0,y=0,width=12,height=17,class="textbox",name="dat"},
 	
 	{x=0,y=17,width=2,class="checkbox",name="col",label="Copy from"},
 	{x=2,y=17,width=2,class="dropdown",name="copyfrom",value=CF or "actor",items=fields},
@@ -850,14 +847,15 @@ fields={"style","actor","effect","text","layer","start_time","end_time","margin_
 	{x=5,y=18,class="checkbox",name="a1",label="\\1a"},
 	{x=6,y=18,class="checkbox",name="a2",label="\\2a"},
 	{x=7,y=18,class="checkbox",name="a3",label="\\3a"},
-	{x=8,y=18,class="checkbox",name="a4",label="\\4a"},
+	{x=8,y=18,width=2,class="checkbox",name="a4",label="\\4a"},
 	
-	{x=9,y=18,class="label",label="Replace this..."},
-	{x=10,y=18,class="label",label="...with this."},
-	{x=8,y=19,class="label",label="      Replacer:"},
-	{x=9,y=19,class="edit",name="rep1",value=lastrep1 or ""},
-	{x=10,y=19,class="edit",name="rep2",value=lastrep2 or ""},
-	{x=10,y=17,class="label",label="MultiCopy version "..script_version},
+	{x=10,y=17,class="checkbox",name="rpt",label="Repeat last"},
+	{x=10,y=18,class="label",label="Replace this..."},
+	{x=11,y=18,class="label",label="...with this."},
+	{x=9,y=19,class="label",label="Replacer:"},
+	{x=10,y=19,class="edit",name="rep1",value=lastrep1 or ""},
+	{x=11,y=19,class="edit",name="rep2",value=lastrep2 or ""},
+	{x=11,y=17,class="label",label="MultiCopy version "..script_version},
 	}
 	buttons={"Copy","Paste tags","Paste text","Paste extra","Paste from clipboard","Replace","Help","Cancel"}
 	repeat
@@ -908,13 +906,15 @@ You can use Replacer on pasted data: copy 'bord', replace 'bord' with 'shad', an
 	end
 	P,res=ADD(gui,buttons,{close='Cancel'})
 	until P~="Paste from clipboard" and P~="Help" and P~="Replace"
-	CM=res.copymode	PM=res.pastemode CF=res.copyfrom CT=res.copyto
 	if P=="Cancel" then ak() end
+	if res.rpt and lastres then res=lastres end
+	CM=res.copymode	PM=res.pastemode CF=res.copyfrom CT=res.copyto
+	lastres=res
 	if P=="Copy" then
 	  if res.col then copycol(subs,sel)
 	  else
 	    if res.copymode=="tags" then copy(subs,sel)
-	    elseif res.copymode=="text" then copyt(subs,sel)
+	    elseif res.copymode:match("text") then copyt(subs,sel)
 	    elseif res.copymode=="all" then copyall(subs,sel)
 	    elseif res.copymode=="export CR for pad" then crmod(subs,sel)
 	    else copyc(subs,sel) end
@@ -923,7 +923,6 @@ You can use Replacer on pasted data: copy 'bord', replace 'bord' with 'shad', an
 	if P=="Paste tags" then paste(subs,sel) end
 	if P=="Paste text" then pastet(subs,sel) end
 	if P=="Paste extra" then pastec(subs,sel) end
-
 	aegisub.set_undo_point(script_name.." - "..P)
 	return sel
 end

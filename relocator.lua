@@ -2,11 +2,11 @@
 -- Check Help (Space Travel Guide) for detailed description of all functions.
 
 script_name="Hyperdimensional Relocator"
-script_description="Makes things appear different from before"
+script_description="Advanced metamorphosis of multidimensional coordinates."
 script_author="reanimated"
 script_url1="http://unanimated.xtreemhost.com/ts/relocator.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/relocator.lua"
-script_version="3.21"
+script_version="3.3"
 
 include("utils.lua")
 re=require'aegisub.re'
@@ -16,7 +16,7 @@ function positron(subs,sel)
     shake={} shaker={}
     count=0
     if res.posi=="shadow layer" or res.posi=="space out letters" then table.sort(sel,function(a,b) return a>b end) end
-    for x, i in ipairs(sel) do
+    for x,i in ipairs(sel) do
 	progress("Depositing line: "..x.."/"..#sel)
 	line=subs[i]
 	text=line.text
@@ -48,7 +48,7 @@ function positron(subs,sel)
 	    text2=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)%)",function(x,y) return "\\pos("..resx-x..","..y..")" end)
 	    :gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",function(x,y,x2,y2) return "\\move("..resx-x..","..y..","..resx-x2..","..y2 end)
 	    :gsub("\\an([147369])",function(a) for m=1,6 do if a==mirs[m] then b=mirs[7-m] end end return "\\an"..b end)
-	    	if res.rota then 
+	    	if res.rota then
 		    if not text2:match("^{[^}]-\\fry") then text2=addtag("\\fry0",text2) end text2=flip("fry",text2)
 		end
 	    else
@@ -56,7 +56,7 @@ function positron(subs,sel)
 	    text2=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)%)",function(x,y) return "\\pos("..x..","..resy-y..")" end)
 	    :gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",function(x,y,x2,y2) return "\\move("..x..","..resy-y..","..x2..","..resy-y2 end)
 	    :gsub("\\an([123789])",function(a) for m=1,6 do if a==mirs[m] then b=mirs[7-m] end end return "\\an"..b end)
-	    	if res.rota then 
+	    	if res.rota then
 		    if not text2:match("^{[^}]-\\frx") then text2=addtag("\\frx0",text2) end text2=flip("frx",text2)
 		end
 	    end
@@ -85,10 +85,10 @@ function positron(subs,sel)
 	    ang2=ang1-rota
 	    tangf=math.tan(math.rad(ang2))
 	    
-	    faks=round(tangf*100)/100
+	    faks=round(tangf,2)
 	    text=addtag("\\fax"..faks,text)
 	    text=text:gsub("\\org%([^%)]+%)","")
-	    text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
+	    :gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	end
 	
 	-- clip to fax
@@ -105,17 +105,16 @@ function positron(subs,sel)
 	    ang2=ang1-rota
 	    tangf=math.tan(math.rad(ang2))
 	    
-	    faks=round(tangf*100)/100
+	    faks=round(tangf,2)
 	    text=addtag("\\fax"..faks,text)
 	    if cy4~=nil then
 		tang2=((cx3-cx4)/(cy3-cy4))
 		ang3=math.deg(math.atan(tang2))
 		ang4=ang3-rota
 		tangf2=math.tan(math.rad(ang4))
-		faks2=round(tangf2*100)/100
+		faks2=round(tangf2,2)
 		endcom=""
-		repeat
-			text=text:gsub("({[^}]-})%s*$",function(ec) endcom=ec..endcom return "" end)
+		repeat text=text:gsub("({[^}]-})%s*$",function(ec) endcom=ec..endcom return "" end)
 		until not text:match("}$")
 		text=text:gsub("(.)$","{\\fax"..faks2.."}%1")
 		
@@ -129,7 +128,7 @@ function positron(subs,sel)
 		for c=2,#chars do
 		    if c==#chars then ast="" else ast="*" end
 		    if chars[c]==" " then tt=tt.." " else
-		    tt=tt.."{"..ast.."\\fax"..round((faks+faxdiff*(c-1))*100)/100 .."}"..chars[c]
+		    tt=tt.."{"..ast.."\\fax"..round((faks+faxdiff*(c-1)),2) .."}"..chars[c]
 		    end
 		end
 		text=tg..tt
@@ -152,7 +151,7 @@ function positron(subs,sel)
 	    op=cy1-cy2
 	    tang=(op/ad)
 	    ang1=math.deg(math.atan(tang))
-	    rota=round(ang1*100)/100
+	    rota=round(ang1,2)
 	    if ad<0 then rota=rota-180 end
 	    
 	    if cy4~=nil then
@@ -160,7 +159,7 @@ function positron(subs,sel)
 		op2=cy3-cy4
 		tang2=(op2/ad2)
 		ang2=math.deg(math.atan(tang2))
-		rota2=round(ang2*100)/100
+		rota2=round(ang2,2)
 		if ad2<0 then rota2=rota2-180 end
 	    else rota2=rota
 	    end
@@ -168,7 +167,7 @@ function positron(subs,sel)
 	    
 	    text=addtag("\\frz"..rota3,text)
 	    text=text:gsub("\\clip%([^%)]+%)","")
-	    text=text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
+	    :gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
 	end
 	
 	-- shake
@@ -208,7 +207,7 @@ function positron(subs,sel)
 		if not text:match("^{[^}]-\\fscx") then text=addtag("\\fscx".. 100*shsx,text) end
 		if not text:match("^{[^}]-\\fscy") then text=addtag("\\fscy".. 100*shsy,text) end
 	    end
-	    text=text:gsub("([%d%.%-]+)([\\}%),])",function(a,b) return round(a*100)/100 ..b end)
+	    text=text:gsub("([%d%.%-]+)([\\}%),])",function(a,b) return round(a,2)..b end)
 	end
 	
 	-- shake rotation
@@ -351,11 +350,11 @@ function positron(subs,sel)
 		if t>1 then
 		  prevlet=letters[t-1]
 		  ltrspac=(let.w+prevlet.w)/2*scx/100+wdiff
-		  ltrspac=round(ltrspac*100)/100
+		  ltrspac=round(ltrspac,2)
 		else
 		  fact1=spacing/(avgspac*scx/100)
 		  fact2=(let.w-letters[#letters].w)/4*scx/100
-		  ltrspac=round(fact1*fact2*100)/100
+		  ltrspac=round(fact1*fact2,2)
 		end
 		if intags[t] then tags=tags..intags[t] tags=tags:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") tags=duplikill(tags) end
 		t2=tags..let.l
@@ -381,34 +380,33 @@ function positron(subs,sel)
 end
 
 function bilocator(subs,sel)
-    xx=res.eks	yy=res.wai
-    if res.move=="transmove" and sel[#sel]==#subs then table.remove(sel,#sel) end
+    xx=res.eks	yy=res.wai  rM=res.move
+    if rM=="transmove" and sel[#sel]==#subs then table.remove(sel,#sel) end
     for i=#sel,1,-1 do
         progress(string.format("Moving through hyperspace... %d/%d",(#sel-i+1),#sel))
 	line=subs[sel[i]]
 	text=line.text
 	
-	    if res.move=="transmove" and sel[i]<#subs then
-	    
-	    	start=line.start_time		-- start time
-		endt=line.end_time		-- end time
+	if rM=="transmove" and sel[i]<#subs then
+	
+	    	start=line.start_time
+		endt=line.end_time
 		nextline=subs[sel[i]+1]
 		text2=nextline.text
 		text=text:gsub("\\1c","\\c")
 		text2=text2:gsub("\\1c","\\c")
-		
-		startf=ms2fr(start)		-- startframe
-		endf=ms2fr(endt)		-- endframe
+		startf=ms2fr(start)
+		endf=ms2fr(endt)
 		start2=fr2ms(startf)
 		endt2=fr2ms(endf-1)
 		tim=fr2ms(1)
-		movt1=start2-start+tim		-- first timecode in \move
-		movt2=endt2-start+tim		-- second timecode in \move
+		movt1=start2-start+tim
+		movt2=endt2-start+tim
 		movt=movt1..","..movt2
 		
 		-- move
-		p1=text:match("\\pos%(([^%)]+)%)")
-		p2=text2:match("\\pos%(([^%)]+)%)")
+		p1=text:match("\\pos%b()")
+		p2=text2:match("\\pos%b()")
 		if p1==nil or p2==nil then t_error("Missing \\pos tag(s).",true) end
 		if p2~=p1 then text=text:gsub("\\pos%(([^%)]+)%)","\\move(%1,"..p2..","..movt..")") end
 		
@@ -418,7 +416,7 @@ function bilocator(subs,sel)
 		tftags={"fs","fsp","fscx","fscy","blur","bord","shad","fax","fay"}
 		for tg=1,#tftags do
 		  t=tftags[tg]
-		  if text2:match("\\"..t.."[%d%.%-]+") then tag2=text2:match("(\\"..t.."[%d%.%-]+)") 
+		  if text2:match("\\"..t.."[%d%.%-]+") then tag2=text2:match("(\\"..t.."[%d%.%-]+)")
 		    if text:match("\\"..t.."[%d%.%-]+") then tag1=text:match("(\\"..t.."[%d%.%-]+)") else tag1="" end
 		    if tag1~=tag2 then tf=tf..tag2 end
 		  end
@@ -427,7 +425,7 @@ function bilocator(subs,sel)
 		tfctags={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
 		for tg=1,#tfctags do
 		  t=tfctags[tg]
-		  if text2:match("\\"..t.."&H%x+&") then tag2=text2:match("(\\"..t.."&H%x+&)") 
+		  if text2:match("\\"..t.."&H%x+&") then tag2=text2:match("(\\"..t.."&H%x+&)")
 		    if text:match("\\"..t.."&H%x+&") then tag1=text:match("(\\"..t.."&H%x+&)") else tag1="" end
 		    if tag1~=tag2 then tf=tf..tag2 end
 		  end
@@ -440,12 +438,12 @@ function bilocator(subs,sel)
 		    tag2=text2:match("(\\"..t.."[%d%.%-]+)") rr2=tonumber(text2:match("\\"..t.."([%d%.%-]+)"))
 		    if text:match("\\"..t.."[%d%.%-]+") then 
 		        tag1=text:match("(\\"..t.."[%d%.%-]+)") rr1=tonumber(text:match("\\"..t.."([%d%.%-]+)"))
-		    else tag1="" rr1="0" end
-		    if tag1~=tag2 then 
+		    else tag1="" rr1=0 end
+		    if tag1~=tag2 then
 			if res.rotac and math.abs(rr2-rr1)>180 then
-			    if rr2>rr1 then rr2=rr2-360 tag2="\\frz"..rr2 else 
-			    rr1=rr1-360 text=text:gsub("\\frz[%d%.%-]+","\\frz"..rr1)
-			    end
+			  if rr2>rr1 then rr2=rr2-360 tag2="\\frz"..rr2 else
+			  rr1=rr1-360 text=text:gsub("\\frz[%d%.%-]+","\\frz"..rr1)
+			  end
 			end
 		    tf=tf..tag2 end
 		  end
@@ -459,34 +457,29 @@ function bilocator(subs,sel)
 		-- delete line 2
 		if res.keep==false then subs.delete(sel[i]+1) end
 		
-	    end -- end of transmove
-		
-	    if res.move=="horizontal" then
-		    text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)","\\move(%1,%2,%3,%2") end
-	    if res.move=="vertical" then
-		    text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)","\\move(%1,%2,%1,%4") end
-	    
-	    if res.move=="rvrs. move" then
-		text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)","\\move(%3,%4,%1,%2")
-	    end
-	    
-	    if res.move=="shiftmove" then
+		end -- end of transmove
+
+	if rM=="horizontal" then text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)","\\move(%1,%2,%3,%2") end
+	if rM=="vertical" then text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)","\\move(%1,%2,%1,%4") end
+	if rM=="rvrs. move" then text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)","\\move(%3,%4,%1,%2") end
+
+	if rM=="shiftmove" then
 		text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
 		function(a,b,c,d) return "\\move("..a..","..b..","..c+xx..","..d+yy end)
 		text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)",function(a,b) return "\\move("..a..","..b..","..a+xx..","..b+yy end)
-	    end
-	    
-	    if res.move=="shiftstart" then
+	end
+
+	if rM=="shiftstart" then
 		text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
 		function(a,b,c,d) return "\\move("..a+xx..","..b+yy..","..c..","..d end)
-	    end
-	    
-	    if res.move=="move to" then
+	end
+
+	if rM=="move to" then
 		text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
 		function(a,b,c,d) return "\\move("..a..","..b..","..xx..","..yy end)
-	    end
-	    
-	    if res.move=="move clip" then
+	end
+
+	if rM=="move clip" then
 		m1,m2,m3,m4=text:match("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)")
 		mt=text:match("\\move%([^,]+,[^,]+,[^,]+,[^,]+,([%d%.,%-]+)")
 		if mt==nil then mt="" else mt=mt.."," end
@@ -494,24 +487,23 @@ function bilocator(subs,sel)
 		klip=klip:gsub("(\\i?clip%()([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
 		function(a,b,c,d,e) return a..b+m3-m1..","..c+m4-m2..","..d+m3-m1..","..e+m4-m2 end)
 		text=addtag("\\t("..mt..klip..")",text)
-	    end
-	    
+	end
+
+	text=roundpar(text,3)
 	line.text=text
         subs[sel[i]]=line
     end
 end
 
 function multimove(subs,sel)
-    for x, i in ipairs(sel) do
+    for x,i in ipairs(sel) do
         progress(string.format("Synchronizing movement... %d/%d",x,#sel))
 	line=subs[i]
-        text=subs[i].text
+        text=line.text
 	-- error if first line's missing \move tag
-	if x==1 and text:match("\\move")==nil then ADD({{class="label",
-		    label="Missing \\move tag on line 1",x=0,y=0,width=1,height=2}},{"OK"})
-		    mc=1
-	else 
-	-- get coordinates from \move on line 1
+	if x==1 and not text:match("\\move") then t_error("Missing \\move tag on line 1",true) mc=1
+	else
+	    -- get coordinates from \move on line 1
 	    if text:match("\\move") then
 	    x1,y1,x2,y2,t,m1,m2=nil
 		if text:match("\\move%([%d%.%-]+,[%d%.%-]+,[%d%.%-]+,[%d%.%-]+,[%d%.,%-]+%)") then
@@ -521,10 +513,10 @@ function multimove(subs,sel)
 		end
 	    m1=x2-x1	m2=y2-y1	-- difference between start/end position
 	    end
-	-- error if any of lines 2+ don't have \pos tag
+	    -- error if any of lines 2+ don't have \pos tag
 	    if x~=1 and text:match("\\pos")==nil then poscheck=1
-	    else  
-	-- apply move coordinates to lines 2+
+	    else
+	    -- apply move coordinates to lines 2+
 		if x~=1 and m2~=nil then
 		p1,p2=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)")
 		    if t~=nil then
@@ -534,14 +526,14 @@ function multimove(subs,sel)
 		    end
 		end
 	    end
-	    
 	end
-	    line.text=text
-	    subs[i]=line
+	text=roundpar(text,3)
+	line.text=text
+	subs[i]=line
     end
 	if poscheck==1 then t_error("Some lines are missing \\pos tags") end
 	x1,y1,x2,y2,t,m1,m2=nil
-	poscheck=0 
+	poscheck=0
 end
 
 
@@ -579,10 +571,10 @@ function randomove(subs,sel)
     if rmdp then plus=rmd*100 end
     if rmdm then minus=(0-rmd)*100 end
     
-    for x, i in ipairs(sel) do
+    for x,i in ipairs(sel) do
         progress(string.format("Randomizing movement... %d/%d",x,#sel))
 	line=subs[i]
-        text=subs[i].text
+        text=line.text
 	if text:match("\\move") then
 	  if rmt then
 	    movt1,movt2=gettimes(line.start_time,line.end_time)
@@ -591,7 +583,6 @@ function randomove(subs,sel)
 	    text=text:gsub("(\\move%([%d%.%-]+,[%d%.%-]+,[%d%.%-]+,[%d%.%-]+),([%d%.,%-]+)%)","%1,"..movt1..","..movt3..")")
 	  end
 	  if rms then
-	    
 	    text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
 	    function(a,b,c,d)
 	    if rez.rm1 then a=a+math.random(minus,plus)/100 end
@@ -600,7 +591,6 @@ function randomove(subs,sel)
 	    if rez.rm4 then d=d+math.random(minus,plus)/100 end
 	    return "\\move("..a..","..b..","..c..","..d end)
 	  end
-	
 	end
 	line.text=text
 	subs[i]=line
@@ -608,25 +598,25 @@ function randomove(subs,sel)
 end
 
 function gettimes(st,et)
-    	startf=ms2fr(st)
-	endf=ms2fr(et)
-	start2=fr2ms(startf)
-	endt2=fr2ms(endf-1)
-	tim=fr2ms(1)
-	movt1=start2-st+tim
-	movt2=endt2-st+tim
-	return movt1,movt2
+startf=ms2fr(st)
+endf=ms2fr(et)
+start2=fr2ms(startf)
+endt2=fr2ms(endf-1)
+tim=fr2ms(1)
+movt1=start2-st+tim
+movt2=endt2-st+tim
+return movt1,movt2
 end
 
 function modifier(subs,sel)
     post=res.post xx=res.eks yy=res.wai
-    rr=1/res.rndec
+    _,rr=res.rndec:gsub("0","")
     for x, i in ipairs(sel) do
         progress(string.format("Morphing... %d/%d",x,#sel))
 	line=subs[i]
 	text=line.text
 
-	    if res.mod=="round numbers" then
+	if res.mod=="round numbers" then
 		if text:match("\\pos") and res.rnd=="all" or text:match("\\pos") and res.rnd=="pos" then
 		  text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b) return "\\pos("..round(a,rr)..","..round(b,rr)..")" end)
 		end
@@ -634,12 +624,12 @@ function modifier(subs,sel)
 		  text=text:gsub("\\org%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b) return "\\org("..round(a,rr)..","..round(b,rr)..")" end)
 		end
 		if text:match("\\move") and res.rnd=="all" or text:match("\\move") and res.rnd=="move" then
-		  text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",function(mo1,mo2,mo3,mo4,rr)
+		  text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",function(mo1,mo2,mo3,mo4)
 		  return "\\move("..round(mo1,rr)..","..round(mo2,rr)..","..round(mo3,rr)..","..round(mo4,rr) end)
 		end
 		if text:match("\\i?clip") and res.rnd=="all" or text:match("\\i?clip") and res.rnd=="clip" then
 		  for klip in text:gmatch("\\i?clip%([^%)]+%)") do
-		    if klip:match("m") then rrr=1 else rrr=rr end
+		    if klip:match("m") then rrr=0 else rrr=rr end
 		    klip2=klip:gsub("([%d%.%-]+)",function(c) return round(c,rrr) end)
 		    klip=esc(klip)
 		    text=text:gsub(klip,klip2)
@@ -650,9 +640,9 @@ function modifier(subs,sel)
 		  text=text:gsub("^{\\[^}]-}","") :gsub("([%d%.%-]+)",function(m) return round(m,rr) end)
 		  text=tags..text
 		end
-	    end
-	    
-	    if res.mod=="fullmovetimes" or res.mod=="fulltranstimes" then
+	end
+
+	if res.mod=="fullmovetimes" or res.mod=="fulltranstimes" then
 		start=line.start_time		-- start time
 		endt=line.end_time		-- end time
 		startf=ms2fr(start)		-- startframe
@@ -663,27 +653,22 @@ function modifier(subs,sel)
 		movt1=start2-start+tim		-- first timecode in \move
 		movt2=endt2-start+tim		-- second timecode in \move
 		movt=movt1..","..movt2
-	    end
-	    
-	    if res.mod=="killmovetimes" then
-		text=text:gsub("\\move%(([^,]+,[^,]+,[^,]+,[^,]+),[^,]+,[^,%)]+","\\move(%1")
-	    end
-	    
-	    if res.mod=="fullmovetimes" then
-		text=text:gsub("\\move%(([^,]+,[^,]+,[^,]+,[^,]+),([%d%.%-]+),([%d%.%-]+)","\\move(%1,"..movt)
-		text=text:gsub("\\move%(([^,]+,[^,]+,[^,]+,[^,]+)%)","\\move(%1,"..movt..")")
-	    end
-	    
-	    if res.mod=="fulltranstimes" then
+	end
+
+	if res.mod=="killmovetimes" then text=text:gsub("\\move%(([^,]+,[^,]+,[^,]+,[^,]+),[^,]+,[^,%)]+","\\move(%1") end
+
+	if res.mod=="fullmovetimes" then text=text:gsub("\\move%(([^,]+,[^,]+,[^,]+,[^,]+).-%)","\\move(%1,"..movt..")") end
+
+	if res.mod=="fulltranstimes" then
 		text=text
 		:gsub("\\t%([%d%.%-]-,[%d%.%-]-,([%d%.]-,)\\","\\t("..movt..",%1\\")
 		:gsub("\\t%([%d%.%-]-,[%d%.%-]-,\\","\\t("..movt..",\\")
 		:gsub("\\t%(([%d%.]-,)\\","\\t("..movt..",%1\\")
 		:gsub("\\t%(\\","\\t("..movt..",\\")
-	    end
-	    
-	    if res.mod=="move v. clip" then
-		if x==1 then v1,v2=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)") 
+	end
+
+	if res.mod=="move v. clip" then
+		if x==1 then v1,v2=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)")
 			if v1==nil then t_error("Error. No \\pos tag on line 1.",true) end
 		end
 		if x~=1 and text:match("\\pos") then v3,v4=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)")
@@ -702,14 +687,14 @@ function modifier(subs,sel)
 		    text=text:gsub(",m "..ctext,",m "..ctext2)
 		  end
 		end
-	    end
-	    
-	    if res.mod=="set origin" then
+	end
+
+	if res.mod=="set origin" then
 		text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)%)",
 		function(a,b) return "\\pos("..a..","..b..")\\org("..a+res.eks..","..b+res.wai..")" end)
-	    end
-	    
-	    if res.mod=="calculate origin" then
+	end
+
+	if res.mod=="calculate origin" then
 		local c={}
 		local c2={}
 		x1,y1,x2,y2,x3,y3,x4,y4=text:match("clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+)")
@@ -738,11 +723,11 @@ function modifier(subs,sel)
 		-- determine if y is going up or down
 		cy=1
 		  if c[2].y>c[1].y then cx1=round(xx1-(yy1-cy)/fx1) else cx1=round(xx1+(yy1-cy)/fx1) end
-		  if c[4].y>c[3].y then cx2=round(xx2-(yy2-cy)/fx2) else cx2=round(xx2+(yy2-cy)/fx2) end	
+		  if c[4].y>c[3].y then cx2=round(xx2-(yy2-cy)/fx2) else cx2=round(xx2+(yy2-cy)/fx2) end
 		  top=cx2-cx1
 		cy=500
 		  if c[2].y>c[1].y then cx1=round(xx1-(yy1-cy)/fx1) else cx1=round(xx1+(yy1-cy)/fx1) end
-		  if c[4].y>c[3].y then cx2=round(xx2-(yy2-cy)/fx2) else cx2=round(xx2+(yy2-cy)/fx2) end	
+		  if c[4].y>c[3].y then cx2=round(xx2-(yy2-cy)/fx2) else cx2=round(xx2+(yy2-cy)/fx2) end
 		  bot=cx2-cx1
 		if top>bot then cy=c2[4].y ycalc=1 else cy=c2[1].y ycalc=-1 end
 		
@@ -775,84 +760,77 @@ function modifier(subs,sel)
 		until cy1>=cy2 or math.abs(cx)==50000
 		org2=cy1
 		
-		text=text:gsub("\\org%([^%)]+%)","") 
+		text=text:gsub("\\org%([^%)]+%)","")
 		text=addtag("\\org("..org1..","..org2..")",text)
-	    end
-	       
-	    if res.mod=="FReeZe" then
+	end
+
+	if res.mod=="FReeZe" then
 		frz=res.freeze
 		if text:match("^{[^}]*\\frz") then
 		text=text:gsub("^({[^}]*\\frz)([%d%.%-]+)","%1"..frz)
 		else
 		text=addtag("\\frz"..frz,text)
 		end
-	    end
-	    
-	    if res.mod=="rotate 180" then
-		if text:match("\\frz") then text=flip("frz",text) else text=addtag("\\frz180",text) end
-	    end
-	    
-	    if res.mod=="flip hor." then
-		if text:match("\\fry") then text=flip("fry",text) else text=addtag("\\fry180",text) end
-	    end
-	    
-	    if res.mod=="flip vert." then
-		if text:match("\\frx") then text=flip("frx",text) else text=addtag("\\frx180",text) end
-	    end
+	end
 
-	    if res.mod=="vector2rect." then
-		text=text:gsub("\\(i?)clip%(m%s([%d%.%-]+)%s([%d%.%-]+)%sl%s([%d%.%-]+)%s([%d%.%-]+)%s([%d%.%-]+)%s([%d%.%-]+)%s([%d%.%-]+)%s([%d%.%-]+)%)","\\%1clip(%2,%3,%6,%7)") 
-	    end
+	if res.mod=="rotate 180" then if text:match("\\frz") then text=flip("frz",text) else text=addtag("\\frz180",text) end end
 
-	    if res.mod=="rect.2vector" then
+	if res.mod=="flip hor." then if text:match("\\fry") then text=flip("fry",text) else text=addtag("\\fry180",text) end end
+
+	if res.mod=="flip vert." then if text:match("\\frx") then text=flip("frx",text) else text=addtag("\\frx180",text) end end
+
+	if res.mod=="vector2rect." then
+		text=text:gsub("\\(i?)clip%(m%s([%d%.%-]+)%s([%d%.%-]+)%sl%s([%d%.%-]+)%s([%d%.%-]+)%s([%d%.%-]+)%s([%d%.%-]+)%s([%d%.%-]+)%s([%d%.%-]+)%)","\\%1clip(%2,%3,%6,%7)")
+	end
+
+	if res.mod=="rect.2vector" then
 		text=text:gsub("\\(i?)clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(ii,a,b,c,d) 
 		a,b,c,d=round4(a,b,c,d) return string.format("\\"..ii.."clip(m %d %d l %d %d %d %d %d %d)",a,b,c,b,c,d,a,d) end)
-	    end
-	    
-	    if res.mod=="clip scale" and text:match("\\i?clip%(%d-,?m") then
+	end
+
+	if res.mod=="clip scale" and text:match("\\i?clip%(%d-,?m") then
 		oscf=text:match("\\i?clip%((%d+),m")
 		if oscf then fact1=2^(oscf-1) else fact1=1 end
 		if post<1 then post=1 end
 		fact2=2^(post-1)
-		
-		text=text:gsub("(\\i?clip%()(%d*,?)m ([^%)]+)%)",function(a,b,c) 
+		text=text:gsub("(\\i?clip%()(%d*,?)m ([^%)]+)%)",function(a,b,c)
 		return a..post..",m "..c:gsub("([%d%.%-]+)",function(d) return round(d/fact1*fact2) end)..")" end)
 		:gsub("1,m","m")
-	    end
-	    
-	    if res.mod=="find centre" then
+	end
+
+	if res.mod=="find centre" then
 		text=text:gsub("\\pos%([^%)]+%)","") t2=text
-		text=text:gsub("\\clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c,d) 
+		text=text:gsub("\\clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c,d)
 		x=round(a/2+c/2) y=round(b/2+d/2) return "\\pos("..x..","..y..")" end)
 		if t2==text then 
 		ADD({{class="label",label="Requires rectangular clip"}},{"OK"},{close='OK'})  ak() end
-	    end
-	    
-	    if res.mod=="extend mask" then
+	end
+
+	if res.mod=="extend mask" then
 		if xx==0 and yy==0 then ADD({{class="label",label="Error. Both given values are 0.\nUse the Teleporter X and Y fields."}},{"OK"},{close='OK'}) ak() end
 		draw=text:match("}m ([^{]+)")
-		draw2=draw:gsub("([%d%.%-]+) ([%d%.%-]+)",function(a,b) 
+		draw2=draw:gsub("([%d%.%-]+) ([%d%.%-]+)",function(a,b)
 		if tonumber(a)>0 then ax=xx elseif tonumber(a)<0 then ax=0-xx else ax=0 end
 		if tonumber(b)>0 then by=yy elseif tonumber(b)<0 then by=0-yy else by=0 end
 		return a+ax.." "..b+by end)
 		draw=esc(draw)
 		text=text:gsub("(}m )"..draw,"%1"..draw2)
-	    end
-	    
-	    if res.mod=="flip mask" then
+	end
+
+	if res.mod=="flip mask" then
 		draw=text:match("}m ([^{]+)")
 		draw2=draw:gsub("([%d%.%-]+) ([%d%.%-]+)",function(a,b) return 0-a.." "..b end)
 		draw=esc(draw)
 		text=text:gsub("(}m )"..draw,"%1"..draw2)
-	    end
-	    
-	    if res.mod=="adjust drawing" then
+	end
+
+	if res.mod=="adjust drawing" then
 		if not text:match("\\p%d") then ak() end
 		-- drawing 2 clip
 		if not text:match("\\i?clip") then
 		  klip="\\clip("..text:match("\\p1[^}]-}(m [^{]*)")..")"
-		  scx=text:match("\\fscx([%d%.]+)")	if scx==nil then scx=100 end
-		  scy=text:match("\\fscy([%d%.]+)")	if scy==nil then scy=100 end
+		  scx=text:match("\\fscx([%d%.]+)") or 100
+		  scy=text:match("\\fscy([%d%.]+)") or 100
 		  if text:match("\\pos") then
 		    local xx,yy=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)")
 		    xx=round(xx) yy=round(yy)
@@ -865,7 +843,7 @@ function modifier(subs,sel)
 		  text=addtag(klip,text)
 		-- clip 2 drawing
 		else
-		  text=text:gsub("\\i?clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c,d) 
+		  text=text:gsub("\\i?clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c,d)
 		    a,b,c,d=round4(a,b,c,d) return string.format("\\clip(m %d %d l %d %d %d %d %d %d)",a,b,c,b,c,d,a,d) end)
 		  klip=text:match("\\i?clip%((m.-)%)")
 		  if text:match("\\pos") then
@@ -883,33 +861,33 @@ function modifier(subs,sel)
 		  if text:match("\\fscy") then text=text:gsub("\\fscy[%d%.]+","\\fscy100") else text=text:gsub("\\p1","\\fscy100\\p1") end
 		  text=text:gsub("\\i?clip%(.-%)","")
 		end
-	    end
-	    
-	    if res.mod=="randomask" then
+	end
+
+	if res.mod=="randomask" then
 		draw=text:match("}m ([^{]+)")
 		draw2=draw:gsub("([%d%.%-]+)",function(a) return a+math.random(0-res.post,res.post) end)
 		draw=esc(draw)
 		text=text:gsub("(}m )"..draw,"%1"..draw2)
-	    end
-	    
-	    if res.mod=="randomize..." then
+	end
+
+	if res.mod=="randomize..." then
 		if x==1 then
 		  randomgui={
-		    {x=0,y=0,class="label",label="randomization value"},
-		    {x=1,y=0,class="floatedit",name="random",value=rnd or 3},
-		    {x=0,y=1,class="label",label="rounding"},
-		    {x=1,y=1,class="dropdown",name="dec",items={"1","0.1","0.01","0.001"},value=rd or "0.1",},
-		    {x=1,y=2,class="edit",name="randomtag",value=rt},
-		    {x=1,y=3,class="edit",name="partag1",hint="pos, move, org, clip, (fad)",value=rtx},
-		    {x=1,y=4,class="edit",name="partag2",hint="pos, move, org, clip, (fad)",value=rty},
-		    {x=0,y=2,class="checkbox",name="ntag",label="standard type tag - \\",value=rnt,hint="\\[tag][number]"},
-		    {x=0,y=3,class="checkbox",name="ptag1",label="parenthesis tag x - \\",value=rpt1,hint="\\tag(X,y)"},
-		    {x=0,y=4,class="checkbox",name="ptag2",label="parenthesis tag y - \\",value=rpt2,hint="\\tag(x,Y)"},
+		  {x=0,y=0,class="label",label="randomization value"},
+		  {x=1,y=0,class="floatedit",name="random",value=rnd or 3},
+		  {x=0,y=1,class="label",label="rounding"},
+		  {x=1,y=1,class="dropdown",name="dec",items={"1","0.1","0.01","0.001"},value=rd or "0.1",},
+		  {x=1,y=2,class="edit",name="randomtag",value=rt},
+		  {x=1,y=3,class="edit",name="partag1",hint="pos, move, org, clip, (fad)",value=rtx},
+		  {x=1,y=4,class="edit",name="partag2",hint="pos, move, org, clip, (fad)",value=rty},
+		  {x=0,y=2,class="checkbox",name="ntag",label="standard type tag - \\",value=rnt,hint="\\[tag][number]"},
+		  {x=0,y=3,class="checkbox",name="ptag1",label="parenthesis tag x - \\",value=rpt1,hint="\\tag(X,y)"},
+		  {x=0,y=4,class="checkbox",name="ptag2",label="parenthesis tag y - \\",value=rpt2,hint="\\tag(x,Y)"},
 		  }
 		  press,rez=ADD(randomgui,{"Randomize","Disintegrate"},{ok='Randomize',close='Disintegrate'})
 		  if press=="Disintegrate" then ak() end
 		  rt=rez.randomtag   rtx=rez.partag1   rty=rez.partag2	rd=rez.dec
-		  deci=1/tonumber(rez.dec)    rnd=rez.random	rnt=rez.ntag   rpt1=rez.ptag1   rpt2=rez.ptag2
+		  _,deci=rez.dec:gsub("0","")    rnd=rez.random	rnt=rez.ntag   rpt1=rez.ptag1   rpt2=rez.ptag2
 		end
 		
 		-- standard tags
@@ -918,7 +896,7 @@ function modifier(subs,sel)
 		  tagval,mark=tag:match("([%d%.%-]+)[\\}](.)")
 		  tagval1=esc(tagval)
 		  rndm=math.random(-100,100)/100*rnd
-		    text=text:gsub("\\"..rt..tagval1.."([\\}])"..mark,"\\"..rt..round((tagval+rndm)*deci)/deci.."%1"..mark)
+		    text=text:gsub("\\"..rt..tagval1.."([\\}])"..mark,"\\"..rt..round((tagval+rndm),deci).."%1"..mark)
 		 end
 		end
 		
@@ -927,20 +905,20 @@ function modifier(subs,sel)
 		  rndm=math.random(-100,100)/100*rnd
 		  if rez.ptag1 then
 		    text=text:gsub("\\"..rtx.."%(([%d%.%-]+),([%d%.%-]+)",
-			function(x,y) return "\\"..rtx.."("..round((x+rndm)*deci)/deci..","..y end)
+			function(x,y) return "\\"..rtx.."("..round((x+rndm),deci)..","..y end)
 		    :gsub("\\"..rtx.."%(([%d%.%-]+,[%d%.%-]+,)([%d%.%-]+),([%d%.%-]+)",
-			function(a,x,y) return "\\"..rtx.."("..a..round((x+rndm)*deci)/deci..","..y end)
+			function(a,x,y) return "\\"..rtx.."("..a..round((x+rndm),deci)..","..y end)
 		  end
 		  if rez.ptag2 then
 		    text=text:gsub("\\"..rty.."%(([%d%.%-]+),([%d%.%-]+)",
-			function(x,y) return "\\"..rty.."("..x..","..round((y+rndm)*deci)/deci end)
+			function(x,y) return "\\"..rty.."("..x..","..round((y+rndm),deci) end)
 		    :gsub("\\"..rty.."%(([%d%.%-]+,[%d%.%-]+,)([%d%.%-]+),([%d%.%-]+)",
-			function(a,x,y) return "\\"..rty.."("..a..x..","..round((y+rndm)*deci)/deci end)
+			function(a,x,y) return "\\"..rty.."("..a..x..","..round((y+rndm),deci) end)
 		  end
 		end
-	    end
+	end
 
-	    if res.mod=="letterbreak" then
+	if res.mod=="letterbreak" then
 	      text=text:gsub("%s*\\N%s*"," ")
 	      if not text:match("^({\\[^}]-})") then
 		notag1=text:match("^([^{]+)")
@@ -969,8 +947,8 @@ function modifier(subs,sel)
 		text=text:gsub(notag,notag2)
 	      end
 	      text=text:gsub("\\N$","")
-	    end
-	    
+	end
+
 	line.text=text
         subs[i]=line
     end
@@ -981,96 +959,70 @@ function movetofbf(subs,sel)
     for i=#sel,1,-1 do
     progress(string.format("Dissecting line... %d/%d",(#sel-i+1),#sel))
         line=subs[sel[i]]
-        text=subs[sel[i]].text
+        text=line.text
 	styleref=stylechk(subs,line.style)
-		
-	    start=line.start_time
-	    endt=line.end_time
-	    startf=ms2fr(start)
-	    endf=ms2fr(endt)
-	    frames=endf-1-startf
-	    frnum=frames
-	    table.insert(fra,frnum)
-	    l2=line
-	    
-		for frm=endf-1,startf,-1 do
-		l2.text=text
-			-- move
-			if text:match("\\move") then
-			    m1,m2,m3,m4=text:match("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)")
-			    	mvstart,mvend=text:match("\\move%([%d%.%-]+,[%d%.%-]+,[%d%.%-]+,[%d%.%-]+,([%d%.%-]+),([%d%.%-]+)")
-				if mvstart==nil then mvstart=fr2ms(startf)-start end
-				if mvend==nil then mvend=fr2ms(endf-1)-start end
-				mstartf=ms2fr(start+mvstart)		mendf=ms2fr(start+mvend)
-				moffset=mstartf-startf		if moffset<0 then moffset=0 end
-				mlimit=mendf-startf
-				mpart=frnum-moffset
-				mwhole=mlimit-moffset
-			    pos1=math.floor((((m3-m1)/mwhole)*mpart+m1)*100)/100
-			    pos2=math.floor((((m4-m2)/mwhole)*mpart+m2)*100)/100
-				if mpart<0 then pos1=m1 pos2=m2 end
-				if mpart>mlimit-moffset then pos1=m3 pos2=m4 end
-			    l2.text=text:gsub("\\move%([^%)]*%)","\\pos("..pos1..","..pos2..")")
-			end
-			--fade
-			if text:match("\\fad%(") then
-			    f1,f2=text:match("\\fad%(([%d%.]+),([%d%.]+)")
-			    	fad_in=ms2fr(start+f1)
-				fad_out=ms2fr(endt-f2)
-				foffset=fad_out-startf-1
-				fendf=fad_in-startf
-				fpart=frnum-foffset
-				fwhole=endf-fad_out
-				faf="&HFF&"	fa0="&H00&"
-				  -- existing alpha
-				  linealfa=text:match("^{[^}]-\\alpha(&H%x%x&)")
-				  if linealfa~=nil then fa0=linealfa l2.text=l2.text:gsub("^({[^}]-)\\alpha&H%x%x&","%1") end
-				fa1=interpolate_alpha(1/(fendf+3), faf, fa0)
-				fa2=interpolate_alpha(1/(fwhole+3), faf, fa0)
-			    val_in=interpolate_alpha(frnum/fendf, fa1, fa0)
-			    val_out=interpolate_alpha(fpart/fwhole, fa0, fa2)
-				if frnum<fad_in-startf then alfa=val_in
-				elseif frnum>fad_out-startf then alfa=val_out
-				else alfa=fa0 end
-			    l2.text=l2.text:gsub("\\fad%([^%)]*%)","\\alpha"..alfa)
-				-- other alphas
-				for al=1,4 do
-				  alphax=text:match("^{[^}]-\\"..al.."a(&H%x%x&)")
-				  if alphax~=nil then
-				    val_in=interpolate_alpha(frnum/fendf, fa1, alphax)
-				    val_out=interpolate_alpha(fpart/fwhole, alphax, fa2)
-					if frnum<fad_in-startf then alfa=val_in
-					elseif frnum>fad_out-startf then alfa=val_out
-					else alfa=alphax end
-				  end
-				l2.text=l2.text:gsub("^({[^}]-)\\"..al.."a&H%x%x&","%1\\"..al.."a"..alfa)
-				end
-			end
-		   
-		    tags=l2.text:match("^{[^}]*}")
-		    if tags==nil then tags="" end
-		    -- transforms
-		    if tags:match("\\t") then
-			l2.text=l2.text:gsub("^({\\[^}]-})",function(tg) return cleantr(tg) end)
-			terraform(tags)
-			
-			l2.text=l2.text
-			:gsub("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))","")
-			:gsub("(\\t%([^%(%)]-%))","")
-			:gsub("^({[^}]*)}","%1"..ftags.."}")
-			:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
-		    end
-		    
-		    l2.start_time=fr2ms(frm)
-		    l2.end_time=fr2ms(frm+1)
-		    subs.insert(sel[i]+1,l2) --table.insert(sel,sel[i]+frnum+1)
-		    frnum=frnum-1
+	start=line.start_time
+	endt=line.end_time
+	startf=ms2fr(start)
+	endf=ms2fr(endt)
+	frames=endf-1-startf
+	frnum=frames
+	table.insert(fra,frnum)
+	l2=line
+	frdiff=(fr2ms(startf+1)-fr2ms(startf))/2
+	-- Real Start, End, Duration
+	RS=fr2ms(startf)
+	RE=fr2ms(endf)
+	RD=RE-RS
+
+	for frm=endf-1,startf,-1 do
+	l2.text=text
+		-- move
+		if text:match("\\move") then
+		    m1,m2,m3,m4=text:match("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)")
+		    	mvstart,mvend=text:match("\\move%([%d%.%-]+,[%d%.%-]+,[%d%.%-]+,[%d%.%-]+,([%d%.%-]+),([%d%.%-]+)")
+			if mvstart==nil then mvstart=0 end
+			if mvend==nil then mvend=RD end
+			moffset=mvstart
+			CS=fr2ms(startf+frnum)
+			frcount=CS-RS
+			mlimit=tonumber(mvend)
+			mpart=frcount-tonumber(mvstart)+frdiff
+			mwhole=mvend-mvstart
+		    pos1=round((((m3-m1)/mwhole)*mpart+m1),2)
+		    pos2=round((((m4-m2)/mwhole)*mpart+m2),2)
+			if mpart<0 then pos1=m1 pos2=m2 end
+			if mpart>mlimit-moffset then pos1=m3 pos2=m4 end
+		    l2.text=text:gsub("\\move%([^%)]*%)","\\pos("..pos1..","..pos2..")")
 		end
-		line.end_time=endt
-		line.comment=true
+		-- fade
+		if text:match("\\fad%(") then
+		    l2.text=l2.text:gsub("\\t%b()",function(t) return t:gsub("\\","|") end)
+		    f1,f2=text:match("\\fad%(([%d%.]+),([%d%.]+)")
+		    linealfa=text:match("^{[^}]-\\alpha(&H%x%x&)") or "&H00&"
+		    l2.text=l2.text
+		    :gsub("^({[^}]-)\\alpha&H%x%x&","%1")
+		    :gsub("{(.-)\\fad%b()(.-)}","{\\alpha&HFF&%1%2\\t(0,"..f1..",\\alpha"..linealfa..")\\t("..RD-f2..",0,\\alpha&HFF&)}")
+		    :gsub("(.){(.-)(\\alpha&H%x%x&)(.-)}","%1{%2\\alpha&HFF&\\t(0,"..f1..",%3)\\t("..RD-f2..",0,\\alpha&HFF&)%4}")
+		    for c=1,4 do
+		    l2.text,c=l2.text:gsub("{(.-)(\\"..c.."a)(&H%x%x&)(.-)}","{%1%2&HFF&\\t(0,"..f1..",%2%3)\\t("..RD-f2..",0,%2&HFF&)%4}")
+		    end
+		    l2.text=l2.text:gsub("|","\\")
+		end
+	   
+	    lastags2=""
+	    l2.text=l2.text:gsub("({\\[^}]-})",function(tg) return cleantr(tg) end)
+	    :gsub("({\\[^}]-})",function(tg) if tg:match("\\t") then return terraform(tg) else return tg end end)
+	    
+	    l2.start_time=fr2ms(frm)
+	    l2.end_time=fr2ms(frm+1)
+	    subs.insert(sel[i]+1,l2)
+	    frnum=frnum-1
+	end
+	line.end_time=endt
+	line.comment=true
 	line.text=text
 	subs[sel[i]]=line
-	--table.sort(sel)
 	if res.delfbf then subs.delete(sel[i]) end
     end
     -- selection
@@ -1079,13 +1031,9 @@ function movetofbf(subs,sel)
     for s=#sel,1,-1 do
 	sfr=fra[#sel-s+1]
 	-- shift new sel
-	for s2=#sel2,1,-1 do
-	    sel2[s2]=sel2[s2]+sfr+fakt
-	end
+	for s2=#sel2,1,-1 do  sel2[s2]=sel2[s2]+sfr+fakt  end
 	-- add to new sel
-	for f=1,sfr+fakt do
-	    table.insert(sel2,sel[s]+f)
-	end
+	for f=1,sfr+fakt do  table.insert(sel2,sel[s]+f)  end
 	-- add orig line
 	if res.delfbf then table.insert(sel2,sel[s]) end
     end
@@ -1094,23 +1042,25 @@ function movetofbf(subs,sel)
 end
 
 function terraform(tags)
-	tra=tags:match("(\\t%([^%(%)]-%))")
-	if tra==nil then tra=text:match("(\\t%([^%(%)]-%([^%)]-%)[^%)]-%))") end	--aegisub.log("\ntra: "..tra)
+ftags=""
+lastags1=""
+    for tra in tags:gmatch("(\\t%b())") do
 	trstart,trend=tra:match("\\t%((%d+),(%d+)")
-	--frdiff=(fr2ms(startf+1)-fr2ms(startf))/2
-	if trstart==nil or trstart=="0" then trstart=fr2ms(startf)-start end
-	if trend==nil or trend=="0" then trend=fr2ms(endf-1)-start end
-	tfstartf=ms2fr(start+trstart)		tfendf=ms2fr(start+trend)
-	toffset=tfstartf-startf		if toffset<0 then toffset=0 end
-	tlimit=tfendf-startf
-	tpart=frnum-toffset
-	twhole=tlimit-toffset
+	if trstart==nil or trstart=="0" then trstart=0 end
+	if trend==nil or trend=="0" then trend=RD end
+	toffset=trstart
+	CS=fr2ms(startf+frnum)
+	frcount=CS-RS
+	tlimit=tonumber(trend)
+	tpart=frcount-tonumber(trstart)+frdiff
+	twhole=trend-trstart
 	nontra=tags:gsub("\\t%b()","")
-	ftags=""
 	-- most tags
 	for tg, valt in tra:gmatch("\\(%a+)([%d%.%-]+)") do
 		val1=nil
-		if nontra:match(tg) then val1=nontra:match("\\"..tg.."([%d%.%-]+)") end
+		if lastags2:match("\\"..tg) then val1=lastags2:match("\\"..tg.."([%d%.%-]+)") end
+		if nontra:match("\\"..tg) then val1=nontra:match("\\"..tg.."([%d%.%-]+)") end
+		if lastags1:match("\\"..tg) then val1=lastags1:match("\\"..tg.."([%d%.%-]+)") end
 		if val1==nil then
 		if tg=="bord" or tg=="xbord" or tg=="ybord" then val1=styleref.outline end
 		if tg=="shad" or tg=="xshad" or tg=="yshad" then val1=styleref.shadow end
@@ -1121,30 +1071,33 @@ function terraform(tags)
 		if tg=="fscy" then val1=styleref.scale_y end
 		if tg=="blur" or tg=="be" or tg=="fax" or tg=="fay" or tg=="frx" or tg=="fry" then val1=0 end
 		end
-		valf=math.floor((((valt-val1)/twhole)*tpart+val1)*100)/100
+		valf=round((((valt-val1)/twhole)*tpart+val1),2)
 		if tpart<0 then valf=val1 end
 		if tpart>tlimit-toffset then valf=valt end
 		ftags=ftags.."\\"..tg..valf
 		--aegisub.log("\n val1: "..val1.."  valf: "..valf.."  tpart: "..tpart.."  twhole: "..twhole)
 	end
 	-- clip
-	if tra:match("\\clip") then
-	c1,c2,c3,c4=nontra:match("\\clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)")
-	k1,k2,k3,k4=tra:match("\\clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)")
-	tc1=math.floor((((k1-c1)/twhole)*tpart+c1)*100)/100
-	tc2=math.floor((((k2-c2)/twhole)*tpart+c2)*100)/100
-	tc3=math.floor((((k3-c3)/twhole)*tpart+c3)*100)/100
-	tc4=math.floor((((k4-c4)/twhole)*tpart+c4)*100)/100
+	if tra:match("\\i?clip%([%d%-]") then
+	ctype,c1,c2,c3,c4=nontra:match("(\\i?clip%()([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)")
+	if not ctype then t_error("Looks like you're transforming a clip that's not set in the first place.",true) end
+	ktype,k1,k2,k3,k4=tra:match("(\\i?clip%()([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)")
+	tc1=round((((k1-c1)/twhole)*tpart+c1),2)
+	tc2=round((((k2-c2)/twhole)*tpart+c2),2)
+	tc3=round((((k3-c3)/twhole)*tpart+c3),2)
+	tc4=round((((k4-c4)/twhole)*tpart+c4),2)
 	if tpart<0 then tc1=c1 tc2=c2 tc3=c3 tc4=c4 end
 	if tpart>tlimit-toffset then tc1=k1 tc2=k2 tc3=k3 tc4=k4 end
-	ftags=ftags.."\\clip("..tc1..","..tc2..","..tc3..","..tc4..")"
+	ftags=ftags..ktype..tc1..","..tc2..","..tc3..","..tc4..")"
 	end
 	-- colour/alpha
 	tra=tra:gsub("\\1c","\\c")
 	nontra=nontra:gsub("\\1c","\\c")
 	for tg, valt in tra:gmatch("\\(%w+)(&H%x+&)") do
 		val1=nil
-		if nontra:match(tg) then val1=nontra:match("\\"..tg.."(&H%x+&)") end
+		if lastags2:match("\\"..tg) then val1=lastags2:match("\\"..tg.."(&H%x+&)") end
+		if nontra:match("\\"..tg) then val1=nontra:match("\\"..tg.."(&H%x+&)") end
+		if lastags1:match("\\"..tg) then val1=lastags1:match("\\"..tg.."(&H%x+&)") end
 		if val1==nil then
 		if tg=="c" then val1=styleref.color1:gsub("H%x%x","H") end
 		if tg=="2c" then val1=styleref.color2:gsub("H%x%x","H") end
@@ -1156,21 +1109,29 @@ function terraform(tags)
 		if tg=="4a" then val1=styleref.color4:gsub("(H%x%x)%x%x%x%x%x%x","%1") end
 		if tg=="alpha" then val1="&H00&" end
 		end
-		if tg:match("c") then valf=interpolate_color(tpart/twhole, val1, valt) end
-		if tg:match("a") then valf=interpolate_alpha(tpart/twhole, val1, valt) end
+		if tg:match("c") then valf=interpolate_color(tpart/twhole,val1,valt) end
+		if tg:match("a") then valf=interpolate_alpha(tpart/twhole,val1,valt) end
 		if tpart<0 then valf=val1 end
 		if tpart>tlimit-toffset then valf=valt end
 		ftags=ftags.."\\"..tg..valf
 	end
+	lastags1=lastags1..ftags
+	lastags1=duplikill(lastags1)
+    end
+	lastags2=lastags2..ftags
+	lastags2=duplikill(lastags2)
+	tags=tags:gsub("\\t%b()","") :gsub("^({[^}]*)}","%1"..ftags.."}")
+	tags=duplikill(tags)
+    return tags
 end
 
 function joinfbflines(subs,sel)
     -- dialog
 	joindialog={
-	    {x=0,y=0,width=1,height=1,class="label",label="How many lines?",},
-	    {x=0,y=1,width=1,height=1,class="intedit",name="join",value=2,step=1,min=2 },
+	{y=0,class="label",label="How many lines?"},
+	{y=1,class="intedit",name="join",value=2,step=1,min=2},
 	}
-	P,res=ADD(joindialog,{"OK"},{ok='OK'})
+	P,rez=ADD(joindialog,{"OK"},{ok='OK'})
     -- number
     count=1
     for x, i in ipairs(sel) do
@@ -1179,13 +1140,13 @@ function joinfbflines(subs,sel)
 	if x==1 then line.effect="1" end
         subs[i]=line
 	count=count+1
-	if count>res.join then count=1 end
+	if count>rez.join then count=1 end
     end
     -- delete & time
     total=#sel
     for i=#sel,1,-1 do
 	line=subs[sel[i]]
-	if line.effect==tostring(res.join) then endtime=line.end_time end
+	if line.effect==tostring(rez.join) then endtime=line.end_time end
 	if i==total then endtime=line.end_time end
 	if line.effect=="1" then line.end_time=endtime line.effect="" subs[sel[i]]=line 
 	else subs.delete(sel[i]) table.remove(sel,#sel) end
@@ -1226,31 +1187,31 @@ function transclip(subs,sel,act)
 
     ctype,cc1,cc2,cc3,cc4=text:match("(\\i?clip)%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)")
 
-    clipconfig={
-    {x=0,y=0,width=2,height=1,class="label",label="   \\clip(", },
-    {x=2,y=0,width=3,height=1,class="edit",name="orclip",value=cc1..","..cc2..","..cc3..","..cc4 },
-    {x=5,y=0,width=1,height=1,class="label",label=")", },
-    {x=0,y=1,width=2,height=1,class="label",label="\\t(\\clip(", },
-    {x=2,y=1,width=3,height=1,class="edit",name="klip",value=cc1..","..cc2..","..cc3..","..cc4 },
-    {x=5,y=1,width=1,height=1,class="label",label=")", },
-    {x=0,y=2,width=5,height=1,class="label",label="Move x and y for new coordinates by:", },
-    {x=0,y=3,width=1,height=1,class="label",label="x:", },
-    {x=3,y=3,width=1,height=1,class="label",label="y:", },
-    {x=1,y=3,width=2,height=1,class="floatedit",name="eks"},
-    {x=4,y=3,width=1,height=1,class="floatedit",name="wai"},
-    {x=0,y=4,width=5,height=1,class="label",label="Start / end / accel:", },
-    {x=1,y=5,width=2,height=1,class="edit",name="accel",value="0,0,1," },
-    {x=4,y=5,width=1,height=1,class="checkbox",name="two",label="use next line's clip",value=false,hint="use clip from the next line (line will be deleted)"},
-    }
+	clipconfig={
+	{x=0,y=0,width=2,class="label",label="   \\clip("},
+	{x=2,y=0,width=3,class="edit",name="orclip",value=cc1..","..cc2..","..cc3..","..cc4},
+	{x=5,y=0,class="label",label=")"},
+	{x=0,y=1,width=2,class="label",label="\\t(\\clip("},
+	{x=2,y=1,width=3,class="edit",name="klip",value=cc1..","..cc2..","..cc3..","..cc4},
+	{x=5,y=1,class="label",label=")"},
+	{x=0,y=2,width=5,class="label",label="Move x and y for new coordinates by:"},
+	{x=0,y=3,class="label",label="x:"},
+	{x=3,y=3,class="label",label="y:"},
+	{x=1,y=3,width=2,class="floatedit",name="eks"},
+	{x=4,y=3,class="floatedit",name="wai"},
+	{x=0,y=4,width=5,class="label",label="Start / end / accel:"},
+	{x=1,y=5,width=2,class="edit",name="accel",value="0,0,1,"},
+	{x=4,y=5,class="checkbox",name="two",label="use next line's clip",hint="use clip from the next line (line will be deleted)"},
+	}
 
 	buttons={"Transform","Calculate coordinates","Cancel"}
 	repeat
 	    if P=="Calculate coordinates" then
 		xx=res.eks	yy=res.wai
-		for key,val in ipairs(clipconfig) do
-		    if val.name=="klip" then val.value=cc1+xx..","..cc2+yy..","..cc3+xx..","..cc4+yy end
-		    if val.name=="accel" then val.value=res.accel end
-		end	
+		for key,v in ipairs(clipconfig) do
+		    if v.name=="klip" then v.value=round(cc1+xx,3)..","..round(cc2+yy,3)..","..round(cc3+xx,3)..","..round(cc4+yy,3) end
+		    if v.name=="accel" then v.value=res.accel end
+		end
 	    end
 	P,res=ADD(clipconfig,buttons,{ok='Transform',close='Cancel'})
 	if P=="Cancel" then ak() end
@@ -1260,12 +1221,11 @@ function transclip(subs,sel,act)
     if res.two then
 	nextline=subs[act+1]
 	nextext=nextline.text
-      if not nextext:match("\\i?clip%([%d%.%-]+,") then ADD({{class="label",
-	label="Error: second line must contain a rectangular clip.",x=0,y=0,width=1,height=2}},{"OK"},{close='OK'}) ak()
+	if not nextext:match("\\i?clip%([%d%.%-]+,") then t_error("Error: second line must contain a rectangular clip.",true)
 	else
-	nextclip=nextext:match("\\i?clip%(([%d%.%-,]+)%)")
-	text=text:gsub("^({\\[^}]*)}","%1\\t("..res.accel..ctype.."("..nextclip.."))}")
-      end
+	  nextclip=nextext:match("\\i?clip%(([%d%.%-,]+)%)")
+	  text=text:gsub("^({\\[^}]*)}","%1\\t("..res.accel..ctype.."("..nextclip.."))}")
+	end
     else
 	text=text:gsub("^({\\[^}]*)}","%1\\t("..res.accel..ctype.."("..newcoord.."))}")
     end	
@@ -1277,15 +1237,15 @@ function transclip(subs,sel,act)
 end
 
 function clone(subs,sel)
-    for x, i in ipairs(sel) do
+    for x,i in ipairs(sel) do
         progress(string.format("Cloning... %d/%d",x,#sel))
 	line=subs[i]
-        text=subs[i].text
+        text=line.text
 	if not text:match("^{\\") then text=text:gsub("^","{\\clone}") end
 
 	if res.cpos then
 		if x==1 then posi=text:match("\\pos%(([^%)]-)%)") end
-		if x>1 and text:match("\\pos") and posi~=nil	 then
+		if x>1 and text:match("\\pos") and posi~=nil then
 		text=text:gsub("\\pos%([^%)]-%)","\\pos%("..posi.."%)")
 		end
 		if x>1 and not text:match("\\pos") and not text:match("\\move") and posi~=nil and res.cre then
@@ -1312,7 +1272,6 @@ function clone(subs,sel)
 	
 	if res.copyrot then
 	    if x==1 then rotz=text:match("\\frz([%d%.%-]+)") rotx=text:match("\\frx([%d%.%-]+)") roty=text:match("\\fry([%d%.%-]+)") end
-
 	    if x>1 then
 	      if rotz and text:match("\\frz") then text=text:gsub("\\frz[%d%.%-]+","\\frz"..rotz)
 	      elseif rotz and not text:match("\\frz") and res.cre then text=addtag("\\frz"..rotz,text) end
@@ -1364,11 +1323,10 @@ function clone(subs,sel)
 	end
 
 	text=text:gsub("\\clone","")
-	
 	line.text=text
 	subs[i]=line
     end
-    posi, move, orig, klip, tklip=nil
+    posi,move,orig,klip,tklip=nil
 end
 
 function teleport(subs,sel)
@@ -1384,7 +1342,7 @@ function teleport(subs,sel)
 	if press=="Disintegrate" then ak() end
 	tpfx=rez.eggs	tpfy=rez.why
     end
-    for x, i in ipairs(sel) do
+    for x,i in ipairs(sel) do
         progress(string.format("Teleporting... %d/%d",x,#sel))
 	line=subs[i]
         text=line.text
@@ -1437,6 +1395,8 @@ function teleport(subs,sel)
 	    text=text:gsub("(}m )"..draw,"%1"..draw2)
 	end
 
+	text=roundpar(text,2)
+
 	line.text=text
 	subs[i]=line
     end
@@ -1445,7 +1405,7 @@ end
 
 --	reanimatools	--
 
-function round(a,dec) if not dec then dec=1 end a=math.floor(a*dec+0.5)/dec return a end
+function round(n,dec) dec=dec or 0 n=math.floor(n*10^dec+0.5)/10^dec return n end
 
 function round4(a,b,c,d,dec)
 	if not dec then dec=1 end
@@ -1456,7 +1416,12 @@ function round4(a,b,c,d,dec)
 	return a,b,c,d
 end
 
-function getpos(subs, text)
+function roundpar(text,dec)
+text=text:gsub("(\\%a%a+)(%b())",function(a,b) return a..b:gsub("([%d%.%-]+)",function(c) return round(c,dec) end) end)
+return text
+end
+
+function getpos(subs,text)
     for g=1, #subs do
         if subs[g].class=="info" then
 	    local k=subs[g].key
@@ -1496,15 +1461,13 @@ function textmod(orig,text)
     tk={}
     tg={}
 	text=text:gsub("{\\\\k0}","")
-	repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
+	repeat text,r=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") until r==0
 	vis=text:gsub("{[^}]-}","")
 	ltrmatches=re.find(vis,".")
 	  for l=1,#ltrmatches do
 	    table.insert(tk,ltrmatches[l].str)
 	  end
-	stags=text:match("^{(\\[^}]-)}")
-	if stags==nil then stags="" end
+	stags=text:match("^{(\\[^}]-)}") or ""
 	text=text:gsub("^{\\[^}]-}","") :gsub("{[^\\}]-}","")
 	count=0
 	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
@@ -1542,34 +1505,46 @@ function cleantr(tags)
 	trnsfrm=""
 	for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
 	tags=tags:gsub("\\t%b()","")
-
-	cleant=""
-	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-)%)") do cleant=cleant..ct end
-	for ct in trnsfrm:gmatch("\\t%((\\[^%(%)]-%b()[^%)]-)%)") do cleant=cleant..ct end
-	trnsfrm=trnsfrm:gsub("\\t%(\\[^%(%)]+%)","")
-	trnsfrm=trnsfrm:gsub("\\t%((\\[^%(%)]-%b()[^%)]-)%)","")
-	if cleant~="" then trnsfrm="\\t("..cleant..")"..trnsfrm end	
-	tags=tags:gsub("^({[^}]*)}","%1"..trnsfrm.."}")
+	:gsub("^({[^}]*)}","%1"..trnsfrm.."}")
 	return tags
 end
 
+tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
+tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
+tags3={"pos","move","org","fad"}
+
 function duplikill(tagz)
-	tf=""
-	for t in tagz:gmatch("\\t%b()") do tf=tf..t end
-	tagz=tagz:gsub("\\t%b()","")
-	tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
+	tagz=tagz:gsub("\\t%b()",function(t) return t:gsub("\\","|") end)
 	for i=1,#tags1 do
 	    tag=tags1[i]
-	    tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1")
+	    repeat tagz,c=tagz:gsub("|"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1") until c==0
+	    repeat tagz,c=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1") until c==0
 	end
 	tagz=tagz:gsub("\\1c&","\\c&")
-	tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
 	for i=1,#tags2 do
 	    tag=tags2[i]
-	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1")
+	    repeat tagz,c=tagz:gsub("|"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1") until c==0
+	    repeat tagz,c=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1") until c==0
 	end
-	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf.."}")
+	repeat tagz,c=tagz:gsub("(\\i?clip%b())(.-)(\\i?clip%b())",
+	  function(a,b,c) if a:match("m") and c:match("m") or not a:match("m") and not c:match("m") then
+	  return b..c else return a..b..c end end) until c==0
+	tagz=tagz:gsub("|","\\"):gsub("\\t%([^\\%)]-%)","")
 	return tagz
+end
+
+function extrakill(text,o)
+	for i=1,#tags3 do
+	    tag=tags3[i]
+	    if o==2 then
+	    repeat text,c=text:gsub("(\\"..tag.."[^\\}]+)([^}]-)(\\"..tag.."[^\\}]+)","%3%2") until c==0
+	    else
+	    repeat text,c=text:gsub("(\\"..tag.."[^\\}]+)([^}]-)(\\"..tag.."[^\\}]+)","%1%2") until c==0
+	    end
+	end
+	repeat text,c=text:gsub("(\\pos[^\\}]+)([^}]-)(\\move[^\\}]+)","%1%2") until c==0
+	repeat text,c=text:gsub("(\\move[^\\}]+)([^}]-)(\\pos[^\\}]+)","%1%2") until c==0
+	return text
 end
 
 function esc(str)
@@ -1667,10 +1642,11 @@ Clip to Frz: calculates \frz from the first 2 points of a vectorial clip. First 
 
 Shake: Apply to fbf lines with \pos tags to create a shaking effect.
    Input radius for how many pixels the sign may deflect from the original position.
+   (Use Teleporter coordinates if you want different values for X and Y.)
 
-Shake rotation: Adds shaking effect to rotations. Degrees for frz from Repositioning Field, x and y from Teleporter.
+Shake rotation: Adds shaking effect to rotations. Degrees for frz from Repositioning Field, X and Y from Teleporter.
 
-Shadow Layer: Creates shadow as a new layer. For offset it uses in this order of priority:
+Shadow Layer: Creates shadow as a new layer. For offset, it uses in this order of priority:
    1. value from Positron or Teleporter (xshad, yshad). 2. shadow value from the line. 3. shadow from style.
    
 Space out letters: Set a distance, and line will be split into letters with that distance between them.
@@ -1687,26 +1663,26 @@ travel=[[
 'Horizontal' move means y2 will be the same as y1 so that the sign moves in a straight horizontal manner. \nSame principle for 'vertical.'
 
 Transmove: Main function: create \move from two lines with \pos.
-   Duplicate your line and position the second one where you want the \move the end. 
+   Duplicate your line, and position the second one where you want the \move the end.
    Script will create \move from the two positions.
    Second line will be deleted by default; it's there just so you can comfortably set the final position.
    Extra function: to make this a lot more awesome, this can create transforms.
-   Not only is the second line used for \move coordinates, but also for transforms.
+   The second line is used not only for \move coordinates but also for transforms.
    Any tag on line 2 that's different from line 1 will be used to create a transform on line 1.
-   So for a \move with transforms you can set the initial sign and then the final sign while everything is static.
+   So for a \move with transforms, you can set the initial sign and then the final sign while everything is static.
    You can time line 2 to just the last frame. The script only uses timecodes from line 1.
    Text from line 2 is also ignored (assumed to be same as line 1).
    You can time line 2 to start after line 1 and check 'keep both.'
-   That way line 1 transforms into line 2 and the sign stays like that for the duration of line 2.
+   That way line 1 transforms into line 2, and the sign stays like that for the duration of line 2.
    'Rotation acceleration' - like with fbf-transform, this ensures that transforms of rotations will go the shortest way,
    thus going only 4 degrees from 358 to 2 and not 356 degrees around.
    If the \pos is the same on both lines, only transforms will be applied.
-   Logically, you must NOT select 2 consecutive lines when you want to run this, 
+   Logically, you must NOT select 2 consecutive lines when you want to run this,
    though you can select every other line.
 
 Multimove: when first line has \move and the other lines have \pos, \move is calculated from the first line for the others.
 
-Shiftmove: like teleporter, but only for the 2nd set of coordinates, ie x2, y2. Uses input from the Teleporter section.
+Shiftmove: like teleporter, but only for the 2nd set of coordinates, ie x2 and y2. Uses input from the Teleporter section.
 
 Shiftstart: similarly, this only shifts the initial \move coordinates.
 
@@ -1754,11 +1730,10 @@ Line2fbf:
 Splits a line frame by frame, ie. makes a line for each frame.
 If there's \move, it calculates \pos tags for each line.
 If there are transforms, it calculates values for each line.
-Conditions: Only deals with initial block of tags. Works with only one set of transforms.
-   Move and transforms can have timecodes. 
-   Missing timecodes will be counted as the ones you get with FullMoveTimes/FullTransTimes.
-   \fad is now somewhat supported too, but avoid having any alpha transforms at the same time.
-   Timecodes must be exact (even for \fad, for precision), or the start of the transform/move may be a frame off.]]
+It should deal with all transforms, including inline tags.
+Move and transforms can have timecodes. (Though some calculations may end up about 1% off.)
+\fad is supported too, but may not be entirely accurate with complex alphas.
+Very complex lines with multiple transforms are likely to break in some way.]]
 
 morphorg=[[
 Calculate Origin:
@@ -1770,7 +1745,7 @@ Make the clip as large as you can, since on a smaller one any inaccuracies will 
 If you draw it well enough, the accuracy of the \org point should be pretty decent.
 (It won't work when both points on one side are lower than both points on the other side.)
 See blog post from 2013-11-27 for more details: http://unanimated.xtreemhost.com/itw/tsblok.htm
-]] 
+]]
 
 morphclip=[[
 Transform Clip:
@@ -1811,7 +1786,7 @@ stack clips: allows stacking of 1 normal and 1 vector clip in one line
 
 match type: if current clip/iclip doesn't match the first line, it will be switched to match
 
-cv (combine vectors): if the first line has a vector clip, then for all other lines with vector clips 
+cv (combine vectors): if the first line has a vector clip, then for all other lines with vector clips
    the vectors will be combined into 1 clip
 
 copyrot: copies all rotations]]
@@ -1826,15 +1801,15 @@ These functions don't use the 'Teleportation' button but the one for whatever pa
 'mod' allows you to add an extra factor applied line by line.
 For example if you set '5' for 'X', things will shift by extra 5 pixels for each new line.]]
 
-stg_top={x=0,y=0,width=1,height=1,class="label",
+stg_top={x=0,y=0,class="label",
 label="The Typesetter's Guide to the Hyperdimensional Relocator.                                                           "}
 
-stg_toptop={x=1,y=0,width=1,height=1,class="label",label="Choose topic below."}
-stg_topos={x=1,y=0,width=1,height=1,class="label",label="  Repositioning Field"}
-stg_toptra={x=1,y=0,width=1,height=1,class="label",label="          Soul Bilocator"}
-stg_toporph={x=1,y=0,width=1,height=1,class="label",label="   Morphing Grounds"}
-stg_topseq={x=1,y=0,width=1,height=1,class="label",label="   Cloning Laboratory"}
-stg_toport={x=1,y=0,width=1,height=1,class="label",label="           Teleportation"}
+stg_toptop={x=1,y=0,class="label",label="Choose topic below."}
+stg_topos={x=1,y=0,class="label",label="  Repositioning Field"}
+stg_toptra={x=1,y=0,class="label",label="          Soul Bilocator"}
+stg_toporph={x=1,y=0,class="label",label="   Morphing Grounds"}
+stg_topseq={x=1,y=0,class="label",label="   Cloning Laboratory"}
+stg_toport={x=1,y=0,class="label",label="           Teleportation"}
 
 stg_intro={x=0,y=1,width=2,height=9,class="textbox",name="gd",value=intro}
 stg_cannon={x=0,y=1,width=2,height=22,class="textbox",name="gd",value=cannon}
@@ -1933,57 +1908,57 @@ Rounding={"all","pos","move","org","clip","mask"}
 Freezing={"-frz-","30","45","60","90","120","135","150","180","-30","-45","-60","-90","-120","-135","-150"}
 
 hyperconfig={
-    {x=11,y=0,width=2,height=1,class="label",label="Teleportation"},
-    {x=11,y=1,width=3,height=1,class="floatedit",name="eks",hint="X"},
-    {x=11,y=2,width=3,height=1,class="floatedit",name="wai",hint="Y"},
+    {x=11,y=0,width=2,class="label",label="Teleportation"},
+    {x=11,y=1,width=3,class="floatedit",name="eks",hint="X"},
+    {x=11,y=2,width=3,class="floatedit",name="wai",hint="Y"},
 
-    {x=0,y=0,width=3,height=1,class="label",label="Repositioning Field",},
-    {x=0,y=1,width=2,height=1,class="dropdown",name="posi",value="clip to frz",items=Repositioning},
-    {x=0,y=2,width=2,height=1,class="floatedit",name="post",value=0},
-    {x=0,y=3,width=1,height=1,class="checkbox",name="first",label="by first",value=true,hint="align with first line"},
-    {x=1,y=3,width=1,height=1,class="checkbox",name="rota",label="rotate",value=false,hint="shake rotation / rotate mirrors"},
-    {x=0,y=4,width=1,height=1,class="checkbox",name="layers",label="layers",value=true,hint="synchronize shaking for all layers"},
-    {x=1,y=4,width=1,height=1,class="checkbox",name="smo",label="smooth",value=false,hint="smoothen shaking"},
-    {x=1,y=5,width=1,height=1,class="checkbox",name="sca",label="scaling",value=false,hint="add scaling to shake"},
-    {x=0,y=6,width=2,height=1,class="checkbox",name="space",label="space travel guide",value=false,
+    {x=0,y=0,width=3,class="label",label="Repositioning Field"},
+    {x=0,y=1,width=2,class="dropdown",name="posi",value="clip to frz",items=Repositioning},
+    {x=0,y=2,width=2,class="floatedit",name="post",value=0},
+    {x=0,y=3,class="checkbox",name="first",label="by first",value=true,hint="align with first line"},
+    {x=1,y=3,class="checkbox",name="rota",label="rotate",hint="shake rotation / rotate mirrors"},
+    {x=0,y=4,class="checkbox",name="layers",label="layers",value=true,hint="synchronize shaking for all layers"},
+    {x=1,y=4,class="checkbox",name="smo",label="smooth",hint="smoothen shaking"},
+    {x=1,y=5,class="checkbox",name="sca",label="scaling",hint="add scaling to shake"},
+    {x=0,y=6,width=2,class="checkbox",name="space",label="space travel guide",
 	hint="The Typesetter's Guide to the Hyperdimensional Relocator."},
 
-    {x=3,y=0,width=2,height=1,class="label",label="Soul Bilocator"},
-    {x=3,y=1,width=1,height=1,class="dropdown",name="move",value="transmove",items=Bilocator},
-    {x=3,y=2,width=1,height=1,class="checkbox",name="keep",label="keep both",value=false,hint="keeps both lines for transmove"},
-    {x=3,y=3,width=3,height=1,class="checkbox",name="rotac",label="rotation acceleration",value=true,hint="transmove option"},
-    {x=3,y=4,width=3,height=1,class="label",name="moo",label=mlbl},
+    {x=3,y=0,width=2,class="label",label="Soul Bilocator"},
+    {x=3,y=1,class="dropdown",name="move",value="transmove",items=Bilocator},
+    {x=3,y=2,class="checkbox",name="keep",label="keep both",hint="keeps both lines for transmove"},
+    {x=3,y=3,width=3,class="checkbox",name="rotac",label="rotation acceleration",value=true,hint="transmove option"},
+    {x=3,y=4,width=3,class="label",name="moo",label=mlbl},
     
-    {x=5,y=0,width=2,height=1,class="label",label="Morphing Grounds",},
-    {x=5,y=1,width=2,height=1,class="dropdown",name="mod",value="round numbers",items=Morphing},
-    {x=5,y=2,width=1,height=1,class="label",label="Round:",},
-    {x=6,y=2,width=1,height=1,class="dropdown",name="rnd",items=Rounding,value="all"},
-    {x=6,y=3,width=1,height=1,class="dropdown",name="rndec",items={"1","0.1","0.01","0.001"},value="1"},
-    {x=6,y=4,width=1,height=1,class="dropdown",name="freeze",items=Freezing,value="-frz-"},
-    {x=5,y=5,width=2,height=1,class="checkbox",name="delfbf",label="delete orig. line",value=true,hint="delete original line for line2fbf / mirror functions"},
+    {x=5,y=0,width=2,class="label",label="Morphing Grounds"},
+    {x=5,y=1,width=2,class="dropdown",name="mod",value="round numbers",items=Morphing},
+    {x=5,y=2,class="label",label="Round:"},
+    {x=6,y=2,class="dropdown",name="rnd",items=Rounding,value="all"},
+    {x=6,y=3,class="dropdown",name="rndec",items={"1","0.1","0.01","0.001"},value="1"},
+    {x=6,y=4,class="dropdown",name="freeze",items=Freezing,value="-frz-"},
+    {x=5,y=5,width=2,class="checkbox",name="delfbf",label="delete orig. line",value=true,hint="delete original line for line2fbf / mirror functions"},
 
-    {x=7,y=0,width=3,height=1,class="label",label="Cloning Laboratory",},
-    {x=7,y=1,width=2,height=1,class="checkbox",name="cpos",label="\\posimove",value=true },
-    {x=9,y=1,width=1,height=1,class="checkbox",name="corg",label="\\org",value=true },
-    {x=7,y=2,width=1,height=1,class="checkbox",name="cclip",label="\\[i]clip",value=true },
-    {x=8,y=2,width=2,height=1,class="checkbox",name="ctclip",label="\\t(\\[i]clip)",value=true },
-    {x=7,y=6,width=4,height=1,class="checkbox",name="cre",label="replicate missing tags",value=true },
-    {x=7,y=3,width=2,height=1,class="checkbox",name="stack",label="stack clips",value=false },
-    {x=7,y=5,width=3,height=1,class="checkbox",name="copyrot",label="copy rotations",value=false},
-    {x=9,y=3,width=3,height=1,class="checkbox",name="klipmatch",label="match type    ",value=false },
-    {x=7,y=4,width=3,height=1,class="checkbox",name="combine",label="combine vectors",value=false},
+    {x=7,y=0,width=3,class="label",label="Cloning Laboratory"},
+    {x=7,y=1,width=2,class="checkbox",name="cpos",label="\\posimove",value=true},
+    {x=9,y=1,class="checkbox",name="corg",label="\\org",value=true},
+    {x=7,y=2,class="checkbox",name="cclip",label="\\[i]clip",value=true},
+    {x=8,y=2,width=2,class="checkbox",name="ctclip",label="\\t(\\[i]clip)",value=true},
+    {x=7,y=6,width=4,class="checkbox",name="cre",label="replicate missing tags",value=true},
+    {x=7,y=3,width=2,class="checkbox",name="stack",label="stack clips"},
+    {x=7,y=5,width=3,class="checkbox",name="copyrot",label="copy rotations"},
+    {x=9,y=3,width=3,class="checkbox",name="klipmatch",label="match type    "},
+    {x=7,y=4,width=3,class="checkbox",name="combine",label="combine vectors"},
 
-    {x=12,y=3,width=1,height=1,class="checkbox",name="tppos",label="pos",value=true },
-    {x=12,y=4,width=1,height=1,class="checkbox",name="tpmov",label="move",value=true },
-    {x=13,y=3,width=1,height=1,class="checkbox",name="tporg",label="org",value=true },
-    {x=13,y=4,width=1,height=1,class="checkbox",name="tpclip",label="clip",value=true },
-    {x=12,y=5,width=1,height=1,class="checkbox",name="tpmask",label="mask",value=false },
-    {x=13,y=0,width=1,height=1,class="checkbox",name="tpmod",label="mod",value=false },
-    {x=11,y=6,width=3,height=1,class="checkbox",name="autopos",label="pos with tags missing",value=true,hint="Teleport position when \\pos tags missing" },
+    {x=12,y=3,class="checkbox",name="tppos",label="pos",value=true},
+    {x=12,y=4,class="checkbox",name="tpmov",label="move",value=true},
+    {x=13,y=3,class="checkbox",name="tporg",label="org",value=true},
+    {x=13,y=4,class="checkbox",name="tpclip",label="clip",value=true},
+    {x=12,y=5,class="checkbox",name="tpmask",label="mask"},
+    {x=13,y=0,class="checkbox",name="tpmod",label="mod"},
+    {x=11,y=6,width=3,class="checkbox",name="autopos",label="pos with tags missing",value=true,hint="Teleport position when \\pos tags missing"},
 
-    {x=6,y=6,width=1,height=1,class="checkbox",name="save",label="Save",value=false,hint="Save current configuration"},
-    {x=3,y=6,width=3,height=1,class="label",label="      [Relocator v"..script_version.."]",},
-} 
+    {x=6,y=6,class="checkbox",name="save",label="Save",hint="Save current configuration"},
+    {x=3,y=6,width=3,class="label",label="      [Relocator v"..script_version.."]"},
+}
 
 	loadconfig()
 	if remember then
@@ -1999,7 +1974,7 @@ hyperconfig={
 	
 	remember=true
 	lastpos=res.posi	lastmove=res.move	lastmod=res.mod
-		
+	
 	if P=="Positron Cannon" then if res.space then guide(subs,sel) else sel=positron(subs,sel) end end
 	if P=="Hyperspace Travel" then
 	    if res.move=="multimove" then multimove (subs,sel)
@@ -2009,7 +1984,7 @@ hyperconfig={
 	if P=="Metamorphosis" then
 	    aegisub.progress.title(string.format("Morphing..."))
 	    if res.save then saveconfig()
-	    elseif res.mod=="line2fbf" then sel=movetofbf(subs,sel) 
+	    elseif res.mod=="line2fbf" then sel=movetofbf(subs,sel)
 	    elseif res.mod=="transform clip" then transclip(subs,sel,act)
 	    elseif res.mod=="join fbf lines" then joinfbflines(subs,sel)
 	    elseif res.mod=="negative rot" then negativerot(subs,sel)

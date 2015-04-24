@@ -1,42 +1,39 @@
--- Removes selected stuff from selected lines.
--- Manuals for all my scripts: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm
--- Disclaimer:
--- RTFM! (Read the Fucking Manual)
+-- Disclaimer: RTFM! (Read the Fucking Manual!) http://unanimated.xtreemhost.com/ts/scripts-manuals.htm
 -- If you get unexpected results because you didn't read what the script does, it's your fault.
 
 script_name="Script Cleanup"
 script_description="Removes unwanted stuff from script"
 script_author="unanimated"
-script_version="3.2"
+script_version="3.3"
 
 dont_delete_empty_tags=false	-- option to not delete {}
 
 function cleanlines(subs,sel)
-    if res.all then res.nocom=true res.clear_a=true res.clear_e=true res.layers=true 
-	    res.cleantag=true res.overlap=true res.clear_a=true res.spaces=true res.alphacol=true res.info=true end
+    if res.all then res.nocom=true res.clear_a=true res.clear_e=true res.layers=true
+	res.cleantag=true res.overlap=true res.clear_a=true res.spaces=true res.alphacol=true res.info=true end
     for x,i in ipairs(sel) do
 	progress("Processing line: "..x.."/"..#sel)
 	prog=math.floor(x/#sel*100)
  	aegisub.progress.set(prog)
-            line=subs[i]
-            text=subs[i].text
-	    
-	    if res.nots and not res.nocom then text=text:gsub("{TS[^}]*}%s*","") end
-	    
-	    if res.nocom then
+	line=subs[i]
+	text=subs[i].text
+	
+	if res.nots and not res.nocom then text=text:gsub("{TS[^}]*}%s*","") end
+	
+	if res.nocom then
 	    text=text:gsub("{[^\\}]-}","")
 	    :gsub("{[^\\}]-\\N[^\\}]-}","")
 	    :gsub("^({[^}]-})%s*","%1")
-	    end
-	    
-	    if res.clear_a then line.actor="" end
-	    if res.clear_e then line.effect="" end
-	    
-	    if res.layers and line.layer<5 then 
+	end
+	
+	if res.clear_a then line.actor="" end
+	if res.clear_e then line.effect="" end
+	
+	if res.layers and line.layer<5 then
 	    if line.style:match("Defa") or line.style:match("Alt") or line.style:match("Main") then line.layer=line.layer+5 end
-	    end
-	    
-	    if res.cleantag and text:match("{\\") then
+	end
+	
+	if res.cleantag and text:match("{\\") then
 	    txt2=text
 	    text=text:gsub("{\\\\k0}","") :gsub("{(\\[^}]-)}{(\\r[^}]-)}","{%2}") :gsub("^{\\r([\\}])","{%1")
 	    repeat text,r=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") until r==0
@@ -48,22 +45,22 @@ function cleanlines(subs,sel)
   	      tgs2=tgs
 	      :gsub("\\([\\}])","%1")
 	      :gsub("(\\%a+)([%d%-]+%.%d+)",function(a,b) if not a:match("\\fn") then b=rnd2dec(b) end return a..b end)
-	      :gsub("(\\%a+)%(([%d%-]+%.%d+),([%d%-]+%.%d+)%)",function(a,b,c) b=rnd2dec(b) c=rnd2dec(c) return a.."("..b..","..c..")" end)
-	      :gsub("(\\%a+)%(([%d%-]+%.%d+),([%d%-]+%.%d+),([%d%-]+%.%d+),([%d%-]+%.%d+)",function(a,b,c,d,e) 
+	      :gsub("(\\%a+)%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c) b=rnd2dec(b) c=rnd2dec(c) return a.."("..b..","..c..")" end)
+	      :gsub("(\\%a+)%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",function(a,b,c,d,e) 
 		b=rnd2dec(b) c=rnd2dec(c) d=rnd2dec(d) e=rnd2dec(e) return a.."("..b..","..c..","..d..","..e end)
 	      tgs2=duplikill(tgs2)
+	      tgs2=extrakill(tgs2)
 	      tgs=esc(tgs)
 	      text=text:gsub(tgs,tgs2)
 	     end
 	    if txt2~=text then kleen=kleen+1 end
-	    end
-	    
-	    if res.overlap then
-		if line.comment==false and line.style:match("Defa") then
+	end
+	
+	if res.overlap then
+	    if line.comment==false and line.style:match("Defa") then
 	    	start=line.start_time
 		endt=line.end_time
-		if i<#subs then nextline=subs[i+1]
-		nextart=nextline.start_time end
+		if i<#subs then nextline=subs[i+1] nextart=nextline.start_time end
 		prevline=subs[i-1]
 		prevstart=prevline.start_time
 		prevend=prevline.end_time
@@ -71,14 +68,14 @@ function cleanlines(subs,sel)
 		ms2fr=aegisub.frame_from_ms
 		fr2ms=aegisub.ms_from_frame
 		
-		    keyframes=aegisub.keyframes()
-		    startf=ms2fr(start)		-- startframe
-		    endf=ms2fr(endt)		-- endframe
-		    prevendf=ms2fr(prevend)
-		    nextartf=ms2fr(nextart)
+		keyframes=aegisub.keyframes()
+		startf=ms2fr(start)		-- startframe
+		endf=ms2fr(endt)		-- endframe
+		prevendf=ms2fr(prevend)
+		nextartf=ms2fr(nextart)
 		
-		    -- start gaps/overlaps
-		    if prevline.class=="dialogue" and prevline.style:match("Defa") and dur>50 then
+		-- start gaps/overlaps
+		if prevline.class=="dialogue" and prevline.style:match("Defa") and dur>50 then
 		    	-- get keyframes
 		    	kfst=0  kfprev=0
 		    	for k,kf in ipairs(keyframes) do
@@ -93,9 +90,9 @@ function cleanlines(subs,sel)
 		    	if start>prevend and start-prevend<=50 then 
 		    	if kfst==0 and kfprev==1 then nstart=prevend end
 		    	end
-		    end
-		    -- end gaps/overlaps
-		    if i<#subs and nextline.style:match("Defa") and dur>50 then
+		end
+		-- end gaps/overlaps
+		if i<#subs and nextline.style:match("Defa") and dur>50 then
 		    	--get keyframes
 		    	kfend=0 kfnext=0
 		    	for k,kf in ipairs(keyframes) do
@@ -110,50 +107,44 @@ function cleanlines(subs,sel)
 		    	if endt<nextart and nextart-endt<=50 then
 		    	if kfend==0 or kfnext==1 then nendt=nextart end
 		    	end
-		    end
 		end
-		if nstart then line.start_time=nstart end
-		if nendt then line.end_time=nendt end
-		nstart=nil nendt=nil
 	    end
-	    
-	    if res.spaces then text=text:gsub("%s%s+"," ") :gsub("%s*$","") :gsub("^({\\[^}]-})%s*","%1") end
+	    if nstart then line.start_time=nstart end
+	    if nendt then line.end_time=nendt end
+	    nstart=nil nendt=nil
+	end
 	
-	    if res.nobreak then
+	if res.spaces then text=text:gsub("%s%s+"," ") :gsub("%s*$","") :gsub("^({\\[^}]-})%s*","%1") end
+	
+	if res.nobreak then
 	    text=text
 	    :gsub("%s?{\\i0}\\N{\\i1}%s?"," ")
 	    :gsub("%*","_ast_")
 	    :gsub("\\[Nn]","*")
 	    :gsub("%s*%*+%s*"," ")
 	    :gsub("_ast_","*")
-	    end
-	    
-	    if res.nobreak2 then
-	    text=text:gsub("\\[Nn]","")
-	    end
-	    
-	    if res.hspace then text=text:gsub("\\h","") end
-	    
-	    if res.notag then text=text:gsub("{\\[^}]*}","") end
-	    
-	    if res.allcol then text=text:gsub("\\[1234]?c[^\\}%)]*","") end
-	    
-	    if res.allphas then text=text:gsub("\\[1234]a[^\\}%)]*","") :gsub("\\alpha[^\\}%)]*","") end
-	    
-	    if res.allrot then text=text:gsub("\\fr[^\\}%)]*","") end
-	    
-	    if res.allpers then text=text:gsub("\\f[ar][xyz][^\\}%)]*","") :gsub("\\org%([^%)]*%)","") end
-	    
-	    if res.allsize then text=text:gsub("\\fs[%d%.]+","") :gsub("\\fs([\\}%)])","%1") :gsub("\\fsc[xy][^\\}%)]*","") end
-	    
-	    if res.ctrans then text=text:gsub("{\\[^}]-}",function(tg) return cleantr(tg) end) end
-	    
-	    if res.inline then
-		tags=text:match("^{\\[^}]-}") if tags==nil then tags="" end
-		text=text:gsub("{%*?\\[^}]-}","")
-		text=tags..text
-	    end
-	    
+	end
+	
+	if res.nobreak2 then text=text:gsub("\\[Nn]","") end
+	
+	if res.hspace then text=text:gsub("\\h","") end
+	
+	if res.notag then text=text:gsub("{\\[^}]*}","") end
+	
+	if res.allcol then text=text:gsub("\\[1234]?c[^\\}%)]*","") end
+	
+	if res.allphas then text=text:gsub("\\[1234]a[^\\}%)]*","") :gsub("\\alpha[^\\}%)]*","") end
+	
+	if res.allrot then text=text:gsub("\\fr[^\\}%)]*","") end
+	
+	if res.allpers then text=text:gsub("\\f[ar][xyz][^\\}%)]*","") :gsub("\\org%([^%)]*%)","") end
+	
+	if res.allsize then text=text:gsub("\\fs[%d%.]+","") :gsub("\\fs([\\}%)])","%1") :gsub("\\fsc[xy][^\\}%)]*","") end
+	
+	if res.ctrans then text=text:gsub("{\\[^}]-}",function(tg) return cleantr(tg) end) end
+	
+	if res.inline then text=text:gsub("(.){%*?\\[^}]-}","%1") end
+	
 	if res.alphacol then
 	    text=text
 	    :gsub("alpha&(%x%x)&","alpha&H%1&")
@@ -330,34 +321,44 @@ function killemall(subs,sel)
 end
 
 function killtag(tag,text) text=text:gsub("\\"..tag.."[%d%.%-]*([\\}])","%1") return text end
-
 function killctag(tag,text) text=text:gsub("\\"..tag.."&H%x+&","") text=text:gsub("\\"..tag.."([\\}])","%1") return text end
 
 tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
 tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
+tags3={"pos","move","org","fad"}
 
 function duplikill(tagz)
-	aftert=tagz:match("^{.*\\t%b()(.-)}$") or ""
-	tagz=tagz:gsub(esc(aftert),"")
-	tf=""
-	for t in tagz:gmatch("\\t%b()") do tf=tf..t end
-	tagz=tagz:gsub("\\t%b()","")
+	tagz=tagz:gsub("\\t%b()",function(t) return t:gsub("\\","|") end)
 	for i=1,#tags1 do
 	    tag=tags1[i]
-	    tagz=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%1%2")
-	    if aftert:match("\\"..tag.."[%d%.%-]") then tagz=tagz:gsub("\\"..tag.."[%d%.%-]+","") tf=tf:gsub("\\"..tag.."[%d%.%-]+","") end
+	    repeat tagz,c=tagz:gsub("|"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1") until c==0
+	    repeat tagz,c=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1") until c==0
 	end
 	tagz=tagz:gsub("\\1c&","\\c&")
 	for i=1,#tags2 do
 	    tag=tags2[i]
-	    tagz=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%1%2")
-	    if aftert:match("\\"..tag.."&") then tagz=tagz:gsub("\\"..tag.."&H%x+&","") tf=tf:gsub("\\"..tag.."&H%x+&","") end
+	    repeat tagz,c=tagz:gsub("|"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1") until c==0
+	    repeat tagz,c=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1") until c==0
 	end
-	tagz=tagz:gsub("(\\i?clip%b())(.-)(\\i?clip%b())",
+	repeat tagz,c=tagz:gsub("(\\i?clip%b())(.-)(\\i?clip%b())",
 	  function(a,b,c) if a:match("m") and c:match("m") or not a:match("m") and not c:match("m") then
-	  return b..c else return a..b..c end end)
-	tagz=tagz:gsub("({\\[^}]-)}","%1"..tf..aftert.."}")
+	  return b..c else return a..b..c end end) until c==0
+	tagz=tagz:gsub("|","\\"):gsub("\\t%([^\\%)]-%)","")
 	return tagz
+end
+
+function extrakill(text,o)
+	for i=1,#tags3 do
+	    tag=tags3[i]
+	    if o==2 then
+	    repeat text,c=text:gsub("(\\"..tag.."[^\\}]+)([^}]-)(\\"..tag.."[^\\}]+)","%3%2") until c==0
+	    else
+	    repeat text,c=text:gsub("(\\"..tag.."[^\\}]+)([^}]-)(\\"..tag.."[^\\}]+)","%1%2") until c==0
+	    end
+	end
+	repeat text,c=text:gsub("(\\pos[^\\}]+)([^}]-)(\\move[^\\}]+)","%1%2") until c==0
+	repeat text,c=text:gsub("(\\move[^\\}]+)([^}]-)(\\pos[^\\}]+)","%1%2") until c==0
+	return text
 end
 
 function cleantr(tags)
