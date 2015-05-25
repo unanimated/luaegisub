@@ -30,7 +30,7 @@
       "changelog": {
         "1.3.0": ["Added DependencyControl"]
       }
-    }
+    },
     
     "ua.Recalculator": {
       "url": "@{baseUrl}#@{namespace}",
@@ -54,7 +54,7 @@
       "changelog": {
         "3.0.0": ["Added DespondencyControl"]
       }
-    }
+    },
     
     "ua.Selectrix": {
       "url": "@{baseUrl}#@{namespace}",
@@ -78,7 +78,7 @@
       "changelog": {
         "2.8.2": ["Added DespondencyControl"]
       }
-    }
+    },
     
     "ua.ApplyFade": {
       "url": "@{baseUrl}#@{namespace}",
@@ -102,7 +102,7 @@
       "changelog": {
         "3.9.2": ["Added DespondencyControl"]
       }
-    }
+    },
     
     "ua.ShiftCut": {
       "url": "@{baseUrl}#@{namespace}",
@@ -126,7 +126,7 @@
       "changelog": {
         "2.8.0": ["Added DespondencyControl"]
       }
-    }
+    },
     
     "ua.QC": {
       "url": "@{baseUrl}#@{namespace}",
