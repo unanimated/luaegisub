@@ -32,6 +32,126 @@
       }
     }
     
+    "ua.Recalculator": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Recalculator",
+      "description": "recalculates things",
+      "channels": {
+        "master": {
+          "version": "3.0.0",
+          "released": "2015-05-25",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "5e8e8566c3dbc73dceeb5b5d9640733c28e86362"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "3.0.0": ["Added DespondencyControl"]
+      }
+    }
+    
+    "ua.Selectrix": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Selectricks",
+      "description": "Selectricks and Sortricks",
+      "channels": {
+        "master": {
+          "version": "2.8.2",
+          "released": "2015-05-25",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "718f4abf100a80ab80da2ade0e0cf7b36996c3f1"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "2.8.2": ["Added DespondencyControl"]
+      }
+    }
+    
+    "ua.ApplyFade": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Apply Fade",
+      "description": "Applies fade to selected lines",
+      "channels": {
+        "master": {
+          "version": "3.9.2",
+          "released": "2015-05-25",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "9739a2cb54263d75a431f58dccc2cf4e6c605dc8"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "3.9.2": ["Added DespondencyControl"]
+      }
+    }
+    
+    "ua.ShiftCut": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "ShiftCut",
+      "description": "Time Machine.",
+      "channels": {
+        "master": {
+          "version": "2.8.0",
+          "released": "2015-05-25",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "3555ec391e8d826eb34f1b769e19db4636dd39eb"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "2.8.0": ["Added DespondencyControl"]
+      }
+    }
+    
+    "ua.QC": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Quality Check",
+      "description": "Quality Check",
+      "channels": {
+        "master": {
+          "version": "2.9.0",
+          "released": "2015-05-25",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "53d9190850b917eaec1ab6287a3423cc8eb5a959"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "2.9.0": ["Added DependencyControl"]
+      }
+    }
+    
     
   }
 }
