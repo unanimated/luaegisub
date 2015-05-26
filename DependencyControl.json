@@ -128,6 +128,54 @@
       }
     },
     
+    "ua.EncodeHardsub": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Encode - Hardsub",
+      "description": "Encode a clip with or without hardsubs",
+      "channels": {
+        "master": {
+          "version": "1.0.1",
+          "released": "2015-05-26",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "15b6ceaa05363ec0270d30b08c3e51a8ca9b9207"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "1.0.1": ["Added DespondencyControl"]
+      }
+    },
+    
+    "ua.Multiplexer": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Multiplexer",
+      "description": "Muxes stuff using mkvmerge",
+      "channels": {
+        "master": {
+          "version": "1.1.0",
+          "released": "2015-05-26",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "1d1be8a1135c35a31b79947227e45072bea3d348"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "1.1.0": ["Added DespondencyControl"]
+      }
+    },
+    
     "ua.QC": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
