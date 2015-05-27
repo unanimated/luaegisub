@@ -8,6 +8,30 @@
   "maintainer": "unanimated",
   "macros": {
     
+    "ua.Cycles": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Cycles",
+      "description": "Cycles blur, border, shadow, alpha, alignment",
+      "channels": {
+        "master": {
+          "version": "1.8.0",
+          "released": "2015-05-27",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "d81ef30e03f8ba978eb827a23fce557fbcb4cbdf"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "1.8.0": ["Added DependencyControl"]
+      }
+    },
+    
     "ua.JumpToNext": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
