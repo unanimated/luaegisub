@@ -152,6 +152,30 @@
       }
     },
     
+    "ua.TimeSigns": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Time Signs",
+      "description": "Rough-times signs from TS timecodes",
+      "channels": {
+        "master": {
+          "version": "2.8.0",
+          "released": "2015-05-28",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "8e2a45a70f88cfa28abca22673e455dee95715d3"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "2.8.0": ["Added DespondencyControl"]
+      }
+    },
+    
     "ua.EncodeHardsub": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
