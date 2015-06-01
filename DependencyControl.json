@@ -32,6 +32,78 @@
       }
     },
     
+    "ua.iBus": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "iBus",
+      "description": "Italy Bold Under Strike",
+      "channels": {
+        "master": {
+          "version": "1.7.0",
+          "released": "2015-06-01",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "b28cfc2d78584c1acaa2a22f170e9049b56dfe60"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "1.7.0": ["merged Italics and Bold scripts and added Underline and Strikeout; added DependencyControl"]
+      }
+    },
+    
+    "ua.LineBreaker": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Line Breaker",
+      "description": "insert/shift linebreaks",
+      "channels": {
+        "master": {
+          "version": "2.3.0",
+          "released": "2015-06-01",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "635559ddb40b55c6a5148a287389e236ef7c99c6"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "2.3.0": ["improved options for manual breaking; added DependencyControl"]
+      }
+    },
+    
+    "ua.JoinSplitSnap": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Join / Split / Snap",
+      "description": "Joins lines / splits lines / snaps to keyframes",
+      "channels": {
+        "master": {
+          "version": "1.1.0",
+          "released": "2015-06-01",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "4920da72a927cf9465bca8cbb2df3d0fbfa3accd"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "1.1.0": ["merged all three for convenience; changed how Join works; added DependencyControl"]
+      }
+    },
+    
     "ua.JumpToNext": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -39,20 +111,117 @@
       "description": "Jumps to next 'sign' in the subtitle grid",
       "channels": {
         "master": {
-          "version": "1.3.0",
-          "released": "2015-05-24",
+          "version": "2.0.0",
+          "released": "2015-06-01",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "359c6ebf08d553c1dcb7bfc3cce8382f8bfd1be7"
+              "sha1": "3befd2d8adca2d5fdfd93c30cbdfa770e258b4c2"
             }
           ]
         }
       },
       "changelog": {
-        "1.3.0": ["Added DependencyControl"]
+        "2.0.0": ["13 macros; Text/Style/Actor/Effect/Layer/CommentedLine x Next/Previous = 12 hotkeys + 1 for GUI version with all 12 options"]
+	"1.3.0": ["Added DependencyControl"]
+      }
+    },
+    
+    "ua.ScriptCleanup": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Script Cleanup",
+      "description": "Removes selected stuff from script",
+      "channels": {
+        "master": {
+          "version": "3.4.0",
+          "released": "2015-06-01",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "1eb5ed83fa33f0138cfafd2c4c1853e7319c7d42"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "3.4.0": ["remove \s \u; remove selected tags only from transforms; remove all tag blocks except first & last; fixed/improved some things; added DespondencyControl"]
+      }
+    },
+    
+    "ua.BlurAndGlow": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Blur and Glow",
+      "description": "Adds blur and/or glow to signs",
+      "channels": {
+        "master": {
+          "version": "2.5.0",
+          "released": "2015-06-01",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "0cd79d224b84cca58ae1b201b36658536d635a10"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "2.5.0": ["default blur part of config; cleaned up the code a bit; added DespondencyControl"]
+      }
+    },
+    
+    "ua.HYDRA": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "HYDRA",
+      "description": "A multi-headed typesetting tool",
+      "channels": {
+        "master": {
+          "version": "5.0.0",
+          "released": "2015-06-01",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "3dbcf57046a9bdad5cd45acb94fcf902b7a5eb46"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "5.0.0": ["gradient: vertical, horizontal, by character, by line, centered gradient; special - convert \s to selected tags; insert tags at text position; reuse tags; added DespondencyControl"]
+      }
+    },
+    
+    "ua.Relocator": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Hyperdimensional Relocator",
+      "description": "Advanced metamorphosis of multidimensional coordinates",
+      "channels": {
+        "master": {
+          "version": "4.0.0",
+          "released": "2015-06-01",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "1ea5d3fd4525f4d872733809b8aac9adc9fa4fcd"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "4.0.0": ["replicate; fbf retrack; killtranstimes; clip2move; clip to reposition; line2fbf: \t accel+move clip; fscx/y support in clip2fax; more clip options in Teleporter; added DespondencyControl"]
       }
     },
     
@@ -80,6 +249,30 @@
       }
     },
     
+    "ua.Colorize": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Colorize",
+      "description": "Does things with colours",
+      "channels": {
+        "master": {
+          "version": "4.5.0",
+          "released": "2015-06-01",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "d430478010cd1c8dc956bdbfaf28f87d69d335c8"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "4.5.0": ["added accel to gradient; reverse gradient; improved set colours across; improved tune colours; fixed a ton of things including handling of transforms; added DespondencyControl"]
+      }
+    },
+    
     "ua.Selectrix": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -104,6 +297,78 @@
       }
     },
     
+    "ua.ChangeCase": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Change Case",
+      "description": "Capitalises text or makes it lowercase / uppercase",
+      "channels": {
+        "master": {
+          "version": "3.0.0",
+          "released": "2015-06-01",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "6f429be4c75ea4fa6f49481ba99a9eef437d2db7"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "3.0.0": ["improved; added options; unicode support; added DespondencyControl"]
+      }
+    },
+    
+    "ua.MultiLineEditor": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Multi-Line Editor",
+      "description": "Multi-Line Editor",
+      "channels": {
+        "master": {
+          "version": "1.7.0",
+          "released": "2015-06-01",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "4c38403c14ec6e7b8d8694b210983bebe74262a6"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "1.7.0": ["merged with Re-Split; much-improved capitalisation; added DespondencyControl"]
+      }
+    },
+    
+    "ua.MultiCopy": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "MultiCopy",
+      "description": "Copy and paste just about anything from/to multiple lines",
+      "channels": {
+        "master": {
+          "version": "3.4.0",
+          "released": "2015-06-01",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "a7676a233230615372ec01ace01c40e5a97fbc58"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "3.4.0": ["pasteover+; added DespondencyControl"]
+      }
+    },
+    
     "ua.ApplyFade": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -125,6 +390,30 @@
       },
       "changelog": {
         "3.9.2": ["Added DespondencyControl"]
+      }
+    },
+    
+    "ua.Significance": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Significance",
+      "description": "Import stuff, number stuff, chapter stuff, replace stuff, do a significant amount of other stuff to stuff.",
+      "channels": {
+        "master": {
+          "version": "3.0.0",
+          "released": "2015-06-01",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "f86dfc16b774b5142ec085e34bfe920c71118671"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "3.0.0": ["make style from active line;	FadeWorks; added DespondencyControl"]
       }
     },
     
@@ -176,6 +465,54 @@
       }
     },
     
+    "ua.Masquerade": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "Masquerade",
+      "description": "Masquerade",
+      "channels": {
+        "master": {
+          "version": "2.5.0",
+          "released": "2015-06-01",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "b71869d41e4a845b9b9586643880a002d512f120"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "2.5.0": ["adjusted 'shift tags' to support non-standard characters; added DespondencyControl"]
+      }
+    },
+    
+    "ua.NecrosCopy": {
+      "url": "@{baseUrl}#@{namespace}",
+      "author": "unanimated",
+      "name": "NecrosCopy",
+      "description": "Copy and Fax Things. Occasionally perform a necroscopy.",
+      "channels": {
+        "master": {
+          "version": "3.0.0",
+          "released": "2015-06-01",
+          "default": true,
+          "files": [
+            {
+              "name": ".lua",
+              "url": "@{fileBaseUrl}@{fileName}",
+              "sha1": "19854cf60d4d1d708047b49a1c420dd8ee3d8bf7"
+            }
+          ]
+        }
+      },
+      "changelog": {
+        "3.0.0": ["split by \N: rewritten, positioning by tags and spaces + fixed some things; fax: fscx/fscy support; other things fixed/improved; added DespondencyControl"]
+      }
+    },
+    
     "ua.EncodeHardsub": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -183,19 +520,20 @@
       "description": "Encode a clip with or without hardsubs",
       "channels": {
         "master": {
-          "version": "1.0.1",
-          "released": "2015-05-26",
+          "version": "1.1.0",
+          "released": "2015-06-01",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "15b6ceaa05363ec0270d30b08c3e51a8ca9b9207"
+              "sha1": "3377823bdb21b7a3ac65996ab7e4b5fbbb917d8c"
             }
           ]
         }
       },
       "changelog": {
+        "1.1.0": ["added option to mux the encode with audio"]
         "1.0.1": ["Added DespondencyControl"]
       }
     },
@@ -228,7 +566,7 @@
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
       "name": "Quality Check",
-      "description": "Quality Check",
+      "description": "Checks your shitty script and tells you how bad it is",
       "channels": {
         "master": {
           "version": "2.9.0",
@@ -247,7 +585,6 @@
         "2.9.0": ["Added DependencyControl"]
       }
     }
-    
-    
+        
   }
 }
