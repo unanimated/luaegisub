@@ -6,6 +6,7 @@
 	- hardsub 1 or 2 subtitle files or only encode
 	- use vsfilter or vsfiltermod for each subtitle track
 	- encode to mp4 or mkv
+	- mux with audio
 	
 	
 	Requirements:
@@ -27,18 +28,19 @@
 script_name="Encode - Hardsub"
 script_description="Encode a clip with or without hardsubs"
 script_author="unanimated"
-script_version="1.01"
+script_version="1.1"
 script_namespace="ua.EncodeHardsub"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-  script_version="1.0.1"
+  script_version="1.1.0"
   depRec=DependencyControl{feed="https://raw.githubusercontent.com/TypesettingTools/unanimated-Aegisub-Scripts/master/DependencyControl.json"}
 end
 
 function encode(subs,sel)
 	ADD=aegisub.dialog.display
 	ADP=aegisub.decode_path
+	ADO=aegisub.dialog.open
 	ak=aegisub.cancel
 	enconfig=ADP("?user").."\\encode_hardsub.conf"
 	defsett="--crf 18 --ref 10 --bframes 10 --merange 32 --me umh --subme 10 --trellis 2 --direct auto --b-adapt 2 --partitions all"
@@ -61,6 +63,7 @@ function encode(subs,sel)
 	sett=konf:match("settings:(.-)\n")
 	vsfpath=konf:match("vsfpath:(.-)\n")
 	vsfmpath=konf:match("vsfmpath:(.-)\n")
+	mmgpath=konf:match("mmgpath:(.-)\n") or ""
 	vtype=konf:match("vtype:(.-)\n")
 	vsf1=konf:match("filter1:(.-)\n")
 	vsf2=konf:match("filter2:(.-)\n")
@@ -73,6 +76,7 @@ function encode(subs,sel)
 	xpath10=""
 	vsfpath=""
 	vsfmpath=""
+	mmgpath=""
 	vtype=".mkv"
 	vsf1="vsfilter"
 	vsf2="vsfilter"
@@ -98,8 +102,8 @@ function encode(subs,sel)
 	line=subs[i]
         start=line.start_time
 	endt=line.end_time
-	sfr=aegisub.frame_from_ms(start)
-	efr=aegisub.frame_from_ms(endt)
+	sfr=ms2fr(start)
+	efr=ms2fr(endt)
 	if sfr<sframe then sframe=sfr end
 	if efr>eframe then eframe=efr end
     end
@@ -116,7 +120,10 @@ function encode(subs,sel)
 	{x=8,y=1,width=2,class="edit",name="vsfm",value=vsfmpath or "",hint="only needed if you're using it"},
 	
 	{x=0,y=2,class="label",label="Source video:"},
-	{x=1,y=2,width=9,class="edit",name="vid",value=videoname},
+	{x=1,y=2,width=6,class="edit",name="vid",value=videoname},
+	
+	{x=7,y=2,class="label",label=" mkvmerge.exe:"},
+	{x=8,y=2,width=2,class="edit",name="mmg",value=mmgpath or "",hint="only needed if you're muxing audio"},
 	
 	{x=0,y=3,class="label",label="Target folder:"},
 	{x=1,y=3,width=2,class="dropdown",name="targ",value=targ,items={"Same as source","Custom:"}},
@@ -144,12 +151,14 @@ function encode(subs,sel)
 	{x=1,y=9,width=3,class="intedit",name="sf",value=sframe},
 	{x=4,y=9,class="label",label="to: "},
 	{x=5,y=9,width=2,class="intedit",name="ef",value=eframe},
-	{x=7,y=9,width=2,class="label",label=" If checked, frames are added to Encode name"},
+	{x=7,y=9,width=2,class="label",label=" If checked, frames are added to Encode name  "},
+	{x=9,y=9,width=1,class="checkbox",name="audio",label="Mux with audio",hint="whether you're trimming or not"},
 	
 	{x=0,y=10,width=2,class="checkbox",name="mocha",label="Encode clip for mocha    "},
 	{x=2,y=10,width=1,class="checkbox",name="tenbit",label="10 bit"},
-	{x=5,y=10,width=3,class="checkbox",name="delbat",label="Delete batch file after encoding",value=true},
-	{x=8,y=10,width=1,class="checkbox",name="delavs",label="Delete avisynth script    ",value=true},
+	{x=5,y=10,width=1,class="checkbox",name="delbat",label="Delete batch file",value=true},
+	{x=6,y=10,width=2,class="checkbox",name="delavs",label="Delete avisynth script",value=true},
+	{x=8,y=10,width=1,class="checkbox",name="delAV",label="Delete A/V after muxing",value=true,hint="Delete audio/video files only needed for muxing"},
 	{x=9,y=10,width=1,class="checkbox",name="pause",label="Keep cmd window open    "},
     }
     repeat
@@ -157,28 +166,28 @@ function encode(subs,sel)
 	gui("encset",defsett)
     end
     if P=="x264" then
-	x264_path=aegisub.dialog.open("x264","",scriptpath,"*.exe",false,true)
+	x264_path=ADO("x264","",scriptpath,"*.exe",false,true)
 	gui("xpath",x264_path)
     end
     if P=="x264 10bit" then
-	x26410_path=aegisub.dialog.open("x264 10-bit","",scriptpath,"*.exe",false,true)
+	x26410_path=ADO("x264 10-bit","",scriptpath,"*.exe",false,true)
 	gui("xpath10",x26410_path)
     end
     if P=="vsfilter" then
-	vsf_path=aegisub.dialog.open("vsfilter","",scriptpath,"*.dll",false,true)
+	vsf_path=ADO("vsfilter","",scriptpath,"*.dll",false,true)
 	gui("vsf",vsf_path)
     end
     if P=="vsfiltermod" then
-	vsfm_path=aegisub.dialog.open("vsfiltermod","",scriptpath,"*.dll",false,true)
+	vsfm_path=ADO("vsfiltermod","",scriptpath,"*.dll",false,true)
 	gui("vsfm",vsfm_path)
     end
     if P=="Target" then
-	tgt_path=aegisub.dialog.open("Target folder for encodes (Select any file in it)",".",scriptpath,"",false,false)
+	tgt_path=ADO("Target folder for encodes (Select any file in it)",".",scriptpath,"",false,false)
 	if tgt_path then tgt_path=tgt_path:gsub("(.*\\).-$","%1") end
 	gui("target",tgt_path)
     end
     if P=="Secondary" then
-	sec_path=aegisub.dialog.open("Secondary subs","",scriptpath,"*.ass",false,true)
+	sec_path=ADO("Secondary subs","",scriptpath,"*.ass",false,true)
 	gui("second",sec_path)
     end
     if P=="Enc. set." then
@@ -193,7 +202,7 @@ function encode(subs,sel)
 	end
     end
     if P=="Save" then
-	konf="xpath:"..res.xpath.."\nxpath10:"..res.xpath10.."\nvsfpath:"..res.vsf.."\nvsfmpath:"..res.vsfm.."\nvtype:"..res.vtype.."\nfilter1:"..res.filter1.."\nfilter2:"..res.filter2.."\ntarg:"..res.targ.."\ntarget:"..res.target.."\nmocha:"..res.encmocha.."\nsettings:"..res.encset.."\n"
+	konf="xpath:"..res.xpath.."\nxpath10:"..res.xpath10.."\nvsfpath:"..res.vsf.."\nvsfmpath:"..res.vsfm.."\nmmgpath:"..res.mmg.."\nvtype:"..res.vtype.."\nfilter1:"..res.filter1.."\nfilter2:"..res.filter2.."\ntarg:"..res.targ.."\ntarget:"..res.target.."\nmocha:"..res.encmocha.."\nsettings:"..res.encset.."\n"
 	if res.encset~=sett then
 	    settlist=settlist:gsub("settings9:.-\n","")
 	    set1=esc(sett)
@@ -219,6 +228,7 @@ function encode(subs,sel)
     
     videoname=res.vid
     encname=res.vid2
+    mkvmerge=res.mmg
     target=vpath
     vfull=vpath..videoname
     vsm=0
@@ -267,18 +277,37 @@ function encode(subs,sel)
 	  file=io.open(res.vsfm) if file==nil then t_error(res.vsfm.."\nERROR: File does not exist (vsfiltermod).",true) else file:close() end
 	end
 	
-	local avsfile=io.open(scriptpath.."hardsub.avs", "w")
+	local avsfile=io.open(scriptpath.."hardsub.avs","w")
 	avsfile:write(avs)
 	avsfile:close()
 	
 	source=quo(scriptpath.."hardsub.avs")
     end
     
+    -- mkvmerge audio
+    if res.audio then
+	if res.trim then
+	  vstart=fr2ms(res.sf)
+	  vend=fr2ms(res.ef)
+	  timec1=time2string(vstart)
+	  timec2=time2string(vend)
+	  audiofile=target..encname..".mka"
+	  audiosplit=quo(mkvmerge).." -o "..quo(audiofile).." -D -S -M --split parts:"..timec1.."-"..timec2.." "..quo(vfull)
+	  merge=audiosplit.."\n"..quo(mkvmerge).." -o "..quo(target..encname.."_muxed.mkv").." "..quo(target..encname..res.vtype).." "..quo(audiofile)
+	else
+	  merge=quo(mkvmerge).." -o "..quo(target..encname.."_muxed.mkv").." "..quo(target..encname..res.vtype).." -D -S -M "..quo(vfull)
+	end
+    end
+    
     -- batch script
     encode=quo(xpath).." "..res.encset.." -o "..quo(target..encname..res.vtype).." "..source
+    if res.audio then encode=encode.."\n"..merge end
     batch=scriptpath.."encode.bat"
     if res.pause then encode=encode.."\npause" end
     encode=encode.."\ndel "..quo(target..videoname..".ffindex")
+    if res.delAV then encode=encode.."\ndel "..quo(target..encname..res.vtype)
+	if audiofile then encode=encode.."\ndel "..quo(audiofile) audiofile=nil end
+    end
     if res.delavs then encode=encode.."\ndel "..quo(scriptpath.."hardsub.avs") end
     if res.delbat then encode=encode.."\ndel "..quo(batch) end
     
@@ -298,6 +327,25 @@ function encode(subs,sel)
     end
 end
 
+function time2string(num)
+	timecode=math.floor(num/1000)
+	tc0=math.floor(timecode/3600)
+	tc1=math.floor(timecode/60)
+	tc2=timecode%60
+	numstr="00"..num
+	tc3=numstr:match("(%d%d)%d$")
+	if tc1==60 then tc1=0 tc0=tc0+1 end
+	if tc2==60 then tc2=0 tc1=tc1+1 end
+	if tc1<10 then tc1="0"..tc1 end
+	if tc2<10 then tc2="0"..tc2 end
+	tc0=tostring(tc0)
+	tc1=tostring(tc1)
+	tc2=tostring(tc2)
+	timestring=tc0..":"..tc1..":"..tc2.."."..tc3
+	return timestring
+end
+
+
 function gui(a,b)
   for k,v in ipairs(GUI) do
     if b==nil then b="" end
@@ -305,13 +353,13 @@ function gui(a,b)
   end
 end
 
+function esc(str) str=str:gsub("[%%%(%)%[%]%.%-%+%*%?%^%$]","%%%1") return str end
+function logg(m) m=m or "nil" aegisub.log("\n "..m) end
 function quo(x) x="\""..x.."\"" return x end
 
 function t_error(message,cancel)
-  ADD({{class="label",label=message}},{"OK"},{close='OK'})
-  if cancel then ak() end
+ADD({{class="label",label=message}},{"OK"},{close='OK'})
+if cancel then ak() end
 end
-
-function esc(str) str=str:gsub("[%%%(%)%[%]%.%-%+%*%?%^%$]","%%%1") return str end
 
 if haveDepCtrl then depRec:registerMacro(encode) else aegisub.register_macro(script_name,script_description,encode) end
