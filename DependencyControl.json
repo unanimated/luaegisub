@@ -124,7 +124,7 @@
         }
       },
       "changelog": {
-        "2.0.0": ["13 macros; Text/Style/Actor/Effect/Layer/CommentedLine x Next/Previous = 12 hotkeys + 1 for GUI version with all 12 options"]
+        "2.0.0": ["13 macros; Text/Style/Actor/Effect/Layer/CommentedLine x Next/Previous = 12 hotkeys + 1 for GUI version with all 12 options"],
 	"1.3.0": ["Added DependencyControl"]
       }
     },
@@ -149,7 +149,7 @@
         }
       },
       "changelog": {
-        "3.4.0": ["remove \s \u; remove selected tags only from transforms; remove all tag blocks except first & last; fixed/improved some things; added DespondencyControl"]
+        "3.4.0": ["remove \\s \\u; remove selected tags only from transforms; remove all tag blocks except first & last; fixed/improved some things; added DespondencyControl"]
       }
     },
     
@@ -197,7 +197,7 @@
         }
       },
       "changelog": {
-        "5.0.0": ["gradient: vertical, horizontal, by character, by line, centered gradient; special - convert \s to selected tags; insert tags at text position; reuse tags; added DespondencyControl"]
+        "5.0.0": ["gradient: vertical, horizontal, by character, by line, centered gradient; special - convert \\s to selected tags; insert tags at text position; reuse tags; added DespondencyControl"]
       }
     },
     
@@ -221,7 +221,7 @@
         }
       },
       "changelog": {
-        "4.0.0": ["replicate; fbf retrack; killtranstimes; clip2move; clip to reposition; line2fbf: \t accel+move clip; fscx/y support in clip2fax; more clip options in Teleporter; added DespondencyControl"]
+        "4.0.0": ["replicate; fbf retrack; killtranstimes; clip2move; clip to reposition; line2fbf: \\t accel+move clip; fscx/y support in clip2fax; more clip options in Teleporter; added DespondencyControl"]
       }
     },
     
@@ -468,7 +468,7 @@
     "ua.Masquerade": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
-      "name": "Masquerade",
+      "name": "Masquerades as a useful script",
       "description": "Masquerade",
       "channels": {
         "master": {
@@ -509,7 +509,7 @@
         }
       },
       "changelog": {
-        "3.0.0": ["split by \N: rewritten, positioning by tags and spaces + fixed some things; fax: fscx/fscy support; other things fixed/improved; added DespondencyControl"]
+        "3.0.0": ["split by \\N: rewritten, positioning by tags and spaces + fixed some things; fax: fscx/fscy support; other things fixed/improved; added DespondencyControl"]
       }
     },
     
@@ -533,7 +533,7 @@
         }
       },
       "changelog": {
-        "1.1.0": ["added option to mux the encode with audio"]
+        "1.1.0": ["added option to mux the encode with audio"],
         "1.0.1": ["Added DespondencyControl"]
       }
     },
