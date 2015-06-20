@@ -16,6 +16,7 @@
 -- SNAP
 -- snaps to keyframes or adjacent lines based on the settings below
 
+
 -- KF SNAPPING SETTINGS
 
 kfsb=6		-- starts before
@@ -28,12 +29,12 @@ kfea=15		-- ends after
 script_name="Join / Split / Snap"
 script_description="Joins lines / splits lines / snaps to keyframes"
 script_author="unanimated"
-script_version="1.1"
+script_version="1.2"
 script_namespace="ua.JoinSplitSnap"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-  script_version="1.1.0"
+  script_version="1.2.0"
   depRec=DependencyControl{feed="https://raw.githubusercontent.com/TypesettingTools/unanimated-Aegisub-Scripts/master/DependencyControl.json"}
 end
 
@@ -41,7 +42,7 @@ function join(subs,sel)
     go=0
     morethan2=nil
     if #sel>1 then
-	go=1	st=10000000  et=0
+	go=1	st=10000000   et=0
 	for z,i in ipairs(sel) do
 	  l=subs[i]	 t=l.text	ct=t:gsub("%b{}","")
 	  stm=l.start_time etm=l.end_time
@@ -246,8 +247,8 @@ function keyframesnap(subs,sel)
 	endtn=endt
 	startf=ms2fr(start)
 	endf=ms2fr(endt)
-	diff=250
-	diffe=250
+	diff=250	diffe=250
+	KS=0		KE=0
 	startkf=keyframes[1]
 	endkf=keyframes[#keyframes]
 	
@@ -255,36 +256,46 @@ function keyframesnap(subs,sel)
 	for k,kf in ipairs(keyframes) do
 	    if kf>=startf-kfsa and kf<=startf+kfsb then
 		sdiff=math.abs(startf-kf)
-		if sdiff<=diff then diff=sdiff startkf=kf startn=fr2ms(startkf) end
+		if sdiff<=diff then diff=sdiff startkf=kf startn=fr2ms(startkf) KS=1 end
 	    end
 	    if kf>=endf-kfea and kf<=endf+kfeb then
 		ediff=math.abs(endf-kf)
-		if ediff<diffe then diffe=ediff endkf=kf endtn=fr2ms(endkf) end
+		if ediff<diffe then diffe=ediff endkf=kf endtn=fr2ms(endkf) KE=1 end
 	    end
 	end
 	
 	-- snap to adjacent lines
-	if startn==nil or startn==start then
+	if KS==0 then
 	  if subs[i-1].class=="dialogue" then
-	    prevend=subs[i-1].end_time
+	    l2=subs[i-1]
+	    prevend=l2.end_time
 	    pref=ms2fr(prevend)
 	    sdiff=startf-pref
-	    if sdiff<=kfsa and sdiff>0 or sdiff<0 and sdiff<=kfsb then startn=prevend end
+	    if sdiff<=kfsa and sdiff>0 or sdiff<0 and sdiff<=kfsb then
+		startn=prevend
+		l2.end_time=fr2ms(ms2fr(prevend))
+		subs[i-1]=l2
+	    end
 	 end
 	end
-	if endtn==nil or endtn==endt then
+	if KE==0 then
 	  if subs[i+1] then
-	    nextart=subs[i+1].start_time
+	    l2=subs[i+1]
+	    nextart=l2.start_time
 	    nesf=ms2fr(nextart)
 	    ediff=nesf-endf
-	    if ediff<=kfea and ediff>0 or ediff<0 and ediff<=kfeb then endtn=nextart end
+	    if ediff<=kfea and ediff>0 or ediff<0 and ediff<=kfeb then
+		endtn=nextart
+		l2.start_time=fr2ms(ms2fr(nextart))
+		subs[i+1]=l2
+	    end
 	  end
 	end
 	
 	if startn==nil then startn=start end
 	if endtn==nil then endtn=endt end
-	startn=fr2ms(ms2fr(startn))
-	endtn=fr2ms(ms2fr(endtn))
+	if startn~=line.start_time then startn=fr2ms(ms2fr(startn)) end
+	if endtn~=line.end_time then endtn=fr2ms(ms2fr(endtn)) end
 	line.start_time=startn
 	line.end_time=endtn
 	subs[i]=line
