@@ -1,16 +1,16 @@
 -- An enhanced version of TPP + Shift Times.
--- It can not only add, but also cut leads; prevent adding leads on keyframes; fix overlaps; etc.
+-- It can not only add, but also cut leads, prevent adding leads on keyframes, fix overlaps, and much more.
 -- Manual: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm#shiftcut
 
 script_name="ShiftCut"
 script_description="Time Machine."
 script_author="unanimated"
-script_version="2.8"
+script_version="2.9"
 script_namespace="ua.ShiftCut"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-  script_version="2.8.0"
+  script_version="2.9.0"
   depRec=DependencyControl{feed="https://raw.githubusercontent.com/TypesettingTools/unanimated-Aegisub-Scripts/master/DependencyControl.json"}
 end
 
@@ -275,7 +275,7 @@ snapd=0
 		  dura2=(endt-start)/1000
 		  if startf2-startf>3 and line.start_time>=prevend and cps1>res.cps then
 		    startok=false line.effect=line.effect.."[cps1]" dura2=(endt-line.start_time)/1000 end
-		  cps2=math.ceil(linelen/dura2)		  
+		  cps2=math.ceil(linelen/dura2)
 		  if endf-endf2>3 and cps2>res.cps then endok=false line.effect=line.effect.."[cps2]" end
 		end
 		
@@ -491,4 +491,66 @@ function shiftcut(subs,sel,act)
     return sel
 end
 
-if haveDepCtrl then depRec:registerMacro(shiftcut) else aegisub.register_macro(script_name,script_description,shiftcut) end
+function shiftEF(subs,sel)	SL=3	shiftlink(subs,sel)	end
+function shiftEB(subs,sel)	SL=-3	shiftlink(subs,sel)	end
+
+function shiftlink(subs,sel)
+ak=aegisub.cancel
+ms2fr=aegisub.frame_from_ms
+fr2ms=aegisub.ms_from_frame
+    for z,i in ipairs(sel) do
+	line=subs[i]
+	endt=line.end_time
+	EF=ms2fr(endt)
+	if i<#subs then
+		line2=subs[i+1]
+		start2=line2.start_time
+		SF=ms2fr(start2)
+	end
+	if SF and SF==EF then SF=SF+SL line2.start_time=fr2ms(SF) subs[i+1]=line2 end
+	EF=EF+SL
+	line.end_time=fr2ms(EF)
+	subs[i]=line
+	SF=nil
+    end
+end
+
+function shiftSF(subs,sel)	SS=3	shiftstart(subs,sel)	end
+function shiftSB(subs,sel)	SS=-3	shiftstart(subs,sel)	end
+
+function shiftstart(subs,sel)
+ak=aegisub.cancel
+ms2fr=aegisub.frame_from_ms
+fr2ms=aegisub.ms_from_frame
+    for z,i in ipairs(sel) do
+	line=subs[i]
+	start=line.start_time
+	SF=ms2fr(start)
+	if subs[i-1].class=="dialogue" then
+		line0=subs[i-1]
+		end0=line0.end_time
+		EF=ms2fr(end0)
+	end
+	if EF and SF==EF then EF=EF+SS line0.end_time=fr2ms(EF) subs[i-1]=line0 end
+	SF=SF+SS
+	line.start_time=fr2ms(SF)
+	subs[i]=line
+	EF=nil
+    end
+end
+
+if haveDepCtrl then
+  depRec:registerMacros({
+	{"ShiftCut/ShiftCut",script_description,shiftcut},
+	{"ShiftCut/Shift End Link Forward","Shift end linking by 3 frames right",shiftEF},
+	{"ShiftCut/Shift End Link Backward","Shift end linking by 3 frames left",shiftEB},
+	{"ShiftCut/Shift Start Link Forward","Shift start linking by 3 frames right",shiftSF},
+	{"ShiftCut/Shift Start Link Backward","Shift start linking by 3 frames left",shiftSB},
+  },false)
+else
+	aegisub.register_macro("ShiftCut/ShiftCut",script_description,shiftcut)
+	aegisub.register_macro("ShiftCut/Shift End Link Forward","Shift end linking by 3 frames right",shiftEF)
+	aegisub.register_macro("ShiftCut/Shift End Link Backward","Shift end linking by 3 frames left",shiftEB)
+	aegisub.register_macro("ShiftCut/Shift Start Link Forward","Shift start linking by 3 frames right",shiftSF)
+	aegisub.register_macro("ShiftCut/Shift Start Link Backward","Shift start linking by 3 frames left",shiftSB)
+end
