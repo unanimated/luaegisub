@@ -28,12 +28,12 @@
 script_name="Encode - Hardsub"
 script_description="Encode a clip with or without hardsubs"
 script_author="unanimated"
-script_version="1.1"
+script_version="1.2"
 script_namespace="ua.EncodeHardsub"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-  script_version="1.1.0"
+  script_version="1.2.0"
   depRec=DependencyControl{feed="https://raw.githubusercontent.com/TypesettingTools/unanimated-Aegisub-Scripts/master/DependencyControl.json"}
 end
 
@@ -159,7 +159,7 @@ function encode(subs,sel)
 	{x=5,y=10,width=1,class="checkbox",name="delbat",label="Delete batch file",value=true},
 	{x=6,y=10,width=2,class="checkbox",name="delavs",label="Delete avisynth script",value=true},
 	{x=8,y=10,width=1,class="checkbox",name="delAV",label="Delete A/V after muxing",value=true,hint="Delete audio/video files only needed for muxing"},
-	{x=9,y=10,width=1,class="checkbox",name="pause",label="Keep cmd window open    "},
+	{x=9,y=10,width=1,class="checkbox",name="pause",label="Keep cmd window open   "},
     }
     repeat
     if P=="Default enc. settings" then
@@ -254,6 +254,7 @@ function encode(subs,sel)
     
     -- avisynth
     if res.mocha==false then
+	if res.filter1~="none" and res.first:match("%?script\\") then t_error("ERROR: It appears your subtitles are not saved.",true) end
 	if res.filter1=="vsfilter" then
 	    plug1="loadplugin(\""..res.vsf.."\")\n"	    text1="textsub("..quo(res.first)..")\n"	vsm=1
 	elseif res.filter1=="vsfiltermod" then
@@ -277,6 +278,7 @@ function encode(subs,sel)
 	  file=io.open(res.vsfm) if file==nil then t_error(res.vsfm.."\nERROR: File does not exist (vsfiltermod).",true) else file:close() end
 	end
 	
+	if scriptpath=="?script\\" then scriptpath=vpath end
 	local avsfile=io.open(scriptpath.."hardsub.avs","w")
 	avsfile:write(avs)
 	avsfile:close()
@@ -305,7 +307,7 @@ function encode(subs,sel)
     batch=scriptpath.."encode.bat"
     if res.pause then encode=encode.."\npause" end
     encode=encode.."\ndel "..quo(target..videoname..".ffindex")
-    if res.delAV then encode=encode.."\ndel "..quo(target..encname..res.vtype)
+    if res.audio and res.delAV then encode=encode.."\ndel "..quo(target..encname..res.vtype)
 	if audiofile then encode=encode.."\ndel "..quo(audiofile) audiofile=nil end
     end
     if res.delavs then encode=encode.."\ndel "..quo(scriptpath.."hardsub.avs") end
