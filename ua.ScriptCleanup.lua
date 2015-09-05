@@ -4,12 +4,12 @@
 script_name="Script Cleanup"
 script_description="Removes selected stuff from script"
 script_author="unanimated"
-script_version="3.4"
+script_version="3.41"
 script_namespace="ua.ScriptCleanup"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-  script_version="3.4.0"
+  script_version="3.4.1"
   depRec=DependencyControl{feed="https://raw.githubusercontent.com/TypesettingTools/unanimated-Aegisub-Scripts/master/DependencyControl.json"}
 end
 
@@ -322,7 +322,7 @@ function killemall(subs,sel)
     end
 end
 
-function killtag(tag,t) t=t:gsub("\\"..tag.."[%d%.%-]*","") return t end
+function killtag(tag,t) t=t:gsub("\\"..tag.."[%d%.%-]*([\\}])","%1") return t end
 function killctag(tag,t) t=t:gsub("\\"..tag.."&H%x+&","") repeat t,r=t:gsub("\\"..tag.."([\\}])","%1") until r==0 return t end
 
 tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
