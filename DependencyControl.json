@@ -137,19 +137,20 @@
       "description": "Removes selected stuff from script",
       "channels": {
         "master": {
-          "version": "3.4.0",
-          "released": "2015-06-01",
+          "version": "3.4.1",
+          "released": "2015-09-05",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "1eb5ed83fa33f0138cfafd2c4c1853e7319c7d42"
+              "sha1": "f01877c310633492eaad9309f038b4ab96a31849"
             }
           ]
         }
       },
       "changelog": {
+        "3.4.1": ["fixed nuking \\fs"],
         "3.4.0": ["remove \\s \\u; remove selected tags only from transforms; remove all tag blocks except first & last; fixed/improved some things; added DespondencyControl"]
       }
     },
@@ -425,19 +426,20 @@
       "description": "Time Machine.",
       "channels": {
         "master": {
-          "version": "2.8.0",
-          "released": "2015-05-25",
+          "version": "2.9.0",
+          "released": "2015-09-05",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "3555ec391e8d826eb34f1b769e19db4636dd39eb"
+              "sha1": "447ec28df58f10fc3bf428e6b214ce8fb529a6a5"
             }
           ]
         }
       },
       "changelog": {
+        "2.9.0": ["shift linking point of adjacent lines (new macros added; automation menu changed)"],
         "2.8.0": ["Added DespondencyControl"]
       }
     },
@@ -521,19 +523,20 @@
       "description": "Encode a clip with or without hardsubs",
       "channels": {
         "master": {
-          "version": "1.1.0",
-          "released": "2015-06-01",
+          "version": "1.2.0",
+          "released": "2015-09-05",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "3377823bdb21b7a3ac65996ab7e4b5fbbb917d8c"
+              "sha1": "865445160f3338da55f04a761e4dde819dbece37"
             }
           ]
         }
       },
       "changelog": {
+        "1.2.0": ["fixed an issue with the encode being deleted when not muxing audio; fixed some issues resulting from subtitles not being saved"],
         "1.1.0": ["added option to mux the encode with audio"],
         "1.0.1": ["Added DespondencyControl"]
       }
