@@ -4,12 +4,12 @@
 script_name="Script Cleanup"
 script_description="Removes selected stuff from script"
 script_author="unanimated"
-script_version="3.41"
+script_version="3.42"
 script_namespace="ua.ScriptCleanup"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-  script_version="3.4.1"
+  script_version="3.4.2"
   depRec=DependencyControl{feed="https://raw.githubusercontent.com/TypesettingTools/unanimated-Aegisub-Scripts/master/DependencyControl.json"}
 end
 
@@ -236,8 +236,11 @@ function nostyle(subs,sel)
 	for i=#subs,1,-1 do
 	    if subs[i].class=="dialogue" then
 		line=subs[i]
+		text=line.text
+		st2=text:match("\\r([^\\}]*)")
 		st=line.style
 		if not stylist:match(","..esc(st)..",") then stylist=stylist..st..",," end
+		if st2 and st2~="" and not stylist:match(","..esc(st2)..",") then stylist=stylist..st2..",," end
 	    end
 	    if subs[i].class=="style" then
 		style=subs[i]
