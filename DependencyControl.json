@@ -2,8 +2,8 @@
   "dependencyControlFeedFormatVersion": "0.2.0",
   "name": "unanimated's Automation Scripts",
   "description": "Tertiary repository for most of unanimated's automation scripts.",
-  "baseUrl": "https://github.com/TypesettingTools/unanimated-Aegisub-Scripts",
-  "fileBaseUrl": "https://raw.githubusercontent.com/TypesettingTools/unanimated-Aegisub-Scripts/@{channel}/@{namespace}",
+  "baseUrl": "https://github.com/unanimated/luaegisub",
+  "fileBaseUrl": "https://raw.githubusercontent.com/unanimated/luaegisub/@{channel}/@{namespace}",
   "url": "@{baseUrl}",
   "maintainer": "unanimated",
   "macros": {
@@ -283,19 +283,21 @@
       "description": "Selectricks and Sortricks",
       "channels": {
         "master": {
-          "version": "2.8.2",
-          "released": "2015-05-25",
+          "version": "3.2.0",
+          "released": "2016-27-01",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "718f4abf100a80ab80da2ade0e0cf7b36996c3f1"
+              "sha1": "FBFE78F4EE333D586AEB47D0308C947E96140A3D"
             }
           ]
         }
       },
       "changelog": {
+        "3.2.0": ["search filter; only 1st result; beginning of line; (Torque) fixed Aegisub crash"],
+        "3.0.0": ["save config; select by time; other, minor additions"],
         "2.8.2": ["Added DespondencyControl"]
       }
     },
