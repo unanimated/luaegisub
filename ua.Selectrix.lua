@@ -1,82 +1,122 @@
---[[	alternative to aegisub's select tool. unlike that one, this can also select by layer.
-	version 2.0 includes sorting of selected/all lines, by the same markers as the selecting uses.
-
-D	'Select/sort' 	This is what the search string is compared against. There are 4 'numbers' items and 4 'text' items. 
-E	'Used area' 	'current selection' - only lines in the current selection will be scanned. 
-S	'Numbers.' 	For 'numbers' items, you can select lines with higher or lower layer/duration instead of just exact match.
-C		With "==", you can specify a range, like 2-4, to select for example lines with layers 2-4.
-R	'Match this' 	Only numbers for 'numbers' items. Duration is in milliseconds. 
-I	'case sensitive' Obviously applies only to 'text' items. 
-P	'exact match' 	Same. 
-T	'use regexp' 	Not sure how well this is working, but it should work. Only for 'text' items.
-I	'mod'		Modifies some functions:
-O		-> "sort by time" - sorts by end time
-N		-> "OP/ED in style" - includes any lines timed between the first and last lines of OP/ED (for including signs in OP/ED)
-		-> "move sel. to top/bottom" - selection doesn't follow the moved lines
-	Presets:
-	same text (contin.) - reads texts of selected lines and selects all following lines with the same texts until it reaches new text
-	same text (all lines) - selects all lines in the script with the same texts as the current selection (clean text - no tags/comments)
-	move sel. up/down - moves the selection by 1 unless given a different number in the match field
-	range of lines - set a range of lines to be selected, like "1530-2460"
---]]
-
 -- Manual: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm#selectrix
 
 script_name="Selectricks"
 script_description="Selectricks and Sortricks"
 script_author="unanimated"
-script_version="2.82"
+script_version="3.2"
 script_namespace="ua.Selectrix"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-  script_version="2.8.2"
+  script_version="3.2.0"
   depRec=DependencyControl{feed="https://raw.githubusercontent.com/TypesettingTools/unanimated-Aegisub-Scripts/master/DependencyControl.json"}
 end
-
--- SETTINGS --				you can choose from the options below to change the default settings
-
-search_sort="text"			-- "layer","style","actor","effect","text"
-select_from="current selection"		-- "current selection","all lines"
-matches_or_not="matches"		-- "matches","doesn't match"
-numbers_option="=="			-- "==",">=","<="
-case_sensitive=false			-- true/false
-exact_match=false			-- true/false
-use_regexp=false			-- true/false
-exclude_commented=true			-- true/false
-load_in_editor=false			-- true/false
-remember_last_search=true		-- true/false [will remember last search string]
-remember_select_sort=true		-- true/false [will remember last select/sort mode]
-remember_case=false			-- true/false [will remember case sensitive option]
-remember_regexp=false			-- true/false [will remember regexp option]
-remember_exact=false			-- true/false [will remember exact match option]
-remember_preset=true			-- true/false [will remember last selected preset]
-your_retarded=false			-- set to true if your skiddiks
-
--- end of settings ----------------------
 
 re=require'aegisub.re'
 unicode=require'aegisub.unicode'
 clipboard=require("aegisub.clipboard")
 ulower=unicode.to_lower_case
 
+
+--	SELECTRIX GUI		--
+function konfig(subs,sel)
+	edtr=0
+	main_mode=
+	{"--------text--------","style","actor","effect","text","visible text (no tags)","------numbers------","layer","duration","word count","character count","char. per second","blur","left margin","right margin","vertical margin","start time","end time","------sorting only------","sort by time","reverse","width of text","dialogue first","dialogue last","ts/dialogue/oped","dialogue/oped/ts","{TS} to the top","masks to the bottom","by comments"}
+	presetses={"Default style - All","nonDefault - All","OP in style","ED in style","layer 0","lines w/ comments 1","same text (contin.)","same text (all lines)","skiddiks, your their?","its/id/ill/were/wont","any/more+some/time","range of lines","----from selection----","no-blur signs","commented lines","lines w/ comments 2","move sel. up","move sel. down","------sorting------","move sel. to the top","move sel. to bottom","sel: first to bottom","sel: last to top"}
+	GUI=
+	{
+	{x=0,y=0,class="label",label="Select/sort:"},
+	{x=0,y=1,class="label",label="Used area:"},
+	{x=0,y=2,class="label",label="Numbers:"},
+	{x=0,y=4,class="label",label="Match this:"},
+	{x=0,y=5,class="label",label="History:"},
+	{x=0,y=6,class="label",label="Filter:"},
+	{x=2,y=0,class="label",label="Text:  "},
+	
+	-- MAIN MODE
+	{x=1,y=4,width=4,class="edit",name="match",value=lastmatch or ""},
+	{x=1,y=5,width=4,class="dropdown",name="srch",value="",items={""}},
+	{x=1,y=6,width=4,class="edit",name="filt",value=filter or ""},
+	
+	{x=1,y=0,class="dropdown",name="mode",value="text",items=main_mode},
+	{x=1,y=1,class="dropdown",name="selection",value="current selection",items={"current selection","all lines"}},
+	{x=1,y=2,class="dropdown",name="equal",value="==",items={"==",">=","<="},hint="options for layer/duration"},
+	{x=1,y=3,class="dropdown",name="nomatch",value="matches",items={"matches","doesn't match"}},
+	{x=3,y=0,class="checkbox",name="case",label="Case Sensitive"},
+	{x=3,y=1,class="checkbox",name="exact",label="Exact match"},
+	{x=2,y=1,class="checkbox",name="regexp",label="Regexp   "},
+	{x=2,y=2,width=2,class="checkbox",name="nocom",label="Exclude commented lines",value=true},
+	{x=2,y=3,class="label",label="Sorting:"},
+	{x=3,y=3,class="checkbox",name="rev",label="Reversed"},
+	
+	{x=1,y=7,class="checkbox",name="onlyfirst",label="Only 1st result",hint="not applicable with 'doesn't match'\n(switches to 'matches')"},
+	{x=2,y=7,width=2,class="checkbox",name="beg",label="Beginning of line",hint="pattern must be at the beginning of line\n(relevant only without regexp)"},
+	
+	-- PRESETS
+	{x=0,y=8,class="label",label="Preset:"},
+	{x=1,y=8,class="dropdown",name="pres","Default style - All",items=presetses},
+	{x=2,y=8,class="checkbox",name="mod",label="mod"},
+	{x=3,y=8,class="checkbox",name="editor",label="Load in editor"},
+	
+	{x=1,y=9,class="checkbox",name="rem1",label="Remember dropdowns"},
+	{x=2,y=9,width=2,class="checkbox",name="rem2",label="Remember checkboxes"},
+	{x=4,y=9,class="checkbox",name="yr",label="yr",hint="your retarded (4 skiddiks)"},
+	{x=0,y=9,class="label",label="v. "..script_version},
+	
+	}
+	buttons={"Set Selection","Preset","Sort","Save","Cancel"}
+	loadconfig()
+	P,res=ADD(GUI,buttons,{ok='Set Selection',close='Cancel'})
+	if P=="Cancel" then aegisub.cancel() end
+	
+	-- search list / history
+	if res.srch~="" then res.match=res.srch end
+	if res.match~="" and res.match:len()<51 then
+		for i=#searches,1,-1 do
+			if searches[i]==res.match then table.remove(searches,i) end
+		end
+		table.insert(searches,2,res.match)
+	end
+	
+	if res.yr then your_retarded=true end
+	beg=res.beg	filter=res.filt
+	if filter~="" then F1=true else F1=false end
+
+	if P=="Preset" then 
+		if res.pres=="no-blur signs" or res.pres=="commented lines" or res.pres=="lines w/ comments 2" 
+		    or res.pres:match"move sel." or res.pres:match"sel:"
+		then sel=presel(subs, sel)
+		else edtr=1 preset(subs, sel) end
+	end
+	if P=="Sort" and res.selection=="current selection" then sorting(subs,sel) end
+	if P=="Sort" and res.selection=="all lines" then sel=selectall(subs,sel) sorting(subs,sel) end
+
+	if P=="Set Selection" and res.selection=="current selection" then edtr=1 slct(subs,sel) end
+	if P=="Set Selection" and res.selection=="all lines" then edtr=1 sel=selectall(subs,sel) slct(subs,sel) end
+	if P=="Save" then saveconfig() end
+	lastmatch=res.match
+	return sel
+end
+
+
 --	Analyze Line
 function analyze(l)
-    text=l.text
-    style=l.style
-    dur=l.end_time-l.start_time
-    dura=dur/1000
-    txt=text:gsub("{[^}]-}","") :gsub("\\N","")
-    visible=text:gsub("{\\alpha&HFF&}[^{}]-{[^{}]-}","")	:gsub("{\\alpha&HFF&}[^{}]*$","")	:gsub("{[^{}]-}","")
+	text=l.text
+	style=l.style
+	dur=l.end_time-l.start_time
+	dura=dur/1000
+	txt=text:gsub("{[^}]-}","") :gsub("\\N","")
+	visible=text:gsub("{\\alpha&HFF&}[^{}]-{[^{}]-}","")	:gsub("{\\alpha&HFF&}[^{}]*$","")	:gsub("{[^{}]-}","")
 			:gsub("\\[Nn]","*")	:gsub("%s?%*+%s?"," ")	:gsub("^%s+","")	:gsub("%s+$","")
-    wrd=0	for word in txt:gmatch("([%a\']+)") do wrd=wrd+1 end
-    chars=visible:gsub(" ","")	:gsub("[%.,%?!'\"—]","")
-    char=chars:len()
-    cps=math.ceil(char/dura)
-    if dur==0 then cps=0 end
-    blur=text:match("\\blur([%d%.]+)")	blur=tonumber(blur)	if blur==nil then blur=0 end
-    comment=""
-    for com in text:gmatch("{[^\\}]-}") do comment=comment..com end
+	wrd=0	for word in txt:gmatch("([%a\']+)") do wrd=wrd+1 end
+	chars=visible:gsub(" ","")	:gsub("[%.,%?!'\"—]","")
+	char=chars:len()
+	cps=math.ceil(char/dura)
+	if dur==0 then cps=0 end
+	blur=text:match("\\blur([%d%.]+)")	blur=tonumber(blur)	if blur==nil then blur=0 end
+	comment=""
+	for com in text:gmatch("{[^\\}]-}") do comment=comment..com end
 end
 
 --	Check Style
@@ -93,11 +133,11 @@ function stylechk(subs,sn)
 end
 
 --	SELECT
-function slct(subs, sel)
+function slct(subs,sel)
     sel2={}
     eq=res.equal
     for i=#sel,1,-1 do
-	local line=subs[sel[i]]
+	line=subs[sel[i]]
 	analyze(line)
 	a=sel[i]
 
@@ -116,30 +156,32 @@ function slct(subs, sel)
 	if res.mode=="left margin" then numb=line.margin_l nums=1 end
 	if res.mode=="right margin" then numb=line.margin_r nums=1 end
 	if res.mode=="vertical margin" then numb=line.margin_t nums=1 end
+	if res.mode=="start time" then numb=line.start_time nums=1 end
+	if res.mode=="end time" then numb=line.end_time nums=1 end
 	
+	if not search_area and nums==0 then t_error("'"..res.mode.."' is not applicable for selection. Try 'Sort'.",1) end
 	if nums==1 then numbers=true else numbers=false end
-	
-	nonregexp=esc(res.match)
-	nonregexplower=ulower(nonregexp)
-	regexplower=ulower(res.match)
-	
 	if not numbers then s_area_lower=ulower(search_area) end
 	
+	nonregexp=esc(res.match)		nonregexplower=ulower(nonregexp)	-- reg.search
+	
+	Fnonregexp=esc(filter)			Fnonregexplower=ulower(Fnonregexp)	-- filter
+	
 	if numbers then
-	num1,num2=res.match:match("([%d%.]+)%-([%d%.]+)")
-	if num2~=nil then nmbrs={} 
-	    for n=num1,num2 do table.insert(nmbrs,n) end 
-	else nmbrs={res.match}
-	end
-	if eq=="==" then
-	    numatch=0
-	    for n=1,#nmbrs do
-	    if numb==tonumber(nmbrs[n]) then numatch=1  end
-	    end
-	    if numatch==0 then table.remove(sel,i) end
-	end
-	if eq==">=" and numb<tonumber(res.match) then table.remove(sel,i) end
-	if eq=="<=" and numb>tonumber(res.match) then table.remove(sel,i) end
+		NUM=res.match
+		if res.mode:match"time" then
+			num1,num2=res.match:match("^(.-)%-(.*)")
+			if num1 then num1=taim(num1) num2=taim(num2) else NUM=taim(NUM) end
+		else
+			num1,num2=res.match:match("([%d%.]+)%-([%d%.]+)")
+		end
+		
+		if num2==nil then num1=NUM num2=NUM end
+		
+		if eq=="==" and numb<tonumber(num1) then table.remove(sel,i) end
+		if eq=="==" and numb>tonumber(num2) then table.remove(sel,i) end
+		if eq==">=" and numb<tonumber(NUM) then table.remove(sel,i) end
+		if eq=="<=" and numb>tonumber(NUM) then table.remove(sel,i) end
 	end
 	
       if not numbers then
@@ -147,10 +189,12 @@ function slct(subs, sel)
 	  if res.exact then if search_area~=res.match then table.remove(sel,i) end
 	  else
 	    if res.regexp then
-		matches=re.find(search_area,res.match)
-		if matches==nil then  table.remove(sel,i) end
+		matches=re.match(search_area,res.match)
+		if F1 then local Fmatches=re.match(search_area,filter) end
+		if matches==nil and Fmatches then table.remove(sel,i) end
 	    else 
-		if not search_area:match(nonregexp) then  table.remove(sel,i) end
+		if beg then M="^"..nonregexp else M=nonregexp end
+		if not search_area:match(M) or F1 and search_area:match(Fnonregexp) then table.remove(sel,i) end
 	    end
 	  end
 	end
@@ -159,10 +203,12 @@ function slct(subs, sel)
 	  if res.exact then if s_area_lower~=ulower(res.match) then table.remove(sel,i) end
 	  else
 	    if res.regexp then
-		matches=re.find(search_area,res.match,re.ICASE)
-		if matches==nil then  table.remove(sel,i) end
-	    else
-		if not s_area_lower:match(nonregexplower) then  table.remove(sel,i) end
+		matches=re.match(search_area,res.match,re.ICASE)
+		if F1 then local Fmatches=re.match(search_area,filter,re.ICASE) end
+		if matches==nil or Fmatches then table.remove(sel,i) end
+	    else	-- default search
+		if beg then M="^"..nonregexplower else M=nonregexplower end
+		if not s_area_lower:match(M) or F1 and s_area_lower:match(Fnonregexplower) then table.remove(sel,i) end
 	    end
 	  end
 	end
@@ -170,19 +216,50 @@ function slct(subs, sel)
 	
 	if res.nocom and line.comment and sel[i]==a then table.remove(sel,i) end
 	
-	if sel[i]~=a then 
+	if sel[i]~=a then
 		if res.nocom and line.comment then
 		else
-		table.insert(sel2,a) 
+		table.insert(sel2,a)
 		end
 	end
     end
-  
+
+    if res.onlyfirst then res.nomatch="matches" for s=#sel,2,-1 do table.remove(sel,s) end return sel end
     if res.nomatch=="doesn't match" then return sel2 else return sel end
 end
 
+function taim(T)
+	crap=tonumber(T:match("%.(%d+)")) or 0
+	if crap<10 then crap=100*crap end
+	if crap<100 then crap=10*crap end
+	if T:match(":") and T:match("[%a]") then t_error("Wrong timecode: "..T,1) end
+	if T:match(":") then
+		T=T
+		:gsub("%.%d+","")
+		:gsub(":(%d%d):(%d%d)","h%1m%2s")
+		:gsub("(%d+):(%d%d)","0h%1m%2s")
+	else
+		T=T
+		:gsub(" ","")
+		:gsub("min","m")
+		:gsub("sec","s")
+		:gsub("h(%d+)s","h00m%1s")
+		:gsub("h(%d+)$","h%1m00s")
+		:gsub("m(%d%d)$","m%1s")
+		:gsub("h$","h00m00s")
+		:gsub("m$","m00s")
+		:gsub("^(%d+)m","0h%1m")
+		:gsub("^(%d+)s","0h0m%1s")
+	end
+	H,M,S=T:match("(%d*%.?%d+)h(%d+)m(%d+)s")
+	--logg(T)
+	if not H then t_error("Wrong timecode: "..res.match,1) end
+	TC=H*3600000+M*60000+S*1000+crap
+	return TC
+end
+
 --	PRESET All
-function preset(subs, sel)
+function preset(subs,sel)
 act=sel[1]
 if res.pres:match("same text") then
   marks={}  lm=nil
@@ -197,7 +274,7 @@ end
 if res.pres=="range of lines" then
   range_st,range_end=res.match:match("(%d+)%-(%d+)")
   if range_st==nil then range_st=res.match:match("%d+") range_end=range_st end
-  if range_st==nil then aegisub.dialog.display({{class="label",label="Error: No numbers given."}},{"OK"},{close='OK'})
+  if range_st==nil then ADD({{class="label",label="Error: No numbers given."}},{"OK"},{close='OK'})
 	if cancel then aegisub.cancel() end
   end
 end
@@ -272,6 +349,13 @@ edst=10000000	edet=0
 		end
 	      end
 	    end
+	    if res.pres=="any/more+some/time" then
+		nc=" "..nc:lower().." "
+		if nc:match(" any ?more")
+		or nc:match("some ?time")
+		then table.insert(sel,i)
+		end
+	    end
 	    if res.pres=="range of lines" then
 	      if startline==nil then startline=i end
 	      ind=i-startline+1
@@ -302,7 +386,7 @@ edst=10000000	edet=0
 end
 
 --	PRESET From Selection
-function presel(subs, sel)
+function presel(subs,sel)
 	sorttab={}
 	if res.pres=="move sel. up" then table.sort(sel,function(a,b) return a>b end) end
 	if res.match:match("^%d+$") then moveby=res.match:match("^(%d+)$") else moveby=1 end
@@ -353,7 +437,7 @@ function presel(subs, sel)
       end
       for i=1,#sel do
 	l=subs[sel[i]]
-	if i==1 then subs[sel[i]]=sell[#sel] 
+	if i==1 then subs[sel[i]]=sell[#sel]
 	else subs[sel[i]]=sell[i-1]
 	end
       end
@@ -366,69 +450,13 @@ function presel(subs, sel)
       end
       for i=1,#sel do
 	l=subs[sel[i]]
-	if i==#sel then subs[sel[i]]=sell[1] 
+	if i==#sel then subs[sel[i]]=sell[1]
 	else subs[sel[i]]=sell[i+1]
 	end
       end
     end
     
     return sel
-end
-
---	SELECTRIX GUI		--
-function konfig(subs,sel)
-	edtr=0
-	main_mode=
-	{"--------text--------","style","actor","effect","text","visible text (no tags)","------numbers------","layer","duration","word count","character count","char. per second","blur","left margin","right margin","vertical margin","------sorting only------","sort by time","reverse","width of text","dialogue first","dialogue last","ts/dialogue/oped","{TS} to the top","masks to the bottom","by comments"}
-	presetses={"Default style - All","nonDefault - All","OP in style","ED in style","layer 0","lines w/ comments 1","same text (contin.)","same text (all lines)","skiddiks, your their?","its/id/ill/were/wont","range of lines","----from selection----","no-blur signs","commented lines","lines w/ comments 2","move sel. up","move sel. down","------sorting------","move sel. to the top","move sel. to bottom","sel: first to bottom","sel: last to top"}
-	GUI=
-	{
-	    {x=0,y=0,class="label",label="Select/sort:"},
-	    {x=0,y=1,class="label",label="Used area:"},
-	    {x=0,y=2,class="label",label="Numbers:"},
-	    -- MAIN MODE
-	    {x=1,y=4,width=3,class="edit",name="match",value=lastmatch or ""},
-	    {x=1,y=0,class="dropdown",name="mode",value=lastmode or search_sort,items=main_mode},
-	    {x=1,y=1,class="dropdown",name="selection",value=select_from,items={"current selection","all lines"}},
-	    {x=1,y=2,class="dropdown",name="equal",value=numbers_option,items={"==",">=","<="},hint="options for layer/duration"},
-	    {x=1,y=3,class="dropdown",name="nomatch",value=matches_or_not,items={"matches","doesn't match"}},
-	    {x=0,y=4,class="label",label="Match this:"},
-	    
-	    -- PRESETS
-	    {x=0,y=5,class="label",label="Sel. preset:"},
-	    {x=1,y=5,class="dropdown",name="pres",value=lastpreset or "Default style - All",items=presetses},
-	    {x=2,y=0,class="label",label="Text:  "},
-	    {x=3,y=0,class="checkbox",name="case",label="case sensitive",value=lastcase or case_sensitive},
-	    {x=3,y=1,class="checkbox",name="exact",label="exact match",value=lastexact or exact_match},
-	    {x=2,y=1,class="checkbox",name="regexp",label="regexp",value=lastregexp or use_regexp},
-	    {x=2,y=2,width=2,class="checkbox",name="nocom",label="exclude commented lines",value=exclude_commented},
-	    {x=2,y=3,class="label",label="Sorting:"},
-	    {x=3,y=3,class="checkbox",name="rev",label="reversed",value=false},
-	    {x=2,y=5,class="checkbox",name="mod",label="mod",value=false},
-	    {x=3,y=5,class="checkbox",name="editor",label="load in editor",value=load_in_editor},
-	    
-	}
-	buttons={"Set Selection","Preset","Sort","Cancel"}
-	pressed, res=aegisub.dialog.display(GUI,buttons,{ok='Set Selection',close='Cancel'})
-	if pressed=="Cancel" then aegisub.cancel() end
-	if pressed=="Preset" then 
-		if res.pres=="no-blur signs" or res.pres=="commented lines" or res.pres=="lines w/ comments 2" 
-		    or res.pres:match"move sel." or res.pres:match"sel:"
-		then sel=presel(subs, sel)
-		else edtr=1 preset(subs, sel) end
-	end
-	if pressed=="Sort" and res.selection=="current selection" then sorting(subs, sel) end
-	if pressed=="Sort" and res.selection=="all lines" then sel=selectall(subs, sel) sorting(subs, sel) end
-
-	if pressed=="Set Selection" and res.selection=="current selection" then edtr=1 slct(subs, sel) end
-	if pressed=="Set Selection" and res.selection=="all lines" then edtr=1 sel=selectall(subs, sel) slct(subs, sel) end
-	if remember_last_search then lastmatch=res.match end
-	if remember_select_sort then lastmode=res.mode end
-	if remember_case then lastcase=res.case end
-	if remember_regexp then lastregexp=res.regexp end
-	if remember_exact then lastexact=res.exact end
-	if remember_preset then lastpreset=res.pres end
-	return sel
 end
 
 --	SORTING
@@ -447,9 +475,9 @@ function sorting(subs,sel)
 	l.mv=l.margin_t
 	nocomment=l.text:gsub("{[^}]-}","") :gsub("%s?\\N%s?"," ")
 	if style:match("Defa") or style:match("Alt") then l.st=1 else l.st=2 end
-	l.sdo=1
-	if style:match("Defa") or style:match("Alt") then l.sdo=2 end
-	if style:match("OP") or style:match("ED") then l.sdo=3 end
+	l.sdo=1	l.does=3
+	if style:match("Defa") or style:match("Alt") then l.sdo=2 l.does=1 end
+	if style:match("OP") or style:match("ED") then l.sdo=3 l.does=2 end
 	if l.text:match("{TS") then l.ts=1 else l.ts=2 end
 	if l.text:match("{[^\\}]-}") then l.com=l.text:match("{[^\\}]-}") else l.com="" end
 	blur=text:match("\\blur([%d%.]+)")	blur=tonumber(blur)	if blur==nil then blur=0 end	l.bl=blur
@@ -481,13 +509,19 @@ function sorting(subs,sel)
     if res.mode=="left margin" then table.sort(subtable,function(a,b) return a.ml<b.ml or (a.ml==b.ml and a.i<b.i) end) end
     if res.mode=="right margin" then table.sort(subtable,function(a,b) return a.mr<b.mr or (a.mr==b.mr and a.i<b.i) end) end
     if res.mode=="vertical margin" then table.sort(subtable,function(a,b) return a.mv<b.mv or (a.mv==b.mv and a.i<b.i) end) end
-    if res.mode=="sort by time" and not res.mod then table.sort(subtable,function(a,b) return a.start_time<b.start_time or (a.start_time==b.start_time and a.end_time<b.end_time) end) end
-    if res.mode=="sort by time" and res.mod then table.sort(subtable,function(a,b) return a.end_time<b.end_time or (a.end_time==b.end_time and a.start_time<b.start_time) end) end
+    if res.mode=="sort by time" and not res.mod then table.sort(subtable,function(a,b)
+	return a.start_time<b.start_time or (a.start_time==b.start_time and a.end_time<b.end_time)
+	or (a.start_time==b.start_time and a.end_time==b.end_time and a.i<b.i) end) end
+    if res.mode=="sort by time" and res.mod then table.sort(subtable,function(a,b)
+	return a.end_time<b.end_time or (a.end_time==b.end_time and a.start_time<b.start_time)
+	or (a.end_time==b.end_time and a.start_time==b.start_time and a.i<b.i) end) end
     if res.mode=="reverse" then table.sort(subtable,function(a,b) return a.i>b.i end) end
     if res.mode=="width of text" then table.sort(subtable,function(a,b) return a.width<b.width or (a.width==b.width and a.i<b.i) end) end
     if res.mode=="dialogue first" then table.sort(subtable,function(a,b) return a.st<b.st or (a.st==b.st and a.i<b.i) end) end
     if res.mode=="dialogue last" then table.sort(subtable,function(a,b) return a.st>b.st or (a.st==b.st and a.i<b.i) end) end
     if res.mode=="ts/dialogue/oped" then table.sort(subtable,function(a,b) return a.sdo<b.sdo or (a.sdo==b.sdo and a.i<b.i) end) end
+    if res.mode=="dialogue/oped/ts" then table.sort(subtable,function(a,b) return a.does<b.does or (a.sdo==b.sdo and a.start_time<b.start_time 
+	or a.sdo==b.sdo and a.start_time==b.start_time and a.i<b.i) end) end
     if res.mode=="{TS} to the top" then table.sort(subtable,function(a,b) return a.ts<b.ts or (a.ts==b.ts and a.i<b.i) end) end
     if res.mode=="masks to the bottom" then table.sort(subtable,function(a,b) return a.mask<b.mask or (a.mask==b.mask and a.i<b.i) end) end
     if res.mode=="by comments" then table.sort(subtable,function(a,b) return a.com<b.com or (a.com==b.com and a.i<b.i) end) end
@@ -501,7 +535,7 @@ function sorting(subs,sel)
 end
 
 --	Select All
-function selectall(subs, sel)
+function selectall(subs,sel)
 sel={}
     for i=1, #subs do
 	if subs[i].class=="dialogue" then table.insert(sel,i) end
@@ -512,12 +546,12 @@ end
 function esc(str) str=str:gsub("[%%%(%)%[%]%.%-%+%*%?%^%$]","%%%1") return str end
 
 function t_error(message,cancel)
-  aegisub.dialog.display({{class="label",label=message}},{"OK"},{close='OK'})
+  ADD({{class="label",label=message}},{"OK"},{close='OK'})
   if cancel then aegisub.cancel() end
 end
 
 --	EDITOR
-function editlines(subs, sel)
+function editlines(subs,sel)
 	editext=""
 	dura=""
     for x, i in ipairs(sel) do
@@ -538,13 +572,13 @@ function editlines(subs, sel)
 	      if x~=#sel then editext=editext..text.."\n" dura=dura..dur.." .. "..cps.." .. "..linelen.."\n" end
 	      if x==#sel then editext=editext..text dura=dura..dur.." .. "..cps.." .. "..linelen end
     end
-    editbox(subs, sel)
-    if failt==1 then editext=res.dat editbox(subs, sel) end
+    editbox(subs,sel)
+    if failt==1 then editext=res.dat editbox(subs,sel) end
     return sel
 end
 
 --	EDITOR GUI
-function editbox(subs, sel)
+function editbox(subs,sel)
 aegisub.progress.title("Loading Editor...")
 	if #sel<=4 then boxheight=7 end
 	if #sel>=5 and #sel<9 then boxheight=8 end
@@ -579,21 +613,21 @@ aegisub.progress.title("Loading Editor...")
 	}
 	buttons={"Save","Replace","Remove tags","Rm. comments","Remove \"- \"","Remove \\N","Add italics","Add \\an8","Reload text","Taller GUI","Cancel"}
 	repeat
-	if pressed=="Replace" or pressed=="Add italics" or pressed=="Add \\an8" or pressed=="Remove \\N" or pressed=="Reload text"
-		or pressed=="Remove tags" or pressed=="Rm. comments" or pressed=="Remove \"- \"" or pressed=="Taller GUI" then
+	if P=="Replace" or P=="Add italics" or P=="Add \\an8" or P=="Remove \\N" or P=="Reload text"
+		or P=="Remove tags" or P=="Rm. comments" or P=="Remove \"- \"" or P=="Taller GUI" then
 		
-		if pressed=="Add italics" then
+		if P=="Add italics" then
 		res.dat=res.dat	:gsub("$","\n") :gsub("(.-)\n","{\\i1}%1\n") :gsub("{\\i1}{\\","{\\i1\\") :gsub("\n$","") end
-		if pressed=="Add \\an8" then
+		if P=="Add \\an8" then
 		res.dat=res.dat	:gsub("$","\n") :gsub("(.-)\n","{\\an8}%1\n") :gsub("{\\an8}{\\","{\\an8\\") :gsub("\n$","") end
-		if pressed=="Remove \\N" then res.dat=res.dat	:gsub("%s?\\N%s?"," ") end
-		if pressed=="Remove tags" then res.dat=res.dat:gsub("{%*?\\[^}]-}","") end
-		if pressed=="Rm. comments" then res.dat=res.dat:gsub("{[^\\}]-}","") :gsub("{[^\\}]-\\N[^\\}]-}","") end
-		if pressed=="Remove \"- \"" then res.dat=res.dat:gsub("%- ","") end
-		if pressed=="Replace" then rep1=esc(res.rep1)
+		if P=="Remove \\N" then res.dat=res.dat	:gsub("%s?\\N%s?"," ") end
+		if P=="Remove tags" then res.dat=res.dat:gsub("{%*?\\[^}]-}","") end
+		if P=="Rm. comments" then res.dat=res.dat:gsub("{[^\\}]-}","") :gsub("{[^\\}]-\\N[^\\}]-}","") end
+		if P=="Remove \"- \"" then res.dat=res.dat:gsub("%- ","") end
+		if P=="Replace" then rep1=esc(res.rep1)
 		res.dat=res.dat:gsub(rep1,res.rep2)
 		end
-		if pressed=="Taller GUI" then boxheight=boxheight+1 
+		if P=="Taller GUI" then boxheight=boxheight+1 
 		  for key,val in ipairs(GUI) do
 		    if val.y==1 then val.height=val.height+1 end
 		    if val.y>1 then val.y=val.y+1 end
@@ -601,7 +635,7 @@ aegisub.progress.title("Loading Editor...")
 		end
 		
 		for key,val in ipairs(GUI) do
-		  if pressed~="Reload text" then
+		  if P~="Reload text" then
 		    if val.name=="dat" then val.value=res.dat end
 		    if val.name=="durr" then val.value=res.durr end
 		    if val.name=="info" then val.value=res.info end
@@ -613,18 +647,18 @@ aegisub.progress.title("Loading Editor...")
 		  end
 		end
 	end
-	pressed, res=aegisub.dialog.display(GUI,buttons,{save='Save',close='Cancel'})
-	until pressed=="Save" or pressed=="Cancel"
+	P, res=ADD(GUI,buttons,{save='Save',close='Cancel'})
+	until P=="Save" or P=="Cancel"
 
-	if pressed=="Cancel" then aegisub.cancel() end
-	if pressed=="Save" then savelines(subs, sel) end
+	if P=="Cancel" then aegisub.cancel() end
+	if P=="Save" then savelines(subs,sel) end
 	lastrep1=res.rep1
 	lastrep2=res.rep2
 	return sel
 end
 
 --	EDITOR SAVE
-function savelines(subs, sel)
+function savelines(subs,sel)
 aegisub.progress.title("Saving...")
     local data={}	raw=res.dat.."\n"
     if #sel==1 then raw=raw:gsub("\n(.)","\\N%1") raw=raw:gsub("\\N "," \\N") end
@@ -637,18 +671,105 @@ aegisub.progress.title("Saving...")
 	subs[i]=line
 	end
     end
-    if failt==1 then aegisub.dialog.display({{class="label",
-		    label="Line count of edited text does not \nmatch the number of selected lines.",x=0,y=0,width=1,height=2}},{"OK"})  
+    if failt==1 then ADD({{class="label",
+		    label="Line count of edited text does not \nmatch the number of selected lines.",x=0,y=0,width=1,height=2}},{"OK"})
 		    clipboard.set(res.dat) end
 	aegisub.set_undo_point(script_name)
 	return sel
 end
 
+function logg(m) m=tf(m) or "nil" aegisub.log("\n "..m) end
+
+
+--	Config Stuff	--
+function saveconfig()
+selconf="Selectrix 3.0 Config\n\n"
+  for key,v in ipairs(GUI) do
+    if v.class=="dropdown" then
+	selconf=selconf..v.name..":"..res[v.name].."\n"
+    end
+    if v.class=="checkbox" then
+	selconf=selconf..v.name..":"..tf(res[v.name]).."\n"
+    end
+  end
+file=io.open(selkonfig,"w")
+file:write(selconf)
+file:close()
+ADD({{class="label",label="Config saved to:\n"..selkonfig}},{"OK"},{close='OK'})
+end
+
+function loadconfig()
+  file=io.open(matchlist)
+    searches={}
+    if file~=nil then
+	slist=file:read("*all")
+	io.close(file)
+	for l in slist:gmatch("(.-)\n") do
+		table.insert(searches,l)
+	end
+    else searches={""}
+    end
+  file=io.open(selkonfig)
+    if file~=nil then
+	konf=file:read("*all")
+	io.close(file)
+	for k,v in ipairs(GUI) do
+	  if v.class:match"dropdown" or v.class=="checkbox" then
+	    if konf:match(v.name) then v.value=detf(konf:match(v.name..":(.-)\n")) end
+	    if res and res.rem1 and v.class:match"dropdown" then v.value=res[v.name] end
+	    if res and res.rem1 and v.name=="rem1" then v.value=true end
+	    if res and res.rem2 and v.class:match"checkbox" then v.value=res[v.name] end
+	    if v.name=="srch" then v.items=searches v.value="" end
+	  end
+	end
+    end
+end
+
+function savesearch()
+	file=io.open(matchlist,"w")
+	list=""
+	for i=1,#searches do
+		list=list..searches[i].."\n"
+		if i==30 then break end	-- history list limit
+	end
+	file:write(list)
+	file:close()
+end
+
+function tf(val)
+    if val==true then ret="true"
+    elseif val==false then ret="false"
+    else ret=val end
+    return ret
+end
+
+function detf(txt)
+    if txt=="true" then ret=true
+    elseif txt=="false" then ret=false
+    else ret=txt end
+    return ret
+end
+
+function string2time(timecode)
+	timecode=timecode:gsub("(%d):(%d%d):(%d%d)%.(%d%d)",function(a,b,c,d) return d*10+c*1000+b*60000+a*3600000 end)
+	return timecode
+end
+
 function selector(subs,sel,act)
-    sel=konfig(subs,sel,act)
-    if edtr==1 and res.editor then editlines(subs,sel,act) end
-    aegisub.set_undo_point(script_name)
-    if res.nomatch=="doesn't match" and pressed=="Set Selection" then return sel2, act else return sel, act end
+	ADD=aegisub.dialog.display
+	ADP=aegisub.decode_path
+	ak=aegisub.cancel
+	selkonfig=ADP("?user").."\\selectrix.conf"
+	matchlist=ADP("?user").."\\selectrixmatches.list"
+	sel=konfig(subs,sel,act)
+	savesearch()
+	if edtr==1 and res.editor then editlines(subs,sel,act) end
+	if P=="Set Selection" then
+		if res.nomatch=="matches" and #sel==0 then act=nil t_error("No matches found.") end
+		if res.nomatch=="doesn't match" and #sel2==0 then act=nil t_error("No matches found.") end
+	end
+	aegisub.set_undo_point(script_name)
+	if res.nomatch=="doesn't match" and P=="Set Selection" then return sel2,act else return sel,act end
 end
 
 if haveDepCtrl then depRec:registerMacro(selector) else aegisub.register_macro(script_name,script_description,selector) end
