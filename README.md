@@ -1,1 +1,1 @@
-Manuals for all scripts: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm
+Manuals for all scripts: http://unanimated.hostfree.pw/ts/scripts-manuals.htm
