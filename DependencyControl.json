@@ -370,7 +370,7 @@
       }
     },
     
-    "ua.FadeWorkS": {
+    "ua.FadeWorks": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
       "name": "FadeWorkS",
