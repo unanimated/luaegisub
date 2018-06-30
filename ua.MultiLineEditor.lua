@@ -1,15 +1,15 @@
--- Manual: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm#multiedit
+-- Manual: http://unanimated.hostfree.pw/ts/scripts-manuals.htm#multiedit
 
 script_name="Multi-Line Editor"
 script_description="Multi-Line Editor"
 script_author="unanimated"
-script_version="1.7"
+script_version="1.8"
 script_namespace="ua.MultiLineEditor"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-  script_version="1.7.0"
-  depRec=DependencyControl{feed="https://raw.githubusercontent.com/TypesettingTools/unanimated-Aegisub-Scripts/master/DependencyControl.json"}
+	script_version="1.8.0"
+	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
 re=require'aegisub.re'
@@ -17,43 +17,43 @@ unicode=require'aegisub.unicode'
 clipboard=require("aegisub.clipboard")
 
 function editlines(subs,sel)
-    ADD=aegisub.dialog.display
-    ak=aegisub.cancel
-    editext=""    dura=""	edeff=""	edact=""	edst=""
-    for z,i in ipairs(sel) do
-    	progress("Reading line: "..z.."/"..#sel.." ("..math.floor(z/#sel*100).."%)")
-	line=subs[i]
-	text=line.text
-	dur=(line.end_time-line.start_time)/1000
-	char=text:gsub("%b{}",""):gsub("\\[Nnh]","*"):gsub("%s?%*+%s?"," "):gsub("[%s%p]","")
-	linelen=char:len()
-	cps=math.ceil(linelen/dur)
-	if tostring(dur):match("%.%d$") then dur=dur.."0" end
-	if not tostring(dur):match("%.") then dur=dur..".00" end
-	if cps<10 then cps="  "..cps end
-	if dur=="0.00" then cps="n/a" end
-	dura=dura..dur.." .. "..cps.." .. "..linelen.."\n"
-	editext=editext..text.."\n"
-	edst=edst..line.style.."\n"
-	edact=edact..line.actor.."\n"
-	edeff=edeff..line.effect.."\n"
-    end
-    editext=nRem(editext)
-    dura=nRem(dura)
-    edst=nRem(edst)
-    edact=nRem(edact)
-    edeff=nRem(edeff)
-    editbox(subs,sel)
-    if failt==1 then editext=res.dat editbox(subs,sel) end
-    return sel
+	ADD=aegisub.dialog.display
+	ak=aegisub.cancel
+	editext=""    dura=""	edeff=""	edact=""	edst=""
+	for z,i in ipairs(sel) do
+		progress("Reading line: "..z.."/"..#sel.." ("..math.floor(z/#sel*100).."%)")
+		line=subs[i]
+		text=line.text
+		dur=(line.end_time-line.start_time)/1000
+		char=text:gsub("%b{}",""):gsub("\\[Nnh]","*"):gsub("%s?%*+%s?"," "):gsub("[%s%p]","")
+		linelen=char:len()
+		cps=math.ceil(linelen/dur)
+		if tostring(dur):match("%.%d$") then dur=dur.."0" end
+		if not tostring(dur):match("%.") then dur=dur..".00" end
+		if cps<10 then cps="  "..cps end
+		if dur=="0.00" then cps="n/a" end
+		dura=dura..dur.." .. "..cps.." .. "..linelen.."\n"
+		editext=editext..text.."\n"
+		edst=edst..line.style.."\n"
+		edact=edact..line.actor.."\n"
+		edeff=edeff..line.effect.."\n"
+	end
+	editext=nRem(editext)
+	dura=nRem(dura)
+	edst=nRem(edst)
+	edact=nRem(edact)
+	edeff=nRem(edeff)
+	editbox(subs,sel)
+	if failt==1 then editext=res.dat editbox(subs,sel) end
+	return sel
 end
 
 function editbox(subs,sel)
-progress("Loading Editor...")
+	progress("Loading Editor...")
 	BH=math.ceil(#sel*0.66)+2
 	if BH<7 then BH=7 end
 	repeat
-	  if editext:len()>=BH*200 then BH=BH+1 end
+	    if editext:len()>=BH*200 then BH=BH+1 end
 	until editext:len()<BH*200 or BH>=20
 	if BH>20 then BH=20 end
 	b=BH+1
@@ -153,7 +153,7 @@ progress("Loading Editor...")
 	end
 	P,res=ADD(GUI,buttons,{save='Save',close='Cancel'})
 	until P=="Save" or P=="Cancel"
-
+	
 	if P=="Cancel" then ak() end
 	if P=="Save" then savelines(subs,sel) end
 	lastrep1=res.rep1	lastrep2=res.rep2
@@ -304,7 +304,7 @@ function logg(m) m=m or "nil" aegisub.log("\n "..m) end
 function nRem(x) x=x:gsub("\n$","") return x end
 ulower=unicode.to_lower_case
 uupper=unicode.to_upper_case
-STAG="^{\\[^}]-}"
+STAG="^{>?\\[^}]-}"
 
 -- Re-Split doens't support inline tags (as that would make the functions 3 times as big) --
 function resplitl(subs,sel,act)
@@ -354,14 +354,62 @@ function resplitr(subs,sel,act)
     return sel
 end
 
+function reverse(subs,sel)
+	rvrs={
+	{x=0,y=0,class="label",label="Reverse: "},
+	{x=1,y=0,class="dropdown",name="rv",items={"text","actor","effect","style","layer","margin l","margin r","margin v","start time","end time"},value="text"},
+	}
+	Pr,rs=aegisub.dialog.display(rvrs,{"OK","Cancel"},{ok='OK',close='Cancel'})
+	if Pr=="Cancel" then aegisub.cancel() end
+	target=rs.rv:gsub(" ","_"):gsub("_v","_t")
+	tab={}
+	for z,i in ipairs(sel) do
+		line=subs[i]
+		table.insert(tab,line[target])
+	end
+	for z,i in ipairs(sel) do
+		line=subs[sel[#sel-z+1]]
+		line[target]=tab[z]
+		subs[sel[#sel-z+1]]=line
+	end
+	return sel
+end
+
+function sswitch(subs,sel)
+    styles={}
+    for i=1,#subs do
+        if subs[i].class=="style" then
+	    table.insert(styles,subs[i])
+	end
+	if subs[i].class=="dialogue" then break end
+    end
+    for x, i in ipairs(sel) do
+	line=subs[i]
+	style=line.style
+	for a,st in ipairs(styles) do
+	  if st.name==style then
+	    if styles[a+1] then newstyle=styles[a+1].name else newstyle=styles[1].name end
+	    style=newstyle
+	  break end
+	end
+	if style==line.style then style=styles[1].name end
+	line.style=style
+	subs[i]=line
+    end
+end
+
 if haveDepCtrl then
   depRec:registerMacros({
 	{script_name,script_description,editlines},
-	{"ReSplit/Backward","Resplits lines at a different place",resplitl},
-	{"ReSplit/Forward","Resplits lines at a different place",resplitr},
+	{": Non-GUI macros :/MultiEdit: ReSplit - Backward","Resplits lines at a different place",resplitl},
+	{": Non-GUI macros :/MultiEdit: ReSplit - Forward","Resplits lines at a different place",resplitr},
+	{": Non-GUI macros :/MultiEdit: Reverse","Reverses texts of selected lines, keeping times",reverse},
+	{": Non-GUI macros :/MultiEdit: Switch style","Reverses texts of selected lines, keeping times",sswitch},
   },false)
 else
 	aegisub.register_macro(script_name,script_description,editlines)
-	aegisub.register_macro("ReSplit/Backward","Resplits lines at a different place",resplitl)
-	aegisub.register_macro("ReSplit/Forward","Resplits lines at a different place",resplitr)
+	aegisub.register_macro(": Non-GUI macros :/MultiEdit: ReSplit - Backward","Resplits lines at a different place",resplitl)
+	aegisub.register_macro(": Non-GUI macros :/MultiEdit: ReSplit - Forward","Resplits lines at a different place",resplitr)
+	aegisub.register_macro(": Non-GUI macros :/MultiEdit: Reverse","Reverses texts of selected lines, keeping times",reverse)
+	aegisub.register_macro(": Non-GUI macros :/MultiEdit: Switch style","Switch style",sswitch)
 end
