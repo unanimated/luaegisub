@@ -8,28 +8,139 @@
 -- Regradient: if you check a tag that appears at least 3 times in the line, the middle values are calculated as gradient from the first and last.
 --   That means that if you have an existing gradient and change the values on either end, the gradient is recalculated from those.
 --   Works for the first 3 rows of tags except kara and for alpha/colours.
--- Manual: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm#recalculator
+-- Manual: http://unanimated.hostfree.pw/ts/scripts-manuals.htm#recalculator
 
 script_name="Recalculator"
-script_description="recalculates things"
+script_description="Incremental Reconstruction of Disassembled Elements"
 script_author="unanimated"
-script_version="3.0"
+script_version="4.0"
 script_namespace="ua.Recalculator"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-  script_version="3.0.0"
-  depRec=DependencyControl{feed="https://raw.githubusercontent.com/TypesettingTools/unanimated-Aegisub-Scripts/master/DependencyControl.json"}
+	script_version="4.0.0"
+	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
--- SETTINGS: type the names of checkboxes you want checked by default as you see them in the GUI, separated by commas.
-
-checked="fscx,fscy,anchor clip"
-default_rounding=2
-
--- END OF SETTINGS
-
 re=require'aegisub.re'
+
+function recalculator(subs,sel)
+ADD=aegisub.dialog.display
+ADP=aegisub.decode_path
+ak=aegisub.cancel
+ATAG="{[*>]?\\[^}]-}"
+STAG="^{>?\\[^}]-}"
+	GUI={
+	{x=2,y=0,width=2,class="floatedit",name="pc",value=100,min=0,hint="Multiply"},
+	{x=2,y=1,width=2,class="floatedit",name="add",value=0,hint="Add (use negative to subtract)"},
+	{x=2,y=2,width=2,class="floatedit",name="altval",value=0,hint="Multiply/Add based on button pressed"},
+	{x=2,y=3,width=3,class="intedit",name="rnd",value=2,min=0,max=4,hint="How many decimal places should be allowed"},
+	
+	{x=0,y=0,width=2,class="label",label="Change values to:"},
+	{x=0,y=1,width=2,class="label",label="Increase values by:"},
+	{x=0,y=2,width=2,class="checkbox",name="alt",label="Alternative 2nd value",value=false,hint="Affects fscy, ybord, yshad, fry, fay, all Y coordinates, fad2, t2"},
+	{x=1,y=3,width=1,class="label",label="Rounding:"},
+
+	{x=4,y=0,width=2,class="label",label="% of original ones"},
+	{x=6,y=0,width=2,class="label",label="Recalculator v"..script_version},
+	{x=4,y=1,width=2,class="checkbox",name="retxt",label="numbers in text",hint="numbers found in text (skips tags/comments)"},
+	{x=4,y=2,class="checkbox",name="react",label="actor",hint="numbers found in actor field"},
+	{x=5,y=2,class="checkbox",name="reef",label="effect",hint="numbers found in effect field"},
+	{x=0,y=3,class="checkbox",name="fsc",label="fsc",hint="both x and y"},
+	
+	{x=0,y=4,class="checkbox",name="fscx",label="fscx"},
+	{x=1,y=4,class="checkbox",name="fscy",label="fscy"},
+	{x=2,y=4,class="checkbox",name="fs",label="fs"},
+	{x=3,y=4,class="checkbox",name="fsp",label="fsp"},
+	{x=4,y=4,class="checkbox",name="blur",label="blur"},
+	{x=5,y=4,class="checkbox",name="be",label="be"},
+
+	{x=0,y=5,class="checkbox",name="bord",label="bord"},
+	{x=1,y=5,class="checkbox",name="shad",label="shad"},
+	{x=2,y=5,class="checkbox",name="xbord",label="xbord"},
+	{x=3,y=5,class="checkbox",name="ybord",label="ybord"},
+	{x=4,y=5,class="checkbox",name="xshad",label="xshad   "},
+	{x=5,y=5,class="checkbox",name="yshad",label="yshad"},
+
+	{x=0,y=6,class="checkbox",name="frz",label="frz"},
+	{x=1,y=6,class="checkbox",name="frx",label="frx"},
+	{x=2,y=6,class="checkbox",name="fry",label="fry"},
+	{x=3,y=6,class="checkbox",name="fax",label="fax"},
+	{x=4,y=6,class="checkbox",name="fay",label="fay"},
+	{x=5,y=6,class="checkbox",name="kara",label="kara",hint="k/kf/ko. only the first one in the line."},
+
+	{x=0,y=7,class="checkbox",name="posx",label="pos x"},
+	{x=1,y=7,class="checkbox",name="posy",label="pos y"},
+	{x=2,y=7,class="checkbox",name="orgx",label="org x"},
+	{x=3,y=7,class="checkbox",name="orgy",label="org y"},
+	{x=4,y=7,class="checkbox",name="fad1",label="fad 1"},
+	{x=5,y=7,class="checkbox",name="fad2",label="fad 2"},
+
+	{x=4,y=8,width=2,class="checkbox",name="allpos",label="all pos/move/org      ",
+	hint="same as all 8 checkboxes. \naffects only existing tags."},
+	{x=6,y=8,width=2,class="label",label="_____________"},
+
+	{x=0,y=9,class="checkbox",name="clipx",label="clip x"},
+	{x=1,y=9,class="checkbox",name="clipy",label="clip y"},
+	{x=2,y=9,class="checkbox",name="drawx",label="draw x"},
+	{x=3,y=9,class="checkbox",name="drawy",label="draw y"},
+	{x=4,y=9,class="checkbox",name="ttim1",label="\\t 1",hint="\\t timecode 1"},
+	{x=5,y=9,class="checkbox",name="ttim2",label="\\t 2",hint="\\t timecode 2"},
+	{x=6,y=9,width=2,class="checkbox",name="anchor",label="anchor clip",hint="anchor clip with Multiply"},
+	
+	{x=6,y=2,width=2,class="label",label="-v- Regradient -v-"},
+	{x=6,y=3,class="checkbox",name="alpha",label="alpha"},
+	{x=7,y=3,class="checkbox",name="space",label="[  ]",value=true,hint="workaround for spaces with full-line GBC"},
+
+	{x=0,y=10,width=3,class="checkbox",name="byline",label="multiply/add more with each line"},
+
+	{x=3,y=10,width=2,class="checkbox",name="regtag",label="regular tags",value=true},
+	{x=5,y=10,width=2,class="checkbox",name="tftag",label="tags in transforms",value=true},
+	{x=6,y=1,width=2,class="checkbox",name="rpt",label="repeat last"},
+	
+	{x=0,y=11,class="checkbox",name="ly",label="layer"},
+	{x=1,y=11,class="checkbox",name="ml",label="m. left"},
+	{x=2,y=11,class="checkbox",name="mr",label="m. right"},
+	{x=3,y=11,class="checkbox",name="mv",label="m. vert"},
+	{x=4,y=11,class="checkbox",name="st",label="start",hint="start time (milliseconds for Add)"},
+	{x=5,y=11,class="checkbox",name="et",label="end",hint="end time (milliseconds for Add)"},
+	{x=6,y=11,width=2,class="checkbox",name="save",label="save conf.",hint="use with anything except clear/cancel"},
+	}
+	for z=1,4 do
+	  table.insert(GUI,{x=z-1,y=8,class="checkbox",name="mov"..z,label="move"..z.."  "})
+	  table.insert(GUI,{x=6,y=z+3,class="checkbox",name=z.."a",label=z.."a"})
+	  table.insert(GUI,{x=7,y=z+3,class="checkbox",name=z.."c",label=z.."c"})
+	end
+	loadconfig()
+	repeat
+	  if P=="Clear" then
+	    for key,val in ipairs(GUI) do
+		if val.class=="checkbox" and val.name~="anchor" then val.value=false end
+		if val.name=="anchor" then val.value=res.anchor end
+		if val.name=="alt" then val.value=res.alt end
+		if val.name=="regtag" then val.value=res.regtag end
+		if val.name=="tftag" then val.value=res.tftag end
+		if val.name=="space" then val.value=res.space end
+		if val.class:match("edit") then val.value=res[val.name] end
+	    end
+	  end
+	P,res=ADD(GUI,{"Multiply","Add","Mirror","Regradient","Clear","∞²"},{ok='Multiply',cancel='∞²'})
+	until P~="Clear"
+	if P=="∞²" then ak() end
+	if res.fsc then res.fscx=true res.fscy=true end
+	if res.save then saveconfig() P='' end
+	if res.rpt and lastres then res=lastres end
+	if res.allpos then
+		res.posx=true res.posy=true res.orgx=true res.orgy=true
+		res.mov1=true res.mov2=true res.mov3=true res.mov4=true
+	end
+	if P=="Multiply" or P=="Add" then styleget(subs) multiply(subs,sel) end
+	if P=="Regradient" then regrad(subs,sel) end
+	if P=="Mirror" then mirror(subs,sel) end
+	lastres=res
+	return sel
+end
+
 
 function calc(num)
     if P=="Multiply" then num=round(num+num*count,rnd) end
@@ -101,8 +212,8 @@ function multiply(subs,sel)
 	notf=text:gsub("\\t%b()","")
 	spac=sr.spacing		if res.fsp and not notf:match("\\fsp") and spac~=0 then text=addtag3("\\fsp"..spac,text) end
 	fsize=sr.fontsize	if res.fs and not notf:match("\\fs%d") then text=addtag3("\\fs"..fsize,text) end
-	scy=sr.scale_y		if res.fscy and not notf:match("\\fscy") then text=addtag3("\\fscy"..scy,text) end
 	scx=sr.scale_x		if res.fscx and not notf:match("\\fscx") then text=addtag3("\\fscx"..scx,text) end
+	scy=sr.scale_y		if res.fscy and not notf:match("\\fscy") then text=addtag3("\\fscy"..scy,text) end
 	shdw=sr.shadow		if res.shad and not notf:match("\\shad") and shdw~=0 then text=addtag3("\\shad"..shdw,text) end
 	brdr=sr.outline		if res.bord and not notf:match("\\bord") and brdr~=0 then text=addtag3("\\bord"..brdr,text) end
 
@@ -144,7 +255,7 @@ function multiply(subs,sel)
 	return "\\move("..a..","..b..","..c..","..d end) end
 
 	if clip==1 then neg=1
-		if not res.regtag and not res.tftag then t_error("You must select 'regular tags' or 'tags in transforms' or both.",true) end
+		if not res.regtag and not res.tftag then t_error("You must select 'regular tags' or 'tags in transforms' or both.",1) end
 		orig=text
 		if res.anchor and P=="Multiply" then m=1/oc m2=1/ac
 		  text=text:gsub("clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
@@ -218,11 +329,50 @@ function multiply(subs,sel)
 	return "\\t("..calc(tonumber(a))..","..b.."," end) end
 	if res.ttim2 then neg=1 text=text:gsub("\\t%(([%d%.%-]+),([%d%.%-]+),",function(a,b)
 	return "\\t("..a..","..calc2(tonumber(b)).."," end) end
+	
+	if res.ly then line.layer=lmcalc(line.layer) end
+	if res.ml then line.margin_l=lmcalc(line.margin_l) end
+	if res.mr then line.margin_r=lmcalc(line.margin_r) end
+	if res.mv then line.margin_t=lmcalc(line.margin_t) end
+	if res.st then line.start_time=lmcalc(line.start_time) end
+	if res.et then line.end_time=lmcalc(line.end_time) end
+	
+	if res.retxt then neg=1 text=retext(text) end
+	if res.react then neg=1 line.actor=retext(line.actor) end
+	if res.reef then neg=1 line.effect=retext(line.effect) end
 
-	text=text:gsub("\\rec","")
+	text=text:gsub("\\rec",""):gsub("{}","")
 	line.text=text
         subs[i]=line
     end
+end
+
+function lmcalc(num)
+    if P=="Multiply" then num=round(num+num*count,0) end
+    if P=="Add" then num=round(num+(res.add*linec),0)end
+    if num<0 then num=0 end
+    return num
+end
+
+function retext(t)
+	nt=''
+	repeat
+		seg,t2=t:match("^(%b{})(.*)") --tags/comms
+		if not seg then seg,t2=t:match("^([^{]+)(.*)") --text
+			if not seg then break end
+			seg=seg:gsub("(%-?[%d.]+)",function(d)
+			d2=tostring(calc(d))
+			-- padding fix
+			if d:match("^0") and d2:len()<d:len() then
+				repeat d2='0'..d2 until d2:len()==d:len()
+			end
+			return d2
+			end)
+		end
+		nt=nt..seg
+		t=t2
+	until t==''
+	return nt
 end
 
 function regrad(subs,sel)
@@ -329,7 +479,7 @@ function mirror(subs,sel)
     line=subs[sel[1]]
     text=line.text
     tags=text:match(STAG)
-    if not tags then t_error("No tags on line 1.",true) end
+    if not tags then t_error("No tags on line 1.",1) end
     tags=tags:gsub("\\t%b()","")
     for x=1,#taglist do
 	tag=taglist[x]
@@ -391,8 +541,11 @@ function replaceval(tags)
 	return tags
 end
 
---	reanimatools	--
+--	reanimatools	---------------------------------------------
 function round(n,dec) dec=dec or 0 n=math.floor(n*10^dec+0.5)/10^dec return n end
+function logg(m) m=m or "nil" aegisub.log("\n "..m) end
+function progress(msg) if aegisub.progress.is_cancelled() then ak() end aegisub.progress.title(msg) end
+function t_error(message,cancel) ADD({{class="label",label=message}},{"OK"},{close='OK'}) if cancel then ak() end end
 
 function addtag3(tg,txt)
 	no_tf=txt:gsub("\\t%b()","")
@@ -411,7 +564,7 @@ end
 
 function tohex(num)
 n1=math.floor(num/16)
-n2=num%16
+n2=math.floor(num%16)
 num=tohex1(n1)..tohex1(n2)
 return num
 end
@@ -444,122 +597,52 @@ function stylechk(sn)
     return sr
 end
 
-function progress(msg)
-  if aegisub.progress.is_cancelled() then ak() end
-  aegisub.progress.title(msg)
+
+--	Config Stuff	--
+function saveconfig()
+reconf="Reconfigulator\n\n"
+  for key,val in ipairs(GUI) do
+    if val.class=="intedit" then
+      reconf=reconf..val.name..":"..res[val.name].."\n"
+    end
+    if val.class=="checkbox" and val.name~="save" then
+      reconf=reconf..val.name..":"..tf(res[val.name]).."\n"
+    end
+  end
+rekonfig=ADP("?user").."\\recalculator.conf"
+file=io.open(rekonfig,"w")
+file:write(reconf)
+file:close()
+ADD({{class="label",label="Config saved to:\n"..rekonfig}},{"OK"},{close='OK'})
 end
 
-function t_error(message,cancel)
-  ADD({{class="label",label=message}},{"OK"},{close='OK'})
-  if cancel then ak() end
-end
-
-function logg(m) m=m or "nil" aegisub.log("\n "..m) end
-
-function recalculator(subs,sel)
-ADD=aegisub.dialog.display
-ak=aegisub.cancel
-ATAG="{%*?\\[^}]-}"
-STAG="^{\\[^}]-}"
-	GUI={
-	{x=2,y=0,width=3,class="floatedit",name="pc",value=100,min=0,hint="Multiply"},
-	{x=2,y=1,width=3,class="floatedit",name="add",value=0,hint="Add (use negative to subtract)"},
-	{x=2,y=2,width=3,class="floatedit",name="altval",value=0,hint="Multiply/Add based on button P"},
-	{x=2,y=3,width=3,class="intedit",name="rnd",value=default_rounding,min=0,max=4,hint="How many decimal places should be allowed"},
-	
-	{x=0,y=0,width=2,class="label",label="Change values to:"},
-	{x=0,y=1,width=2,class="label",label="Increase values by:"},
-	{x=0,y=2,width=2,class="checkbox",name="alt",label="Alternative 2nd value",value=false,hint="Affects fscy, ybord, yshad, fry, fay, all Y coordinates, fad2, t2"},
-	{x=0,y=3,width=2,class="label",label="Rounding:"},
-	
-	{x=5,y=0,width=3,class="label",label="%            Recalculator v"..script_version},
-	
-	{x=0,y=4,class="checkbox",name="fscx",label="fscx"},
-	{x=1,y=4,class="checkbox",name="fscy",label="fscy"},
-	{x=2,y=4,class="checkbox",name="fs",label="fs"},
-	{x=3,y=4,class="checkbox",name="fsp",label="fsp"},
-	{x=4,y=4,class="checkbox",name="blur",label="blur"},
-	{x=5,y=4,class="checkbox",name="be",label="be"},
-
-	{x=0,y=5,class="checkbox",name="bord",label="bord"},
-	{x=1,y=5,class="checkbox",name="shad",label="shad"},
-	{x=2,y=5,class="checkbox",name="xbord",label="xbord"},
-	{x=3,y=5,class="checkbox",name="ybord",label="ybord"},
-	{x=4,y=5,class="checkbox",name="xshad",label="xshad   "},
-	{x=5,y=5,class="checkbox",name="yshad",label="yshad"},
-
-	{x=0,y=6,class="checkbox",name="frz",label="frz"},
-	{x=1,y=6,class="checkbox",name="frx",label="frx"},
-	{x=2,y=6,class="checkbox",name="fry",label="fry"},
-	{x=3,y=6,class="checkbox",name="fax",label="fax"},
-	{x=4,y=6,class="checkbox",name="fay",label="fay"},
-	{x=5,y=6,class="checkbox",name="kara",label="kara",hint="k/kf/ko. only the first one in the line."},
-
-	{x=0,y=7,class="checkbox",name="posx",label="pos x"},
-	{x=1,y=7,class="checkbox",name="posy",label="pos y"},
-	{x=2,y=7,class="checkbox",name="orgx",label="org x"},
-	{x=3,y=7,class="checkbox",name="orgy",label="org y"},
-	{x=4,y=7,class="checkbox",name="fad1",label="fad 1"},
-	{x=5,y=7,class="checkbox",name="fad2",label="fad 2"},
-
-	{x=4,y=8,width=2,class="checkbox",name="allpos",label="all pos/move/org      ",
-	hint="same as all 8 checkboxes. \naffects only existing tags."},
-	{x=6,y=8,width=2,class="label",label="---------------------------"},
-
-	{x=0,y=9,class="checkbox",name="clipx",label="clip x"},
-	{x=1,y=9,class="checkbox",name="clipy",label="clip y"},
-	{x=2,y=9,class="checkbox",name="drawx",label="draw x"},
-	{x=3,y=9,class="checkbox",name="drawy",label="draw y"},
-	{x=4,y=9,class="checkbox",name="ttim1",label="\\t 1",hint="\\t timecode 1"},
-	{x=5,y=9,class="checkbox",name="ttim2",label="\\t 2",hint="\\t timecode 2"},
-	{x=6,y=9,width=2,class="checkbox",name="anchor",label="anchor clip",hint="anchor clip with Multiply"},
-	
-	{x=6,y=2,width=2,class="label",label="-v- Regradient -v-"},
-	{x=6,y=3,class="checkbox",name="alpha",label="alpha"},
-	{x=7,y=3,class="checkbox",name="space",label="[  ]",value=true,hint="workaround for spaces with full-line GBC"},
-
-	{x=0,y=10,width=3,class="checkbox",name="byline",label="multiply/add more with each line"},
-
-	{x=3,y=10,width=2,class="checkbox",name="regtag",label="regular tags",value=true},
-	{x=5,y=10,width=2,class="checkbox",name="tftag",label="tags in transforms",value=true},
-	{x=6,y=1,width=2,class="checkbox",name="rpt",label="repeat last"},
-	}
-	for z=1,4 do
-	  table.insert(GUI,{x=z-1,y=8,class="checkbox",name="mov"..z,label="move"..z.."  "})
-	  table.insert(GUI,{x=6,y=z+3,class="checkbox",name=z.."a",label=z.."a"})
-	  table.insert(GUI,{x=7,y=z+3,class="checkbox",name=z.."c",label=z.."c"})
-	end
-	chk=","..checked..","
-	chk=chk:gsub(" *, *",",") :gsub("\t","\\t")
+function loadconfig()
+rconfig=ADP("?user").."\\recalculator.conf"
+file=io.open(rconfig)
+    if file~=nil then
+	konf=file:read("*all")
+	konf=konf:gsub("%-frz%-","rotation")
+	io.close(file)
 	for key,val in ipairs(GUI) do
-		if val.class=="checkbox" and chk:match(","..val.label:gsub(" *$","")..",") then val.value=true end
-	end
-	repeat
-	  if P=="Clear" then
-	    for key,val in ipairs(GUI) do
-		if val.class=="checkbox" and val.name~="anchor" then val.value=false end
-		if val.name=="anchor" then val.value=res.anchor end
-		if val.name=="alt" then val.value=res.alt end
-		if val.name=="regtag" then val.value=res.regtag end
-		if val.name=="tftag" then val.value=res.tftag end
-		if val.name=="space" then val.value=res.space end
-		if val.class:match("edit") then val.value=res[val.name] end
+	    if val.class=="intedit" or val.class=="checkbox" then
+	      if konf:match(val.name) then val.value=detf(konf:match(val.name..":(.-)\n")) end
 	    end
-	  end
-	P,res=ADD(GUI,{"Multiply","Add","Mirror","Regradient","Clear","Cancel"},{ok='Multiply',cancel='Cancel'})
-	until P~="Clear"
-	if P=="Cancel" then ak() end
-	if res.rpt and lastres then res=lastres end
-	if res.allpos then
-		res.posx=true res.posy=true res.orgx=true res.orgy=true
-		res.mov1=true res.mov2=true res.mov3=true res.mov4=true
 	end
-	if P=="Multiply" or P=="Add" then styleget(subs) multiply(subs,sel) end
-	if P=="Regradient" then regrad(subs,sel) end
-	if P=="Mirror" then mirror(subs,sel) end
-	lastres=res
-	aegisub.set_undo_point(script_name)
-	return sel
+    end
+end
+
+function tf(val)
+    if val==true then ret="true"
+    elseif val==false then ret="false"
+    else ret=val end
+    return ret
+end
+
+function detf(txt)
+    if txt=="true" then ret=true
+    elseif txt=="false" then ret=false
+    else ret=txt end
+    return ret
 end
 
 if haveDepCtrl then depRec:registerMacro(recalculator) else aegisub.register_macro(script_name,script_description,recalculator) end
