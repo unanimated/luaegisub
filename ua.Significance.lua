@@ -1,19 +1,136 @@
 script_name="Significance"
 script_description="Import stuff, number stuff, chapter stuff, replace stuff, do a significant amount of other stuff to stuff."
 script_author="unanimated"
-script_url1="http://unanimated.xtreemhost.com/ts/import.lua"
-script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/import.lua"
-script_version="3.0"
+script_version="3.2"
 script_namespace="ua.Significance"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-  script_version="3.0.0"
-  depRec=DependencyControl{feed="https://raw.githubusercontent.com/TypesettingTools/unanimated-Aegisub-Scripts/master/DependencyControl.json"}
+  script_version="3.2.0"
+  depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
 clipboard=require("aegisub.clipboard")
 re=require'aegisub.re'
+
+--	Significance GUI		--------------------------------------------------------------------------------------
+function significance(subs,sel,act)
+ADD=aegisub.dialog.display
+ADP=aegisub.decode_path
+ak=aegisub.cancel
+ms2fr=aegisub.frame_from_ms
+fr2ms=aegisub.ms_from_frame
+ATAG="{[*>]?\\[^}]-}"
+STAG="^{[*>]?\\[^}]-}"
+COMM="{[^\\}]-}"
+aegisub.progress.title("Loading...")
+if datata==nil then data="" else data=datata end
+if sub1==nil then sub1="" end
+if sub2==nil then sub2="" end
+if sub3==nil then sub3=1 end
+for i=1,#subs do if subs[i].class=="dialogue" then line0=i-1 break end end
+msg={"If it breaks, it's your fault.","This should be doing something...","Breaking your computer. Please wait.","Unspecified operations in progress.","This may or may not work.","Trying to avoid bugs...","Zero one one zero one zero...","10110101001101101010110101101100001","I'm surprised anyone's using this","If you're seeing this for too long, it's a bad sign.","This might hurt a little.","Please wait... I'm pretending to work.","Close all your programs and run."}
+rm=math.random(1,#msg)	msge=msg[rm]
+if lastimp then dropstuff=lastuff lok=lastlog zerozz=lastzeros fld=lastfield
+else dropstuff="replacer" lok=false zerozz="01" fld="effect" end
+g_impex={"import OP","import ED","import sign","import signs","export sign","import chptrs","update lyrics"}
+g_stuff={"save/load","replacer","lua calc","split text to actor/effect","reverse text","reverse words","reverse transforms","fake capitals","format dates","split into letters (alpha)","explode","dissolve text","randomised transforms","what is the Matrix?","clone clip","duplicate and shift lines","time by frames","convert framerate","transform \\k to \\t\\alpha","fix kara tags for fbf lines","make style from act. line","make comments visible","switch commented/visible","honorificslaughterhouse"}
+unconfig={
+	-- Sub --
+	{x=0,y=16,width=3,class="label",label="Left                                                    "},
+	{x=3,y=16,width=3,class="label",label="Right                                                   "},
+	{x=6,y=16,width=3,class="label",label="Mod                                                     "},
+	{x=0,y=17,width=3,class="edit",name="rep1",value=sub1},
+	{x=3,y=17,width=3,class="edit",name="rep2",value=sub2},
+	{x=6,y=17,width=3,class="edit",name="rep3",value=sub3,hint="Numbers: start/repeat[limit]\nreplacer/lua calc: limit"},
+	
+	-- import
+	{x=9,y=3,width=2,class="label",label="Import/Export"},
+	{x=9,y=4,width=2,class="dropdown",name="mega",items=g_impex,value="import signs"},
+	{x=11,y=4,class="checkbox",name="keep",label="keep line",value=true,},
+	{x=9,y=5,width=3,class="checkbox",name="restr",label="style restriction (lyrics)",value=false,},
+	{x=9,y=6,width=3,class="edit",name="rest"},
+	
+	-- chapters
+	{x=9,y=7,class="label",label="Chapters"},
+	{x=10,y=7,width=2,class="checkbox",name="intro",label="autogenerate \"Intro\"",value=true,},
+	{x=9,y=8,width=2,class="label",label="chapter marker:"},
+	{x=11,y=8,class="dropdown",name="marker",items={"actor","effect","comment"},value="actor"},
+	{x=9,y=9,width=2,class="label",label="chapter name:"},
+	{x=11,y=9,class="dropdown",name="nam",items={"comment","effect"},value="comment"},
+	{x=9,y=10,width=2,class="label",label="filename from:"},
+	{x=11,y=10,class="dropdown",name="sav",items={"script","video"},value="script"},
+	{x=9,y=11,width=2,class="checkbox",name="chmark",label="chapter mark:",value=false,hint="just sets the marker. no xml."},
+	{x=11,y=11,class="dropdown",name="chap",items={"Intro","OP","Part A","Part B","Part C","ED","Preview"},value="OP"},
+	{x=9,y=12,width=3,class="edit",name="lang"},
+	
+	-- numbers
+	{x=9,y=13,width=2,class="label",label="Numbers"},
+	{x=9,y=14,width=2,class="dropdown",name="modzero",items={"number lines","add to marker","zero fill","random"},value=lastmod0},
+	{x=11,y=14,class="dropdown",name="zeros",items={"1","01","001","0001"},value=zerozz},
+	{x=9,y=15,width=2,class="dropdown",name="field",items={"actor","effect","layer","style","text","left","right","vert","comment"},value=fld},
+	{x=11,y=15,class="checkbox",name="intxt",label="in text",hint="numbers found in text"},
+	
+	-- stuff
+	{x=0,y=15,class="label",label="Stuff  "},
+	{x=1,y=15,width=2,class="dropdown",name="stuff",items=g_stuff,value=dropstuff}, --dropstuff
+	{x=3,y=15,class="dropdown",name="regex",items={"lua patterns","perl regexp"},value="perl regexp"},
+	{x=4,y=15,class="checkbox",name="log",label="log",value=lok,hint="provides some information for many of the functions here"},
+	{x=8,y=15,class="label",label="Marker:"},
+	
+	-- textboxes
+	{x=0,y=0,width=9,height=15,class="textbox",name="dat",value=data},
+	{x=9,y=1,width=3,class="label",label=" Selected Lines: "..#sel.." ["..sel[1]-line0.."-"..sel[#sel]-line0.."]"},
+	
+	-- help
+	{x=9,y=0,width=3,class="dropdown",name="help",
+	items={"--- Help menu ---","Import/Export","Update Lyrics","Do Stuff","Numbers","Chapters"},value="--- Help menu ---"},
+	{x=9,y=17,width=3,class="label",label="   Significance version: "..script_version},
+}
+	loadconfig()
+	repeat
+	  if P=="Help" then aegisub.progress.title("Loading Help") aegisub.progress.task("RTFM")
+	    if res.help=="Import/Export" then help=help_i end
+	    if res.help=="Update Lyrics" then help=help_u end
+	    if res.help=="Do Stuff" then help=help_d end
+	    if res.help=="Numbers" then help=help_n end
+	    if res.help=="Chapters" then help=help_c end
+	    if res.help=="--- Help menu ---" then help="Choose something from the menu, dumbass -->" end
+		for key,val in ipairs(unconfig) do
+		    if val.name=="dat" then val.value=help end
+		end
+	  end
+	  if P=="Info" then aegisub.progress.title("Gathering Info") aegisub.progress.task("...") info(subs,sel,act)
+		for key,val in ipairs(unconfig) do
+		    if val.name=="dat" then val.value=infodump end
+		end
+	  end
+	P,res=ADD(unconfig,
+	{"Import/Export","Do Stuff","Numbers","Chapters","Repeat Last","Info","Help","Save Config","Cancel"},{ok='Import/Export',cancel='Cancel'})
+	until P~="Help" and P~="Info"
+	if P=="Cancel" then    ak() end
+	lastimp=true lastuff=res.stuff lastlog=res.log lastzeros=res.zeros lastfield=res.field lastmod0=res.modzero
+	if P=="Repeat Last" then if not lastres then ak() end P=lastP res=lastres end
+	progress("Doing Stuff") aegisub.progress.task(msge)
+	    sub1=res.rep1
+	    sub2=res.rep2
+	    sub3=res.rep3
+	    zer=res.zeros
+	if P=="Import/Export" then    important(subs,sel,act) end
+	if P=="Numbers" then    numbers(subs,sel) end
+	if P=="Chapters" then    chopters(subs,sel) end
+	if P=="Do Stuff" then
+	    if res.stuff=="convert framerate" then framerate(subs)
+	    elseif res.stuff=="honorificslaughterhouse" then honorifix(subs,sel)
+	    else sel=stuff(subs,sel,act) end
+	end
+	lastP=P
+	lastres=res
+	if P=="Save Config" then saveconfig() end
+    
+    aegisub.set_undo_point(script_name)
+    return sel
+end
 
 
 --	IMPORT/EXPORT	--------------------------------------------------------------------------------------------
@@ -22,10 +139,10 @@ function important(subs,sel,act)
 	atext=aline.text
 	atags=atext:match("^{(\\[^}]-)}") or ""
 	atags=atags:gsub("\\move%b()","")
-	atxt=atext:gsub("^{\\[^}]-}","")
+	atxt=atext:gsub(STAG,"")
 	-- create table from user data (lyrics)
 	sdata={}
-	if res.mega=="update lyrics" and res.dat=="" then t_error("No lyrics given.",true)
+	if res.mega=="update lyrics" and res.dat=="" then t_error("No lyrics given.",1)
 	else
 	res.dat=res.dat.."\n"
 	  for dataline in res.dat:gmatch("(.-)\n") do
@@ -56,16 +173,16 @@ function important(subs,sel,act)
 	    -- import-single-sign GUI
 	    if res.mega=="import sign" then
 		press,reslt=ADD({
-		{x=0,y=0,width=1,height=1,class="label",label="File name:"},
-		{x=0,y=1,width=2,height=1,class="edit",name="signame"},
-		{x=1,y=0,width=2,height=1,class="dropdown",name="signs",items={"title","eptitle","custom","eyecatch"},value="custom"},
-		{x=2,y=1,width=1,height=1,class="label",label=".ass"},
-		{x=0,y=2,width=3,height=1,class="checkbox",name="matchtime",label="keep current line's times",value=true,},
-		{x=0,y=3,width=3,height=1,class="checkbox",name="keeptext",label="keep current line's text",value=false,},
-		{x=0,y=4,width=3,height=1,class="checkbox",name="keeptags",label="combine tags (current overrides) ",value=false,},
-		{x=0,y=5,width=3,height=1,class="checkbox",name="addtags",label="combine tags (imported overrides)",value=false,},
-		{x=0,y=6,width=3,height=1,class="checkbox",name="noshift",label="don't shift times (import as is)",value=false,},
-		{x=0,y=7,width=3,height=1,class="checkbox",name="deline",label="delete original line",value=false,},
+		{x=0,y=0,class="label",label="File name:"},
+		{x=0,y=1,width=2,class="edit",name="signame"},
+		{x=1,y=0,width=2,class="dropdown",name="signs",items={"title","eptitle","custom","eyecatch"},value="custom"},
+		{x=2,y=1,class="label",label=".ass"},
+		{x=0,y=2,width=3,class="checkbox",name="matchtime",label="keep current line's times",value=true,},
+		{x=0,y=3,width=3,class="checkbox",name="keeptext",label="keep current line's text",value=false,},
+		{x=0,y=4,width=3,class="checkbox",name="keeptags",label="combine tags (current overrides) ",value=false,},
+		{x=0,y=5,width=3,class="checkbox",name="addtags",label="combine tags (imported overrides)",value=false,},
+		{x=0,y=6,width=3,class="checkbox",name="noshift",label="don't shift times (import as is)",value=false,},
+		{x=0,y=7,width=3,class="checkbox",name="deline",label="delete original line",value=false,},
 		},{"OK","Cancel"},{ok='OK',close='Cancel'})
 		if press=="Cancel" then ak() end
 		if reslt.signs=="custom" then signame=reslt.signame else signame=reslt.signs end
@@ -76,7 +193,7 @@ function important(subs,sel,act)
 	    -- read signs.ass
 	    if res.mega=="import signs" then
 		file=io.open(path.."signs.ass")
-		if file==nil then ADD({{x=0,y=0,width=1,height=1,class="label",label=path.."signs.ass\nNo such file."}},{"ok"},{cancel='ok'}) ak() end
+		if file==nil then ADD({{class="label",label=path.."signs.ass\nNo such file."}},{"ok"},{cancel='ok'}) ak() end
 		signs=file:read("*all")
 		io.close(file)
 	    end
@@ -85,7 +202,7 @@ function important(subs,sel,act)
 	    songtype=res.mega:match("import (%a+)")
 	    if songtype=="sign" then songtype=signame end
 	    file=io.open(path..songtype..".ass")
-	    if file==nil then t_error(path..songtype..".ass\nNo such file.",true) end
+	    if file==nil then t_error(path..songtype..".ass\nNo such file.",1) end
 	    song=file:read("*all")
 	    io.close(file)
 	    
@@ -120,15 +237,15 @@ function important(subs,sel,act)
 		for sn in signlistxt:gmatch(",([^,]-),") do table.insert(signlist,sn) end
 		-- import-signs GUI
 		button,reslt=ADD({
-		{x=0,y=0,width=1,height=1,class="label",label="Choose a sign to import:"},
-		{x=0,y=1,width=1,height=1,class="dropdown",name="impsign",items=signlist,value=signlist[1]},
-		{x=0,y=2,width=1,height=1,class="checkbox",name="matchtime",label="keep current line's times",value=true,},
-		{x=0,y=3,width=1,height=1,class="checkbox",name="keeptext",label="keep current line's text",value=false,},
-		{x=0,y=4,width=1,height=1,class="checkbox",name="keeptags",label="combine tags (current overrides) ",value=false,},
-		{x=0,y=5,width=1,height=1,class="checkbox",name="addtags",label="combine tags (imported overrides)",value=false,},
-		{x=0,y=6,width=1,height=1,class="checkbox",name="noshift",label="don't shift times (import as is)",value=false,},
-		{x=0,y=7,width=1,height=1,class="checkbox",name="defect",label="delete 'effect'",value=false,},
-		{x=0,y=8,width=1,height=1,class="checkbox",name="deline",label="delete original line",value=false,},
+		{x=0,y=0,class="label",label="Choose a sign to import:"},
+		{x=0,y=1,class="dropdown",name="impsign",items=signlist,value=signlist[1]},
+		{x=0,y=2,class="checkbox",name="matchtime",label="keep current line's times",value=true,},
+		{x=0,y=3,class="checkbox",name="keeptext",label="keep current line's text",value=false,},
+		{x=0,y=4,class="checkbox",name="keeptags",label="combine tags (current overrides) ",value=false,},
+		{x=0,y=5,class="checkbox",name="addtags",label="combine tags (imported overrides)",value=false,},
+		{x=0,y=6,class="checkbox",name="noshift",label="don't shift times (import as is)",value=false,},
+		{x=0,y=7,class="checkbox",name="defect",label="delete 'effect'",value=false,},
+		{x=0,y=8,class="checkbox",name="deline",label="delete original line",value=false,},
 		},{"OK","Cancel"},{ok='OK',close='Cancel'})
 		if button=="Cancel" then ak() end
 		if button=="OK" then whatsign=reslt.impsign end
@@ -215,7 +332,7 @@ function important(subs,sel,act)
 		},{"OK","Cancel"},{ok='OK',close='Cancel'})
 	    if press=="Cancel" then ak() end
 	    if press=="OK" then
-	    if reslt.newsign=="" then t_error("No name supplied.",true) end
+	    if reslt.newsign=="" then t_error("No name supplied.",1) end
 	    newsgn=reslt.newsign:gsub("%.ass$","")
 	    if reslt.addsign=="Add to signs.ass" then 
 		file=io.open(path.."signs.ass")
@@ -295,7 +412,7 @@ function important(subs,sel,act)
 	  end
 	end
     
-    if res.mega=="update lyrics" and songcheck==0 then press,reslt=ADD({{x=0,y=0,width=1,height=1,class="label",label="The "..res.field.." field of selected lines doesn't match given pattern \""..sub1.."#"..sub2.."\".\n(Or style pattern wasn't matched if restriction enabled.)\n#=number sequence"}},{"ok"},{cancel='ok'}) end
+    if res.mega=="update lyrics" and songcheck==0 then press,reslt=ADD({{x=0,y=0,class="label",label="The "..res.field.." field of selected lines doesn't match given pattern \""..sub1.."#"..sub2.."\".\n(Or style pattern wasn't matched if restriction enabled.)\n#=number sequence"}},{"ok"},{cancel='ok'}) end
     
     noshift=nil		defect=nil	keeptxt=nil	deline=nil	keeptags=nil	addtags=nil
 end
@@ -305,12 +422,26 @@ end
 
 --	 NUMBERS	-------------------------------------------------------------------------------------------
 function numbers(subs,sel)
-    zl=zer:len()
+	zl=zer:len()
 	if sub3:match("[,/;]") then startn,int=sub3:match("(%d+)[,/;](%d+)") else startn=sub3:gsub("%[.-%]","") int=1 end
 	if sub3:match("%[") then numcycle=tonumber(sub3:match("%[(%d+)%]")) else numcycle=0 end
 	if sub3=="" then startn=1 end
 	startn=tonumber(startn)
-	if startn==nil or numcycle>0 and startn>numcycle then t_error("Wrong parameters.",true) end
+	if res.modzero=="number lines" and res.intxt then res.field='nope' end
+	if res.modzero=="random" then
+		if not tonumber(sub1) or not tonumber(sub2) then t_error("No valid input. \nUse Left and Right fields to set limits \nfor random number generation.",1) end
+		if not tonumber(sub3) or tonumber(sub3)<1 then t_error("Error. Mod must be 1 or higher.",1) end
+		if string.match("layer style text",res.field) then t_error("Invalid marker. \nOnly actor, effect, comment, and margins.",1)  end
+		mark=res.field:gsub("left","margin_l"):gsub("right","margin_r"):gsub("vert","margin_t")
+		
+		ranTab={}
+		local R=math.ceil(#sel/sub3)
+		for i=1,R do
+			local rndm=round(math.random(sub1*1000,sub2*1000)/1000,zl-1)
+			table.insert(ranTab,rndm)
+		end
+		
+	end
 	
     for z=1,#sel do
         i=sel[z]
@@ -319,6 +450,7 @@ function numbers(subs,sel)
 	
 	if res.modzero=="number lines" then
 	progress("Numbering... "..round(z/#sel)*100 .."%")
+		if startn==nil or numcycle>0 and startn>numcycle then t_error("Wrong parameters. Syntax: start/repeat[limit]\nExamples:\n5    (5 6 7 8...)\n5/3    (5 5 5 6 6 6 7 7 7...)\n5/3[6]    (5 5 5 6 6 6 5 5 5 6 6 6...)\n5[6]    (5 6 5 6 5 6...)",1) end
 		index=z
 		count=math.ceil(index/int)+(startn-1)
 		  if numcycle>0 and count>numcycle then repeat count=count-(numcycle-startn+1) until count<=numcycle end
@@ -326,9 +458,17 @@ function numbers(subs,sel)
 		if zl>count:len() then repeat count="0"..count until zl==count:len() end
 		number=sub1..count..sub2
 		
+		if res.intxt then
+			text=text:gsub("%d+",number)
+		end
 		if res.field=="actor" then line.actor=number end 
 		if res.field=="effect" then line.effect=number end
 		if res.field=="layer" then line.layer=count end
+		if res.field=="text" then text=number end
+		if res.field=="left" then line.margin_l=number end
+		if res.field=="right" then line.margin_r=number end
+		if res.field=="vert" then line.margin_t=number end
+		if res.field=="comment" then text=text..wrap(number) end
 	end
 	
 	if res.modzero=="add to marker" then
@@ -338,7 +478,49 @@ function numbers(subs,sel)
 		elseif res.field=="text" then text=sub1..text..sub2
 		end
 	end
-
+	
+	if res.modzero=="zero fill" then
+	progress("Filling... "..round(z/#sel)*100 .."%")
+		form="%0"..zl.."d"
+		mark=res.field
+		aet="actoreffect"
+		if aet:match(mark) then
+			target=line[mark]
+			target=target:gsub("(%d+)",function(d) return string.format(form,d) end)
+			line[mark]=target
+			
+		end
+		if mark=='text' then
+			nt=''
+			repeat
+				seg,t2=text:match("^(%b{})(.*)")
+				if not seg then seg,t2=text:match("^([^{]+)(.*)")
+					if not seg then break end
+					seg=seg:gsub("(%-?[%d.]+)",function(d)
+					if tonumber(d)>0 and not d:match("%.%d") then return string.format(form,d) else return d end
+					end)
+				end
+				nt=nt..seg
+				text=t2
+			until text==''
+			text=nt
+		end
+	end
+	
+	if res.modzero=="random" then
+		li=math.ceil(z/sub3)
+		local num=0
+		for t=1,#ranTab do
+			if li==t then num=ranTab[t] break end
+		end
+		if mark:match "margin" and num<0 then num=0-num end
+		if mark=="comment" then
+			text=text..wrap("random: "..num)
+		else
+			line[mark]=num
+		end
+	end
+	
 	line.text=text
 	subs[i]=line
     end
@@ -347,9 +529,9 @@ end
 
 
 
---	CHAPTERS	-------------------------------------------------------------------------------------------
+--	CHAPTERS	------------------------------------------------------------------------------------------------
 function chopters(subs,sel)
-  if res.marker=="effect" and res.nam=="effect" then t_error("Error. Both marker and name cannot be 'effect'.",true) end
+  if res.marker=="effect" and res.nam=="effect" then t_error("Error. Both marker and name cannot be 'effect'.",1) end
   if res.chmark then
     if res.lang~="" then kap=res.lang else kap=res.chap end
     for z,i in ipairs(sel) do
@@ -359,7 +541,7 @@ function chopters(subs,sel)
 	if res.marker=="effect" then line.effect="chptr" end
 	if res.marker=="comment" then text=text.."{chptr}" end
 	if res.nam=="effect" then line.effect=kap end
-	if res.nam=="comment" then text="{"..kap.."}"..text end
+	if res.nam=="comment" then text=wrap(kap)..text end
       line.text=text
       subs[i]=line
     end
@@ -387,11 +569,7 @@ function chopters(subs,sel)
 	    if marker=="chapter" or marker=="chptr" or marker=="chap" then
 		if res.nam=="comment" then
 		name=text:match("^{([^}]*)}")
-		name=name:gsub(" [Ff]irst [Ff]rame","")
-		name=name:gsub(" [Ss]tart","")
-		name=name:gsub("part a","Part A")
-		name=name:gsub("part b","Part B")
-		name=name:gsub("preview","Preview")
+		name=name:gsub(" [Ff]irst [Ff]rame",""):gsub(" [Ss]tart",""):gsub("part a","Part A"):gsub("part b","Part B"):gsub("preview","Preview")
 		else
 		name=effect
 		end
@@ -524,10 +702,13 @@ end
 
 --	STUFF	---------------------------------------------------------------------------------------------------
 function stuff(subs,sel,act)
+    STAG="^{\\[^}]-}"
     repl=0
     data={}	raw=res.dat.."\n"
     for dataline in raw:gmatch("(.-)\n") do table.insert(data,dataline) end
     nsel={} for z,i in ipairs(sel) do table.insert(nsel,i) end
+    orig_sel=#sel
+    nope=nil
     
     if res.stuff=="make style from act. line" then
 	line=subs[act]
@@ -612,24 +793,6 @@ function stuff(subs,sel,act)
 	datelog=""
     end
     
-    -- MOTION BLUR GUI
-    if res.stuff=="motion blur" then
-	mblurgui={
-	  {x=0,y=0,width=2,class="checkbox",name="keepblur",label="Keep current blur...",value=true},
-	  {x=0,y=1,class="label",label="...or use blur:"},
-	  {x=1,y=1,class="floatedit",name="mblur",value=mblur or 3},
-	  {x=0,y=2,class="label",label="Distance:"},
-	  {x=1,y=2,class="floatedit",name="mbdist",value=mbdist or 6},
-	  {x=0,y=3,class="label",label="Alpha: "},
-	  {x=1,y=3,class="dropdown",name="mbalfa",value=mbalfa or "80",items={"00","20","40","60","80","A0","C0","D0"}},
-	  {x=0,y=4,width=2,class="checkbox",name="mb3",label="Use 3 lines instead of 2",value=mb3},
-	  {x=0,y=5,width=2,class="label",label="Direction = first 2 points of a clip"},
-	}
-	pres,rez=ADD(mblurgui,{"OK","Cancel"},{ok='OK',close='Cancel'})
-	if pres=="Cancel" then ak() end
-	mblur=rez.mblur mbdist=rez.mbdist mbalfa=rez.mbalfa mb3=rez.mb3
-    end
-    
     -- EXPLODE GUI --
     if res.stuff=="explode" then
 	-- remember values
@@ -641,32 +804,32 @@ function stuff(subs,sel,act)
 	    implo=false exquence=false exkom=false seqinv=false seqpercent=100 rmmbr=false
 	end
 	explodegui={
-	  {x=0,y=0,class="label",label="Horizontal distance: "},
-	  {x=1,y=0,class="floatedit",name="edistx",value=exx,hint="Maximum horizontal distance for move"},
-	  {x=0,y=1,class="label",label="Vertical distance: "},
-	  {x=1,y=1,class="floatedit",name="edisty",value=exy,hint="Maximum vertical distance for move"},
-	  
-	  {x=2,y=0,class="label",label="direction: "},
-	  {x=3,y=0,class="dropdown",name="hortype",value=htype,items={"only left","mostly left","all","mostly right","only right"}},
-	  {x=4,y=0,class="checkbox",name="xprop",label="proportional",value=expropx,hint="Uniform move rather than random"},
-	  {x=5,y=0,class="checkbox",name="xinv",label="inverse",value=exinvx,hint="Uniform move in the other direction"},
-	  
-	  {x=2,y=1,class="label",label="direction: "},
-	  {x=3,y=1,class="dropdown",name="vertype",value=vtype,items={"only up","mostly up","all","mostly down","only down"}},
-	  {x=4,y=1,class="checkbox",name="yprop",label="proportional",value=expropy,hint="Uniform move rather than random"},
-	  {x=5,y=1,class="checkbox",name="yinv",label="inverse",value=exinvy,hint="Uniform move in the other direction"},
-	  
-	  {x=0,y=2,class="checkbox",name="ecfo",label="Custom fade:",hint="Default is line length",value=cfad},
-	  {x=1,y=2,class="floatedit",name="exfad",value=exf},
-	  
-	  {x=2,y=2,class="checkbox",name="exseq",label="sequence",value=exquence,hint="move in a sequence instead of all at the same time"},
-	  {x=3,y=2,class="floatedit",name="seqpc",value=seqpercent,step=nil,min=1,max=100,hint="how much time should the sequence take up"},
-	  {x=4,y=2,class="label",label="% of move"},
-	  {x=5,y=2,class="checkbox",name="invseq",label="inverse",value=seqinv,hint="inverse sequence"},
-	  
-	  {x=0,y=3,class="checkbox",name="impl",label="Implode",value=implo},
-	  {x=1,y=3,class="checkbox",name="rem",label="Same for all lines",value=rmmbr,hint="use only for layered lines with the same text"},
-	  {x=3,y=3,class="checkbox",name="excom",label="Leave original line commented out",value=exkom,width=3},
+	{x=0,y=0,class="label",label="Horizontal distance: "},
+	{x=1,y=0,class="floatedit",name="edistx",value=exx,hint="Maximum horizontal distance for move"},
+	{x=0,y=1,class="label",label="Vertical distance: "},
+	{x=1,y=1,class="floatedit",name="edisty",value=exy,hint="Maximum vertical distance for move"},
+
+	{x=2,y=0,class="label",label="direction: "},
+	{x=3,y=0,class="dropdown",name="hortype",value=htype,items={"only left","mostly left","all","mostly right","only right"}},
+	{x=4,y=0,class="checkbox",name="xprop",label="proportional",value=expropx,hint="Uniform move rather than random"},
+	{x=5,y=0,class="checkbox",name="xinv",label="inverse",value=exinvx,hint="Uniform move in the other direction"},
+
+	{x=2,y=1,class="label",label="direction: "},
+	{x=3,y=1,class="dropdown",name="vertype",value=vtype,items={"only up","mostly up","all","mostly down","only down"}},
+	{x=4,y=1,class="checkbox",name="yprop",label="proportional",value=expropy,hint="Uniform move rather than random"},
+	{x=5,y=1,class="checkbox",name="yinv",label="inverse",value=exinvy,hint="Uniform move in the other direction"},
+
+	{x=0,y=2,class="checkbox",name="ecfo",label="Custom fade:",hint="Default is line length",value=cfad},
+	{x=1,y=2,class="floatedit",name="exfad",value=exf},
+
+	{x=2,y=2,class="checkbox",name="exseq",label="sequence",value=exquence,hint="move in a sequence instead of all at the same time"},
+	{x=3,y=2,class="floatedit",name="seqpc",value=seqpercent,step=nil,min=1,max=100,hint="how much time should the sequence take up"},
+	{x=4,y=2,class="label",label="% of move"},
+	{x=5,y=2,class="checkbox",name="invseq",label="inverse",value=seqinv,hint="inverse sequence"},
+
+	{x=0,y=3,class="checkbox",name="impl",label="Implode",value=implo},
+	{x=1,y=3,class="checkbox",name="rem",label="Same for all lines",value=rmmbr,hint="use only for layered lines with the same text"},
+	{x=3,y=3,class="checkbox",name="excom",label="Leave original line commented out",value=exkom,width=3},
 	}
 	pres,rez=ADD(explodegui,{"OK","Cancel"},{ok='OK',close='Cancel'})
 	if pres=="Cancel" then ak() end
@@ -681,53 +844,59 @@ function stuff(subs,sel,act)
 	exploded=true
     end
     
-    -- Randomized Transforms GUI --
-    if res.stuff=="randomized transforms" then
+    -- Randomised Transforms GUI --
+    if res.stuff=="randomised transforms" then
 	rine=subs[sel[1]]
 	durone=rine.end_time-rine.start_time
 	rtgui={
-	  {x=0,y=0,class="checkbox",name="rtfad",label="Random Fade",width=2,value=true},
-	  {x=0,y=1,class="checkbox",name="rtdur",label="Random Duration",width=2,value=true},
-	  {x=2,y=0,class="label",label="Min: "},
-	  {x=2,y=1,class="label",label="Max: "},
-	  {x=3,y=0,class="floatedit",name="minfad",width=1,value=math.floor(durone/5),min=0},
-	  {x=3,y=1,class="floatedit",name="maxfad",width=1,value=durone},
-	  {x=4,y=0,class="checkbox",name="rtin",label="Fade In",width=3,value=false,hint="In instead of Out"},
-	  {x=4,y=1,class="checkbox",name="maxisdur",label="Max = Current Duration",width=4,value=true,hint="The maximum will be the duration of each selected line"},
-	  
-	  {x=0,y=3,class="label",label="Transform"},
-	  {x=1,y=3,class="dropdown",name="rttag",value="blur",
-	    items={"blur","bord","shad","fs","fsp","fscx","fscy","fax","fay","frz","frx","fry","xbord","ybord","xshad","yshad"}},
-	  {x=2,y=3,class="label",label="Min: "},
-	  {x=4,y=3,class="label",label=" Max: "},
-	  {x=3,y=3,class="floatedit",name="mintfn",width=1,value=0,hint="Minimum value for a given tag"},
-	  {x=5,y=3,class="floatedit",name="maxtfn",width=3,value=0,hint="Maximum value for a given tag"},
-	  
-	  {x=0,y=4,class="label",width=2,label="Colour Transform"},
-	  {x=2,y=4,class="label",label="Max: "},
-	  {x=3,y=4,class="floatedit",name="rtmaxc",value=100,min=1,max=100,hint="Maximum % of colour change.\nColour tag must be present. Otherwise set to 100%."},
-	  {x=4,y=4,class="label",label="%"},
-	  {x=5,y=4,class="checkbox",name="rtc1",label="\\c ",value=true},
-	  {x=6,y=4,class="checkbox",name="rtc3",label="\\3c ",value=false},
-	  {x=7,y=4,class="checkbox",name="rtc4",label="\\4c ",value=false},
-	  
-	  {x=0,y=5,class="checkbox",name="rtacc",label="Use Acceleration",width=2,value=false},
-	  {x=2,y=5,class="label",label="Min: "},
-	  {x=3,y=5,class="floatedit",name="minacc",width=1,value=1,min=0},
-	  {x=4,y=5,class="label",label=" Max:"},
-	  {x=5,y=5,class="floatedit",name="maxacc",width=3,value=1,min=0},
-	  
-	  {x=0,y=6,class="checkbox",name="rtmx",label="Random Move X",width=2,value=false},
-	  {x=2,y=6,class="label",label="Min: "},
-	  {x=3,y=6,class="floatedit",name="minmx",width=1,value=0},
-	  {x=4,y=6,class="label",label=" Max:"},
-	  {x=5,y=6,class="floatedit",name="maxmx",width=3,value=0},
-	  
-	  {x=0,y=7,class="checkbox",name="rtmy",label="Random Move Y",width=2,value=false},
-	  {x=2,y=7,class="label",label="Min: "},
-	  {x=3,y=7,class="floatedit",name="minmy",width=1,value=0},
-	  {x=4,y=7,class="label",label=" Max:"},
-	  {x=5,y=7,class="floatedit",name="maxmy",width=3,value=0},
+	{x=0,y=0,class="checkbox",name="rtfad",label="Random Fade",width=2,value=true},
+	{x=0,y=1,class="checkbox",name="rtdur",label="Random Duration",width=2,value=true},
+	{x=2,y=0,class="label",label="Min: "},
+	{x=2,y=1,class="label",label="Max: "},
+	{x=3,y=0,class="floatedit",name="minfad",value=math.floor(durone/5),min=0},
+	{x=3,y=1,class="floatedit",name="maxfad",value=durone},
+	{x=4,y=0,class="checkbox",name="rtin",label="Fade In",width=3,value=false,hint="In instead of Out"},
+	{x=4,y=1,class="checkbox",name="maxisdur",label="Max = Current Duration",width=4,value=true,hint="The maximum will be the duration of each selected line"},
+
+	{x=0,y=2,class="checkbox",name="movet",label="t1+t2 in \\move",width=2,hint="use given timecodes in \\move"},
+	{x=2,y=2,class="label",label="\\t 1"},
+	{x=4,y=2,class="label",label="\\t 2"},
+	{x=3,y=2,class="floatedit",name="t1",value=0},
+	{x=5,y=2,class="floatedit",name="t2",value=0,width=3},
+
+	{x=0,y=3,class="label",label="Transform"},
+	{x=1,y=3,class="dropdown",name="rttag",value="blur",
+	items={"blur","bord","shad","fs","fsp","fscx","fscy","fax","fay","frz","frx","fry","xbord","ybord","xshad","yshad"}},
+	{x=2,y=3,class="label",label="Min: "},
+	{x=4,y=3,class="label",label=" Max: "},
+	{x=3,y=3,class="floatedit",name="mintfn",value=0,hint="Minimum value for a given tag"},
+	{x=5,y=3,class="floatedit",name="maxtfn",width=3,value=0,hint="Maximum value for a given tag"},
+
+	{x=0,y=4,class="label",width=2,label="Colour Transform"},
+	{x=2,y=4,class="label",label="Max: "},
+	{x=3,y=4,class="floatedit",name="rtmaxc",value=100,min=1,max=100,hint="Maximum % of colour change.\nColour tag must be present. Otherwise set to 100%."},
+	{x=4,y=4,class="label",label="%"},
+	{x=5,y=4,class="checkbox",name="rtc1",label="\\c ",value=true},
+	{x=6,y=4,class="checkbox",name="rtc3",label="\\3c ",value=false},
+	{x=7,y=4,class="checkbox",name="rtc4",label="\\4c ",value=false},
+
+	{x=0,y=5,class="checkbox",name="rtacc",label="Use Acceleration",width=2,value=false},
+	{x=2,y=5,class="label",label="Min: "},
+	{x=3,y=5,class="floatedit",name="minacc",value=1,min=0},
+	{x=4,y=5,class="label",label=" Max:"},
+	{x=5,y=5,class="floatedit",name="maxacc",width=3,value=1,min=0},
+
+	{x=0,y=6,class="checkbox",name="rtmx",label="Random Move X",width=2,value=false},
+	{x=2,y=6,class="label",label="Min: "},
+	{x=3,y=6,class="floatedit",name="minmx",value=0},
+	{x=4,y=6,class="label",label=" Max:"},
+	{x=5,y=6,class="floatedit",name="maxmx",width=3,value=0},
+
+	{x=0,y=7,class="checkbox",name="rtmy",label="Random Move Y",width=2,value=false},
+	{x=2,y=7,class="label",label="Min: "},
+	{x=3,y=7,class="floatedit",name="minmy",value=0},
+	{x=4,y=7,class="label",label=" Max:"},
+	{x=5,y=7,class="floatedit",name="maxmy",width=3,value=0},
 	}
 	if rtremember then
 	    for key,val in ipairs(rtgui) do
@@ -738,7 +907,7 @@ function stuff(subs,sel,act)
 	rthlp={"Fade/Duration","Number Transform","Colour Transform","Cancel"}
 	pres,rez=ADD(rtgui,rtchoice,{ok='Fade/Duration',close='Cancel'})
 	if pres=="Help" then
-	    rthelp={x=0,y=8,width=8,height=4,class="textbox",value="This is supposed to be used after 'split into letters' or with gradients.\n\nFade/Duration Example:  Min: 500, Max: 2000.\nA random number between those is generated for each line, let's say 850.\nThis line's duration will be 850ms, and it will have a 850ms fade out.\n\nNumber Transform Example:  Blur, Min: 0.6, Max: 2.5\nRandom number generated: 1.7. Line will have: \\t(\\blur1.7)\n\nRandom Colour Transform creates transforms to random colours. \nMax % transform limits how much the colour can change.\n\nAccel works with either transform function.\n\nRandom Move works as an additional option with any function.\nIt can be used on its own if you uncheck other stuff. Works with Fade In."}
+	    rthelp={x=0,y=8,width=8,height=6,class="textbox",value="This is supposed to be used after 'split into letters (alpha)' or with gradients.\n\nFade/Duration Example:  Min: 500, Max: 2000.\nA random number between those is generated for each line, let's say 850.\nThis line's duration will be 850ms, and it will have a 850ms fade out.\n\nNumber Transform Example:  Blur, Min: 0.6, Max: 2.5\nRandom number generated: 1.7. Line will have: \\t(\\blur1.7)\n\nRandom Colour Transform creates transforms to random colours. \nMax % transform limits how much the colour can change.\n\nAccel works with either transform function.\n\nRandom Move works as an additional option with any function.\nIt can be used on its own if you uncheck other stuff. Works with Fade In."}
 	    table.insert(rtgui,rthelp)
 	    pres,rez=ADD(rtgui,rthlp,{ok='Fade/Duration',close='Cancel'})
 	end
@@ -758,6 +927,7 @@ function stuff(subs,sel,act)
 	if rez.rtc1 then table.insert(rtcol,1) end
 	if rez.rtc3 then table.insert(rtcol,3) end
 	if rez.rtc4 then table.insert(rtcol,4) end
+	t_times=""
     end
     
     -- Clone Clip GUI --
@@ -768,16 +938,16 @@ function stuff(subs,sel,act)
 	if dist_v then ccvd=dist_v else ccvd=20 end
 	if ccshift then ccsh=ccshift else ccsh=0 end
 	ccgui={
-	  {x=0,y=0,class="label",label="Horizontal distance:  "},
-	  {x=1,y=0,class="intedit",name="hdist",value=cchd,min=1},
-	  {x=0,y=1,class="label",label="Horizontal clones:  "},
-	  {x=1,y=1,class="intedit",name="hclone",value=cchc,min=1},
-	  {x=0,y=2,class="label",label="Vertical distance:  "},
-	  {x=1,y=2,class="intedit",name="vdist",value=ccvd,min=1},
-	  {x=0,y=3,class="label",label="Vertical clones:  "},
-	  {x=1,y=3,class="intedit",name="vclone",value=ccvc,min=1},
-	  {x=0,y=4,class="label",label="Shift even rows by:"},
-	  {x=1,y=4,class="intedit",name="ccshift",value=ccsh,min=0},
+	{x=0,y=0,class="label",label="Horizontal distance:  "},
+	{x=1,y=0,class="intedit",name="hdist",value=cchd,min=1},
+	{x=0,y=1,class="label",label="Horizontal clones:  "},
+	{x=1,y=1,class="intedit",name="hclone",value=cchc,min=1},
+	{x=0,y=2,class="label",label="Vertical distance:  "},
+	{x=1,y=2,class="intedit",name="vdist",value=ccvd,min=1},
+	{x=0,y=3,class="label",label="Vertical clones:  "},
+	{x=1,y=3,class="intedit",name="vclone",value=ccvc,min=1},
+	{x=0,y=4,class="label",label="Shift even rows by:"},
+	{x=1,y=4,class="intedit",name="ccshift",value=ccsh,min=0},
 	}
 	pres,rez=ADD(ccgui,{"OK","Cancel"},{ok='OK',close='Cancel'})
 	if pres=="Cancel" then ak() end
@@ -792,16 +962,16 @@ function stuff(subs,sel,act)
 	else ddistance=10 ddlines=10 dshape="square" dalter=true dissin=false otherd=false v2direction="randomly"
 	end
 	dissgui={
-	  {x=0,y=0,class="label",label="Distance between points:  "},
-	  {x=1,y=0,class="floatedit",name="ddist",value=ddistance,min=4,step=2},
-	  {x=0,y=1,class="label",label="Shape of clips:"},
-	  {x=1,y=1,class="dropdown",name="shape",items={"square","square 2","diamond","triangle 1","triangle 2","hexagon","wave/hexagram","vertical lines","horizontal lines"},value=dshape},
-	  {x=0,y=2,class="checkbox",name="alt",label="Shift even rows (all except vertical/horizontal lines)",value=dalter,width=2},
-	  {x=0,y=3,class="checkbox",name="disin",label="Reverse effect (fade in rather than out)",value=dissin,width=2},
-	  {x=0,y=4,class="checkbox",name="otherdiss",label="Dissolve v2.  ...  Lines:",value=otherd,hint="only square, diamond, vertical lines"},
-	  {x=1,y=4,class="floatedit",name="modlines",value=ddlines,min=6,step=2},
-	  {x=0,y=5,class="label",label="      Dissolve v2:   Dissolve"},
-	  {x=1,y=5,class="dropdown",name="v2dir",items={"randomly","from top","from bottom","from left","from right"},value=v2direction},
+	{x=0,y=0,class="label",label="Distance between points:  "},
+	{x=1,y=0,class="floatedit",name="ddist",value=ddistance,min=4,step=2},
+	{x=0,y=1,class="label",label="Shape of clips:"},
+	{x=1,y=1,class="dropdown",name="shape",items={"square","square 2","diamond","triangle 1","triangle 2","hexagon","wave/hexagram","vertical lines","horizontal lines"},value=dshape},
+	{x=0,y=2,class="checkbox",name="alt",label="Shift even rows (all except vertical/horizontal lines)",value=dalter,width=2},
+	{x=0,y=3,class="checkbox",name="disin",label="Reverse effect (fade in rather than out)",value=dissin,width=2},
+	{x=0,y=4,class="checkbox",name="otherdiss",label="Dissolve v2.  ...  Lines:",value=otherd,hint="only square, diamond, vertical lines"},
+	{x=1,y=4,class="floatedit",name="modlines",value=ddlines,min=6,step=2},
+	{x=0,y=5,class="label",label="      Dissolve v2:   Dissolve"},
+	{x=1,y=5,class="dropdown",name="v2dir",items={"randomly","from top","from bottom","from left","from right"},value=v2direction},
 	}
 	pres,rez=ADD(dissgui,{"OK","What Is This","Cancel"},{ok='OK',close='Cancel'})
 	if pres=="What Is This" then
@@ -844,7 +1014,7 @@ function stuff(subs,sel,act)
 	    start=rine.start_time	    endt=rine.end_time
 	    startf=ms2fr(start)		    endf=ms2fr(endt)
 	    lframes=ms2fr(endt-start)
-	      if lframes<linez then t_error("Line must be at least "..linez.." frames long.",true) end
+	      if lframes<linez then t_error("Line must be at least "..linez.." frames long.",1) end
 	    if disin then
 	      for l=1,linez do
 		rine.start_time=fr2ms(startf+l-1)
@@ -999,81 +1169,19 @@ function stuff(subs,sel,act)
     -- DISSOLVE END --------------------------------------------------------------------
     end
     
-    -- Fadeworks GUI --
-    if res.stuff=="fadeworks" then
-	fadegui={
-	{x=0,y=0,class="label",label="[FadeWorks]"},
-	{x=1,y=0,class="label",label="Lines before start time"},
-	{x=2,y=0,class="label",label="Lines after end time"},
-	{x=0,y=1,class="label",label="Lines to create:"},
-	{x=1,y=1,class="intedit",name="LF",value=0,min=0},
-	{x=2,y=1,class="intedit",name="RF",value=0,min=0},
-	{x=0,y=2,class="label",label="Frames per line:"},
-	{x=1,y=2,class="intedit",name="LFram",value=1,min=1},
-	{x=2,y=2,class="intedit",name="RFram",value=1,min=1},
-	{x=0,y=3,class="label",label="Shift each line by:"},
-	{x=1,y=3,class="intedit",name="LFshift",value=1,min=1,hint="Should be same/lower than # of frames"},
-	{x=2,y=3,class="intedit",name="RFshift",value=1,min=1,hint="Should be same/lower than # of frames"},
-	{x=0,y=4,class="label",label="X distance:"},
-	{x=1,y=4,class="floatedit",name="LFX"},
-	{x=2,y=4,class="floatedit",name="RFX"},
-	{x=0,y=5,class="label",label="Y distance:"},
-	{x=1,y=5,class="floatedit",name="LFY"},
-	{x=2,y=5,class="floatedit",name="RFY"},
-	{x=0,y=6,class="label",label="X acceleration:"},
-	{x=1,y=6,class="floatedit",name="LFacx",value=1,min=0},
-	{x=2,y=6,class="floatedit",name="RFacx",value=1,min=0},
-	{x=0,y=7,class="label",label="Y acceleration:"},
-	{x=1,y=7,class="floatedit",name="LFacy",value=1,min=0},
-	{x=2,y=7,class="floatedit",name="RFacy",value=1,min=0},
-	{x=0,y=8,class="label",label="fbf transform:"},
-	{x=1,y=8,class="edit",name="Lfbf",value="\\",hint="tags to transform FROM"},
-	{x=2,y=8,class="edit",name="Rfbf",value="\\",hint="tags to transform TO"},
-	{x=0,y=9,class="label",label="fbf alpha tf:"},
-	{x=1,y=9,class="edit",name="Lalf",hint="start alpha in hexadecimal"},
-	{x=2,y=9,class="edit",name="Ralf",hint="end alpha in hexadecimal"},
-	{x=0,y=10,class="label",label="\\t acceleration:"},
-	{x=1,y=10,class="floatedit",name="LFact",value=1,min=0},
-	{x=2,y=10,class="floatedit",name="RFact",value=1,min=0},
-	
-	{x=0,y=11,class="label",label="Flickering:"},
-	{x=1,y=11,class="checkbox",name="LFad",label="Fade in"},
-	{x=2,y=11,class="checkbox",name="RFad",label="Fade out"},
-	
-	{x=0,y=13,class="label",label="Fade mode:"},
-	{x=1,y=13,width=2,class="checkbox",name="Fade",label="Use existing \\fad for line length and start/end point",hint="experimental feature intended to make overlapping lines"},
-	{x=0,y=14,class="label",label="add transform:"},
-	{x=1,y=14,class="edit",name="LFtra",value="\\",hint="tags to transform FROM"},
-	{x=2,y=14,class="edit",name="RFtra",value="\\",hint="tags to transform TO"},
-	
-	{x=3,y=3,class="label",label="frames"},
-	{x=3,y=4,class="label",label="pixels"},
-	{x=3,y=5,class="label",label="pixels"},
-	}
-	if resfade then
-		for k,v in ipairs(fadegui) do
-			if v.name then v.value=rez[v.name] end
-		end
-	end
-	pres,rez=ADD(fadegui,{"OK","Cancel"},{ok='OK',close='Cancel'})
-	resfade=rez
-	if pres=="Cancel" then ak() end
-	if rez.Fade then rez.LFad=false rez.RFad=false end
-    end
-    
-    -- What is the Matrix --
+    -- What Is the Matrix --
     if res.stuff=="what is the Matrix?" then
         matrixgui={
-	  {x=0,y=0,class="label",label="Max. transformations per letter: "},
-	  {x=1,y=0,class="intedit",name="tpl",value=4,min=2},
-	  {x=0,y=1,class="label",label="Frames to stay the same: "},
-	  {x=1,y=1,class="intedit",name="fts",value=2,min=1},
-	  {x=0,y=2,class="label",label="Character set: "},
-	  {x=1,y=2,class="dropdown",name="charset",items={"UPPERCASE","lowercase","Both","More","Everything"},value="Both"},
-	  {x=0,y=3,class="label",label="Chance to keep letter (0-10):"},
-	  {x=1,y=3,class="intedit",name="mkeep",value=5,min=0,max=10},
-	  {x=0,y=4,width=2,class="checkbox",name="showall",label="Show all letters from the start",value=true,},
-	  {x=0,y=5,width=2,class="label",label="Monospace fonts are optimal. For others, use left alignment."},
+	{x=0,y=0,class="label",label="Max. transformations per letter: "},
+	{x=1,y=0,class="intedit",name="tpl",value=4,min=2},
+	{x=0,y=1,class="label",label="Frames to stay the same: "},
+	{x=1,y=1,class="intedit",name="fts",value=2,min=1},
+	{x=0,y=2,class="label",label="Character set: "},
+	{x=1,y=2,class="dropdown",name="charset",items={"UPPERCASE","lowercase","Both","More","Everything"},value="Both"},
+	{x=0,y=3,class="label",label="Chance to keep letter (0-10):"},
+	{x=1,y=3,class="intedit",name="mkeep",value=5,min=0,max=10},
+	{x=0,y=4,width=2,class="checkbox",name="showall",label="Show all letters from the start",value=true,},
+	{x=0,y=5,width=2,class="label",label="Monospace fonts are optimal. For others, use left alignment."},
 	}
 	if matrixres then
 	  for key,val in ipairs(matrixgui) do
@@ -1104,40 +1212,27 @@ function stuff(subs,sel,act)
 	rine.start_time=fr2ms(fstart)
 	rine.end_time=fr2ms(fendt)
 	subs[sel[1]]=rine
-	if frs==0 and fre==0 then t_error("Use Left/Right to input \nnumber of frames \nto shift by for start/end.",true) end
+	if frs==0 and fre==0 then t_error("Use Left/Right to input \nnumber of frames \nto shift by for start/end.",1) end
     end
-    
-    if res.stuff=="reverse fbf times" then
-	tbf={}
-	table.sort(sel,function(a,b) return subs[a].start_time<subs[b].start_time end)
-      for t=1,#sel do
-	i=sel[t]
-	start=subs[i].start_time
-	endt=subs[i].end_time
-	if start~=st1 then table.insert(tbf,{s=start,e=endt}) end
-	st1=start
-      end
-      for t=1,#sel do
-	i=sel[t]
-	line=subs[i]
-	start=line.start_time
-	for s=1,#tbf do
-		if tbf[s].s==start then
-		line.start_time=tbf[#tbf-s+1].s
-		line.end_time=tbf[#tbf-s+1].e
-		subs[i]=line
-		end
-	end
-      end
-    end
-    
+        
     if res.stuff=="duplicate and shift lines" then
 	FB=tonumber(res.rep1:match("^%d+")) or 0
 	FA=tonumber(res.rep2:match("^%d+")) or 0
-	if FA+FB==0 then t_error("Use the Left and Right fields to set how many times you want to duplicate the line.",true) end
+	if FA+FB==0 then t_error("Use the Left and Right fields to set how many times you want to duplicate the line.",1) end
 	FALL=FA+FB+1
 	FB1=FB+1
     end
+    
+	if res.stuff=="split text to actor/effect" then
+		sep1=esc(res.rep1)
+		sep2=esc(res.rep2)
+		target1=res.field
+		if target1~="actor" and target1~="effect" then t_error("Marker must be Actor or Effect.",1) end
+		if sep1=="" then t_error("No separator given. (Use Left field.)",1) end
+		if sep2~="" then
+			if target1=="actor" then target2="effect" else target2="actor" end
+		end
+	end
     
     KO1=subs[sel[1]].start_time
     
@@ -1147,14 +1242,14 @@ function stuff(subs,sel,act)
 
     -- LINES START HERE ----------------------------------------------------------------------
     for z=#sel,1,-1 do
-        i=sel[z]
+	i=sel[z]
+        progress("Processing line #"..i-line0.." ["..#sel+1-z.."/"..#sel.."]")
 	line=subs[i]
         text=line.text
+	orig=text
 	style=line.style
 	
-	if res.stuff=="reverse fbf times" then break end
-	
-	-- What is the Matrix --
+	-- What Is the Matrix --
 	if res.stuff=="what is the Matrix?" then
 	    start=line.start_time endt=line.end_time
 	    startf=ms2fr(start)
@@ -1234,11 +1329,13 @@ function stuff(subs,sel,act)
 	if res.stuff=="replacer" then
 	  lim=sub3:match("^%d+")
 	  if lim==nil then limit=1 else limit=tonumber(lim) end
-	  replicant1=sub1:gsub("\\","\\"):gsub("\\\\","\\")
-	  replicant2=sub2:gsub("\\","\\"):gsub("\\\\","\\")
+	  replicant1=sub1:gsub("\\","\\")
+	  replicant2=sub2:gsub("\\","\\")
 	  tk=text
 	  count=0
 	  if res.regex=="lua patterns" then
+	    replicant1=replicant1:gsub("\\\\","\\")
+	    replicant2=replicant2:gsub("\\\\","\\")
 	    repeat 
 	    text=text:gsub(replicant1,replicant2) count=count+1
 	    until count==limit
@@ -1256,7 +1353,7 @@ function stuff(subs,sel,act)
 	    repeat
 	    text=re.sub(text,replicant1,replicant2) count=count+1
 	    until count==limit
-	    if text~=tk then repl=repl+1 
+	    if text~=tk then repl=repl+1
 	      if res.log then 
 		for r1 in re.gfind(tk,replicant1) do
 		  aegisub.log("\nOrig: "..r1)
@@ -1265,7 +1362,6 @@ function stuff(subs,sel,act)
 		end
 	      end
 	    end
-	  
 	  end
 	end
 	
@@ -1310,10 +1406,16 @@ function stuff(subs,sel,act)
 		r2=r2:gsub("||","")
 		return r2 end) count=count+1
 	    until count==limit
-	    if text~=tk then repl=repl+1 end
+	    if text~=tk then
+		repl=repl+1
+		if res.log then logg("1. "..tk.."\n 2. "..text.."\n") end
+	    
+	    end
 	end
 	
-	if res.stuff=="make comments visible" then text=text:gsub("{([^\\}]-)}","%1") end
+	if res.stuff=="make comments visible" then text=text:gsub("\\N","/N"):gsub(" *{ *([^\\}]-)}"," %1"):gsub("/N","\\N")
+		if text~=orig then repl=repl+1 else nope=1 end
+	end
 	
 	if res.stuff=="switch commented/visible" then
 		text=text
@@ -1326,54 +1428,66 @@ function stuff(subs,sel,act)
 		:gsub("([^}])({\\[^}]-})$","%1}%2")
 		:gsub("{}","")
 		:gsub("_br_","\\N")
+		if text~=orig then repl=repl+1 else nope=1 end
 	end
 	
 	if res.stuff=="reverse text" then
-	    tags=text:match(STAG) or ""
-	    text=text:gsub("%b{}","")
-	    t2=""
-	    for L in re.gfind(text,".") do t2=L..t2 end
-	    text=tags..t2
+		tags=text:match(STAG) or ""
+		if not tags:match('\\p1') then
+			text=text:gsub(STAG,""):gsub("(\\[Nh])","{%1}")
+			inTags=inline_pos(text)
+			text=text:gsub("%b{}","")
+			local er
+			local count=0
+			repeat
+				t2=""
+				er=0
+				for L in re.gfind(text,".") do
+					t2=L..t2
+					-- errors
+					if L=="" or re.find(L,"..") then er=er+1 end
+				end
+				count=count+1
+			until er==0 or count==30
+			
+			t2=inline_ret(t2,inTags)
+			t2=t2:gsub("{(\\[Nh])}","%1")
+			
+			if count==30 and er>0 then
+				logg("Repeated re module failure on line #"..i-line0.." (30 times).\n Some characters keep disappearing or being added.\n Skipping this line. Please redo it separately.")
+			else
+				text=tags..t2
+			end
+		end
+		if text~=orig then repl=repl+1 else nope=1 end
 	end
 	
 	if res.stuff=="reverse words" then
-	    tags=text:match(STAG) or ""
-	    text=text:gsub("%b{}","")
-	    nt=""
-	    for l in text:gmatch("%S+") do nt=" "..l..nt end
-	    nt=nt:gsub("^ ","")
-	    text=tags..nt
-	end
-	
-	-- MOTION BLUR ------------------
-	if res.stuff=="motion blur" then
-	    if text:match("\\clip%(m") then
-	      if not text:match("\\pos") then text=getpos(subs,text) end
-	      if not rez.keepblur then text=addtag("\\blur"..mblur,text) end
-	      text=text:gsub("{%*?\\[^}]-}",function(tg) return duplikill(tg) end)
-	      c1,c2,c3,c4=text:match("\\clip%(m ([%-%d%.]+) ([%-%d%.]+) l ([%-%d%.]+) ([%-%d%.]+)")
-	      if c1==nil then t_error("There seems to be something wrong with your clip",true) end
-	      text=text:gsub("\\clip%b()","")
-	      text=addtag("\\alpha&H"..mbalfa.."&",text)
-	      cx=c3-c1
-	      cy=c4-c2
-	      cdist=math.sqrt(cx^2+cy^2)
-	      mbratio=cdist/mbdist*2
-	      mbx=round(cx/mbratio,2)
-	      mby=round(cy/mbratio,2)
-	      text2=text:gsub("\\pos%(([%-%d%.]+),([%-%d%.]+)",function(a,b) return "\\pos("..a-mbx..","..b-mby end)
-	      l2=line
-	      l2.text=text2
-	      subs.insert(i+1,l2)
-	      table.insert(sel,sel[#sel]+1)
-	      if rez.mb3 then
-		line.text=text
-		subs.insert(i+1,line)
-		table.insert(sel,sel[#sel]+1)
-	      end
-	      text=text:gsub("\\pos%(([%-%d%.]+),([%-%d%.]+)",function(a,b) return "\\pos("..a+mbx..","..b+mby end)
-	    else noclip=true
-	    end
+		tags=text:match(STAG) or ""
+		visible=text:gsub("%b{}",""):gsub("\\N","")
+		if visible:match(" ") then
+			text=text:gsub("%b{}",""):gsub(" *\\N *"," \\N")
+			breaks={}
+			local k=1
+			for w in text:gmatch("(%S+%s*)") do
+				if w:match('\\N') then table.insert(breaks,k) end
+				k=k+1
+			end
+			text=text:gsub("\\N","")
+			nt=""
+			for l in text:gmatch("%S+") do nt=" "..l..nt end
+			nt2=''
+			k=1
+			for w in nt:gmatch("(%S+%s*)") do
+				for i,n in ipairs(breaks) do
+					if n==k then w='\\N'..w end
+				end
+				nt2=nt2..w
+				k=k+1
+			end
+			text=tags..nt2
+		end
+		if text~=orig then repl=repl+1 else nope=1 end
 	end
 	
 	-- REVERSE TRANSFORMS ------------------
@@ -1397,6 +1511,7 @@ function stuff(subs,sel,act)
 	    end
 	    tags=tags:gsub("(i?clip%([^%)]+%))([^}]-\\t[^}]-)(i?clip%([^%)]+%))","%3%2%1") :gsub("\\fsize","\\fs")
 	    text=tags..text
+	    if text~=orig then repl=repl+1 else nope=1 end
 	end
 	
 	if res.stuff=="fake capitals" then
@@ -1406,6 +1521,7 @@ function stuff(subs,sel,act)
 		text=text:gsub("{\\fs}(%-?){\\fs"..sub1.."}","%1")
 		text=tags..text
 		text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
+		if text~=orig then repl=repl+1 else nope=1 end
 	end
 	
 	if res.stuff=="format dates" then
@@ -1433,6 +1549,7 @@ function stuff(subs,sel,act)
 	    end
 	    textn=text:gsub("%b{}","")
 	    if text2~=textn then datelog=text2.." -> "..textn.."\n"..datelog end
+	    if text~=orig then repl=repl+1 else nope=1 end
 	end
 	
 	if res.stuff=="transform \\k to \\t\\alpha" then
@@ -1453,16 +1570,18 @@ function stuff(subs,sel,act)
 		lastim=lastim+tim
 		text=text..tab[k]
 	    end
+	    if text~=orig then repl=repl+1 else nope=1 end
 	end
 	
 	-- SPLIT and EXPLODE -------------------------------------------
-	if res.stuff=="split into letters" or res.stuff=="explode" then
+	if res.stuff=="split into letters (alpha)" or res.stuff=="explode" then
 	    l2=line
 	    tags=text:match(STAG) or ""
 	    vis=text:gsub("%b{}","")
 	    af="{\\alpha&HFF&}"
 	    a0="{\\alpha&H00&}"
 	    letters={}
+	    ss=0
 	    ltrmatches=re.find(vis,".")
 	    for l=1,#ltrmatches do
 		table.insert(letters,ltrmatches[l].str)
@@ -1481,8 +1600,8 @@ function stuff(subs,sel,act)
 		txt2=tags..tx
 		if not txt2:match("\\pos") then txt2=getpos(subs,txt2) end
 		txt2=txt2:gsub("{\\alpha&HFF&}$","")
-		txt2=txt2:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-		txt2=txt2:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
+		txt2=tagmerge(txt2)
+		txt2=txt2:gsub(ATAG,function(tg) return duplikill(tg) end)
 		  -- Explode
 		  if res.stuff=="explode" then
 		    dur=line.end_time-line.start_time
@@ -1544,8 +1663,18 @@ function stuff(subs,sel,act)
 		    txt2=txt2:gsub("{\\[^}]-}$","")
 		  end
 		l2.text=txt2
-		if letters[l]~=" " then subs.insert(i+1,l2) table.insert(sel,sel[#sel]+z) end
-		
+		-- I hope I don't ever have to touch this shit again
+		if letters[l]~=" " then subs.insert(i+1,l2)
+			ss=ss+1
+			shift=orig_sel-z
+			if shift>0 then
+				for s=#sel,1,-1 do
+					if s>z+ss-1 then sel[s]=sel[s]+1 end
+				end
+			end
+			table.insert(sel,sel[z]+ss)
+			table.sort(sel)
+		end
 	    end
 	    line.comment=true
 	end
@@ -1570,6 +1699,7 @@ function stuff(subs,sel,act)
 	    end
 	    fullclip=fullclip:gsub(" $","")
 	    text=text:gsub("\\clip%((.-)%)","\\clip("..fullclip..")")
+	    if text~=orig then repl=repl+1 else nope=1 end
 	end
 	
 	-- DISSOLVE Individual Lines --------------------------------------------------------------------------------------
@@ -1647,9 +1777,19 @@ function stuff(subs,sel,act)
 	end
 	-- DISSOLVE END 2 ----------------------------------------------
 	
-	-- RANDOMIZED TRANSFORMS ---------------------------------------
-	if res.stuff=="randomized transforms" then
+	-- RANDOMISED TRANSFORMS ---------------------------------------
+	if res.stuff=="randomised transforms" then
 	  dur=line.end_time-line.start_time
+	  t_1=rez.t1 t_2=rez.t2
+	  if rez.t1<0 then t_1=dur+rez.t1 end
+	  if rez.t2<0 then t_2=dur+rez.t2 end
+	  if t_1~=0 or t_2~=0 then
+		t_times=round(t_1)..","..round(t_2)..","
+	  end
+	  if rez.movet then
+		m_times=t_times:gsub("(.*),",",%1"):gsub(",0$",","..dur):gsub("%-%d+","0")
+	  else m_times=""
+	  end
 	  if RTMax then MxF=dur end
 	  
 	    -- Fade/Duration
@@ -1657,6 +1797,7 @@ function stuff(subs,sel,act)
 	      FD=math.random(MnF,MxF)
 	      if RTD and not RTin then line.end_time=line.start_time+FD end
 	      if RTD and RTin then line.start_time=line.end_time-FD end
+	      if RTF then text=text:gsub("\\fad%b()","") end
 	      if RTF and not RTin then text="{\\fad(0,"..FD..")}"..text text=text:gsub(FD.."%)}{",FD..")") end
 	      if RTF and RTin then text="{\\fad("..FD..",0)}"..text text=text:gsub(",0%)}{",",0)") end
 	    end
@@ -1665,7 +1806,7 @@ function stuff(subs,sel,act)
 	    if RTM=="NT" then
 	      NT=math.random(MnT*10,MxT*10)/10
 	      if RTA then NTA=math.random(MnA*10,MxA*10)/10 axel=NTA.."," else axel="" end
-	      text=addtag("\\t("..axel.."\\"..RTT..NT..")",text)
+	      text=addtag("\\t("..t_times..axel.."\\"..RTT..NT..")",text)
 	    end
 	    
 	    -- Colour Transform
@@ -1691,7 +1832,7 @@ function stuff(subs,sel,act)
 		CTfull=CTfull..CT
 	      end
 	      if RTA then NTA=math.random(MnA*10,MxA*10)/10 axel=NTA.."," else axel="" end
-	      if CTfull~="" then text=addtag("\\t("..axel..CTfull..")",text) end
+	      if CTfull~="" then text=addtag("\\t("..t_times..axel..CTfull..")",text) end
 	    end
 	    
 	    -- Move X
@@ -1699,10 +1840,10 @@ function stuff(subs,sel,act)
 	      MMX=math.random(MnX,MxX)
 	      text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
 		function(a,b,c,d) if RTin then a=a+MMX else c=c+MMX end
-		return "\\move("..a..","..b..","..c..","..d end)
+		return "\\move("..a..","..b..","..c..","..d..m_times end)
 	      text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)",
 		function(a,b) a2=a if RTin then a=a+MMX else a2=a2+MMX end
-		return "\\move("..a..","..b..","..a2..","..b end)
+		return "\\move("..a..","..b..","..a2..","..b..m_times end)
 	    end
 	    
 	    -- Move Y
@@ -1710,16 +1851,35 @@ function stuff(subs,sel,act)
 	      MMY=math.random(MnY,MxY)
 	      text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
 		function(a,b,c,d) if RTin then b=b+MMY else d=d+MMY end
-		return "\\move("..a..","..b..","..c..","..d end)
+		return "\\move("..a..","..b..","..c..","..d..m_times end)
 	      text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)",
 		function(a,b) b2=b if RTin then b=b+MMY else b2=b2+MMY end
-		return "\\move("..a..","..b..","..a..","..b2 end)
+		return "\\move("..a..","..b..","..a..","..b2..m_times end)
 	    end
 	end
 	
 	if res.stuff=="time by frames" and z>1 then
 	    line.start_time=fr2ms(fstart+(z-1)*frs)
 	    line.end_time=fr2ms(fendt+(z-1)*fre)
+	end
+	
+	if res.stuff=="split text to actor/effect" then
+		local t1,txt=text:match("^(..-)"..sep1.."(.*)$")
+		local t2,txt2
+		if t1 and sub3=="0" then t1=t1..sep1 end
+		if sep2~="" then
+			txt=txt or text
+			t2,txt2=txt:match("^(..-)"..sep2.."(.*)$")
+			if t2 and sub3=="0" then t2=t2..sep2 end
+			if t2 and sub3=="2" then t2=sep2..t2 end
+			t2=t2 or ""
+			if target1=="actor" then line.effect=line.effect..t2 else line.actor=line.actor..t2 end
+		end
+		if txt and sub3=="2" then txt=sep1..txt end
+		if txt2 and sub3=="2" then txt2=sep2..txt2 end
+		if target1=="actor" then line.actor=line.actor..t1 or "" else line.effect=line.effect..t1 or "" end
+		text=txt2 or txt or text
+		if text~=orig then repl=repl+1 else nope=1 end
 	end
 	
 	-- DUPLICATE AND SHIFT LINES
@@ -1783,140 +1943,17 @@ function stuff(subs,sel,act)
 	    for K=1,#LINE do nt=nt..LINE[K] end
 	    text=nt
 	  end
-	end
-	
-	-- FADEWORKS --
-	if res.stuff=="fadeworks" then
-	  startf=ms2fr(line.start_time)
-	  endf=ms2fr(line.end_time)
-	  styleref=stylechk(subs,line.style)
-	  if not text:match("\\pos%(") then text=getpos(subs,text) end
-	  pX,pY=text:match("\\pos%(([^,]+),([^,]+)%)")
-	  if rez.Fade then
-		f1,f2=text:match("\\fad%(([^,]+),([^,]+)%)")
-		if not f1 then t_error("Abort: No \\fad tag on line "..z,1) end
-		rez.LFram=ms2fr(f1)
-		rez.RFram=ms2fr(f2)
-	  else
-		if rez.LFad then f1=fr2ms(rez.LFram) else f1=nil end
-		if rez.RFad then f2=fr2ms(rez.RFram) else f2=nil end
-	  end
-	  -- replicating OUT
-	  if rez.RF>0 then
-	    for r=rez.RF,1,-1 do
-		l2=line
-		posx=numgrad(pX,pX+rez.RFX,rez.RF+1,r+1,rez.RFacx)
-		posy=numgrad(pY,pY+rez.RFY,rez.RF+1,r+1,rez.RFacy)
-		text2=text:gsub("\\pos%b()","\\pos("..posx..","..posy..")")
-		nontra=text2:gsub("\\t%b()","")
-		if rez.Fade and rez.RFtra:len()>1 then
-			text2=text2:gsub("^({\\[^}]-)}","%1\\t("..rez.RFtra..")}")
-		end
-		if rez.RFad then text2=text2:gsub("\\fad%b()",""):gsub("^{","{\\fad(0,"..f2..")") end
-		if rez.Rfbf:len()>1 then
-			for tag in rez.Rfbf:gmatch("\\[^\\]+") do
-			  tg,val=tag:match("(\\%d?%a+)([%d&%-][^\\}]*)")
-			  endval=nontra:match(tg.."([%d&%-][^\\}]*)") or styleval(tg)
-			  if tg=="\\c" or tg:match"%d" then
-			    nval=acgrad(val,endval,rez.RF+1,rez.RF-r+1,1/rez.RFact)
-			  else
-			    nval=numgrad(val,endval,rez.RF+1,rez.RF-r+1,1/rez.RFact)
-			  end
-			  text2=addtag3(tg..nval,text2)
-			end
-		end
-		if rez.Ralf:len()>1 then
-			ralf=rez.Ralf:match("%x%x")
-			if ralf then
-				endval=nontra:match("alpha&H(%x%x)&") or "00"
-				nval=acgrad(ralf,endval,rez.RF+1,rez.RF-r+1,1/rez.RFact)
-				text2=addtag3("\\alpha"..nval,text2)
-			end
-		end
-		
-		startf2=endf+rez.RFshift*(r-1)
-		endf2=startf2+rez.RFram
-		if rez.Fade then
-			text2=text2:gsub("\\fad%(([^,]+),([^,]+)%)","\\fad(0,%2)")
-			startf2=startf2-rez.RFram+rez.RFshift endf2=endf2-rez.RFram+rez.RFshift
-		end
-		l2.start_time=fr2ms(startf2)
-		l2.end_time=fr2ms(endf2)
-		l2.text=text2
-		subs.insert(i+1,l2)
-		nsel=shiftsel2(nsel,i,1)
-	    end
-	  end
-	  line.start_time=fr2ms(startf)
-	  line.end_time=fr2ms(endf)
-	  line.text=text
-	  subs.insert(i+1,line)
-	  -- replicating IN
-	  if rez.LF>0 then
-	    for r=1,rez.LF do
-		l2=line
-		posx=numgrad(pX,pX+rez.LFX,rez.LF+1,r+1,rez.LFacx)
-		posy=numgrad(pY,pY+rez.LFY,rez.LF+1,r+1,rez.LFacy)
-		text2=text:gsub("\\pos%b()","\\pos("..posx..","..posy..")")
-		nontra=text2:gsub("\\t%b()","")
-		if rez.Fade and rez.LFtra:len()>1 then
-			Ltra="{}"
-			for tag in rez.LFtra:gmatch("\\[^\\]+") do
-			  tg=tag:match("(\\%d?%a+)[%d&%-]")
-			  if nontra:match(tg.."[%d&%-]") then
-			    Ltra=Ltra:gsub("{","{"..nontra:match(tg.."[%d&%-][^\\}]*"))
-			  else Ltra=fill_in(Ltra,tg) end
-			  text2=addtag3(tag,text2)
-			end
-			  Ltra=Ltra:gsub("[{}]","")
-			text2=text2:gsub("^({\\[^}]-)}","%1\\t("..Ltra..")}")
-		end
-		if rez.LFad then text2=text2:gsub("\\fad%b()",""):gsub("^{","{\\fad("..f1..",0)") end
-		if rez.Lfbf:len()>1 then
-			for tag in rez.Lfbf:gmatch("\\[^\\]+") do
-			  tg,val=tag:match("(\\%d?%a+)([%d&%-][^\\}]*)")
-			  endval=nontra:match(tg.."([%d&%-][^\\}]*)") or styleval(tg)
-			  endval=tostring(endval)
-			  if tg=="\\c" or tg:match"%d" then
-			    nval=acgrad(val,endval,rez.LF+1,rez.LF-r+1,1/rez.LFact)
-			  else
-			    nval=numgrad(val,endval,rez.LF+1,rez.LF-r+1,1/rez.LFact)
-			  end
-			  text2=addtag3(tg..nval,text2)
-			end
-		end
-		if rez.Lalf:len()>1 then
-			lalf=rez.Lalf:match("%x%x")
-			if lalf then
-				endval=nontra:match("alpha&H(%x%x)&") or "00"
-				nval=acgrad(lalf,endval,rez.LF+1,rez.LF-r+1,1/rez.LFact)
-				text2=addtag3("\\alpha"..nval,text2)
-			end
-		end
-		
-		endf2=startf-rez.LFshift*(r-1)
-		startf2=endf2-rez.LFram
-		if rez.Fade then
-			text2=text2:gsub("\\fad%(([^,]+),([^,]+)%)","\\fad(%1,0)")
-			startf2=startf2+rez.LFram-rez.LFshift endf2=endf2+rez.LFram-rez.LFshift
-		end
-		l2.start_time=fr2ms(startf2)
-		l2.end_time=fr2ms(endf2)
-		l2.text=text2
-		subs.insert(i+1,l2)
-		nsel=shiftsel2(nsel,i,1)
-	    end
-	  end
+	  if text~=orig then repl=repl+1 else nope=1 end
 	end
 	
 	line.text=text
 	subs[i]=line
-	if res.stuff=="fadeworks" then subs.delete(i) end
-	if res.stuff=="split into letters" or res.stuff=="explode" and not rez.excom then subs.delete(i) table.remove(sel,#sel) end
 	if res.stuff=="what is the Matrix?" then subs.delete(i) end
     end
+    progress("Operation complete.")
     
-    if res.stuff:match"replacer" then aegisub.progress.task("All stuff has been finished.")
+    -- END of LINES
+    if res.stuff:match"replacer" or res.stuff=="lua calc" then progress("All stuff has been finished.")
 	if repl==1 then rp=" modified line" else rp=" modified lines" end
 	press,reslt=ADD({},{repl..rp},{cancel=repl..rp})
     end
@@ -1929,195 +1966,108 @@ function stuff(subs,sel,act)
 	  table.insert(sel,sel[SEL]+x)
 	end
     end
-    if res.stuff=="fadeworks" then sel=nsel end
+    if res.stuff=="split into letters (alpha)" or res.stuff=="explode" and not rez.excom then
+	for i=#sel,1,-1 do
+		line=subs[sel[i]]
+		if line.comment then subs.delete(sel[i]) table.remove(sel,i) 
+			for s=i,#sel do sel[s]=sel[s]-1 end
+		end
+	end
+    end
     if res.stuff=="format dates" and rez.log then aegisub.log(datelog) end
     if noclip then t_error("Some lines weren't processed - missing clip.") noclip=nil end
+    if res.log then
+	if repl>1 or nope then t_error(repl.." out of "..#sel.." lines have been modified.") end
+    end
+    
     savetab=nil
     return sel
 end
 
 
 function fill_in(tags,tag)
-    if tag=="\\bord" then tags=tags:gsub("^{","{"..tag..styleref.outline)
-    elseif tag=="\\shad" then tags=tags:gsub("^{","{"..tag..styleref.shadow)
-    elseif tag=="\\fscx" then tags=tags:gsub("^{","{"..tag..styleref.scale_x)
-    elseif tag=="\\fscy" then tags=tags:gsub("^{","{"..tag..styleref.scale_y)
-    elseif tag=="\\fs" or tag=="\\fsize" then tags=tags:gsub("^{","{"..tag..styleref.fontsize)
-    elseif tag=="\\fsp" then tags=tags:gsub("^{","{"..tag..styleref.spacing)
-    elseif tag=="\\alpha" then tags=tags:gsub("^{","{"..tag.."&H00&")
-    elseif tag=="\\1a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color1:match("H%x%x").."&")
-    elseif tag=="\\2a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color2:match("H%x%x").."&")
-    elseif tag=="\\3a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color3:match("H%x%x").."&")
-    elseif tag=="\\4a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color4:match("H%x%x").."&")
-    elseif tag=="\\c" then tags=tags:gsub("^{","{"..tag..styleref.color1:gsub("H%x%x","H"))
-    elseif tag=="\\2c" then tags=tags:gsub("^{","{"..tag..styleref.color2:gsub("H%x%x","H"))
-    elseif tag=="\\3c" then tags=tags:gsub("^{","{"..tag..styleref.color3:gsub("H%x%x","H"))
-    elseif tag=="\\4c" then tags=tags:gsub("^{","{"..tag..styleref.color4:gsub("H%x%x","H"))
-    else tags=tags:gsub("^{","{"..tag.."0")
-    end
-    return tags
+	if tag=="\\bord" then tags=tags:gsub("^{","{"..tag..styleref.outline)
+	elseif tag=="\\shad" then tags=tags:gsub("^{","{"..tag..styleref.shadow)
+	elseif tag=="\\fscx" then tags=tags:gsub("^{","{"..tag..styleref.scale_x)
+	elseif tag=="\\fscy" then tags=tags:gsub("^{","{"..tag..styleref.scale_y)
+	elseif tag=="\\fs" or tag=="\\fsize" then tags=tags:gsub("^{","{"..tag..styleref.fontsize)
+	elseif tag=="\\fsp" then tags=tags:gsub("^{","{"..tag..styleref.spacing)
+	elseif tag=="\\alpha" then tags=tags:gsub("^{","{"..tag.."&H00&")
+	elseif tag=="\\1a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color1:match("H%x%x").."&")
+	elseif tag=="\\2a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color2:match("H%x%x").."&")
+	elseif tag=="\\3a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color3:match("H%x%x").."&")
+	elseif tag=="\\4a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color4:match("H%x%x").."&")
+	elseif tag=="\\c" then tags=tags:gsub("^{","{"..tag..styleref.color1:gsub("H%x%x","H"))
+	elseif tag=="\\2c" then tags=tags:gsub("^{","{"..tag..styleref.color2:gsub("H%x%x","H"))
+	elseif tag=="\\3c" then tags=tags:gsub("^{","{"..tag..styleref.color3:gsub("H%x%x","H"))
+	elseif tag=="\\4c" then tags=tags:gsub("^{","{"..tag..styleref.color4:gsub("H%x%x","H"))
+	else tags=tags:gsub("^{","{"..tag.."0")
+	end
+	return tags
 end
 
 function styleval(tag)
-    if tag=="\\bord" then s_val=styleref.outline
-    elseif tag=="\\shad" then s_val=styleref.shadow
-    elseif tag=="\\fscx" then s_val=styleref.scale_x
-    elseif tag=="\\fscy" then s_val=styleref.scale_y
-    elseif tag=="\\fs" then s_val=styleref.fontsize
-    elseif tag=="\\fsp" then s_val=styleref.spacing
-    elseif tag=="\\alpha" then s_val="&H00&"
-    elseif tag=="\\1a" then s_val="&"..styleref.color1:match("H%x%x").."&"
-    elseif tag=="\\2a" then s_val="&"..styleref.color2:match("H%x%x").."&"
-    elseif tag=="\\3a" then s_val="&"..styleref.color3:match("H%x%x").."&"
-    elseif tag=="\\4a" then s_val="&"..styleref.color4:match("H%x%x").."&"
-    elseif tag=="\\c" then s_val=styleref.color1:gsub("H%x%x","H")
-    elseif tag=="\\2c" then s_val=styleref.color2:gsub("H%x%x","H")
-    elseif tag=="\\3c" then s_val=styleref.color3:gsub("H%x%x","H")
-    elseif tag=="\\4c" then s_val=styleref.color4:gsub("H%x%x","H")
-    else s_val="0"
-    end
-    return s_val
+	if tag=="\\bord" then s_val=styleref.outline
+	elseif tag=="\\shad" then s_val=styleref.shadow
+	elseif tag=="\\fscx" then s_val=styleref.scale_x
+	elseif tag=="\\fscy" then s_val=styleref.scale_y
+	elseif tag=="\\fs" then s_val=styleref.fontsize
+	elseif tag=="\\fsp" then s_val=styleref.spacing
+	elseif tag=="\\alpha" then s_val="&H00&"
+	elseif tag=="\\1a" then s_val="&"..styleref.color1:match("H%x%x").."&"
+	elseif tag=="\\2a" then s_val="&"..styleref.color2:match("H%x%x").."&"
+	elseif tag=="\\3a" then s_val="&"..styleref.color3:match("H%x%x").."&"
+	elseif tag=="\\4a" then s_val="&"..styleref.color4:match("H%x%x").."&"
+	elseif tag=="\\c" then s_val=styleref.color1:gsub("H%x%x","H")
+	elseif tag=="\\2c" then s_val=styleref.color2:gsub("H%x%x","H")
+	elseif tag=="\\3c" then s_val=styleref.color3:gsub("H%x%x","H")
+	elseif tag=="\\4c" then s_val=styleref.color4:gsub("H%x%x","H")
+	else s_val="0"
+	end
+	return s_val
 end
 
 function shiftsel2(sel,i,mode)
 	if i<sel[#sel] then
-	for s=1,#sel do if sel[s]>i then sel[s]=sel[s]+1 end end
+		for s=1,#sel do
+			if sel[s]>i then sel[s]=sel[s]+1 end
+		end
 	end
 	if mode==1 then table.insert(sel,i+1) end
 	table.sort(sel)
 return sel
 end
 
-
-
---	Jump to Next	--
-function nextsel(subs,sel)
-lm=nil
-i=sel[1]
-marks={}
-for x,i in ipairs(sel) do
-  rine=subs[i]
-  txt=rine.text:gsub("%b{}","")
-  if res.field=="text" then mark=txt end
-  if res.field=="style" then mark=rine.style end
-  if res.field=="actor" then mark=rine.actor end
-  if res.field=="effect" then mark=rine.effect end
-  if res.field=="layer" then mark=rine.layer end
-  if mark=="" then mark="_empty_" end
-  if mark~=lm then table.insert(marks,mark) end
-  lm=mark
-end
-count=1
-repeat
-  line=subs[i+count]
-  txt2=line.text:gsub("%b{}","")
-
-  if res.field=="text" then hit=txt2 end
-  if res.field=="style" then hit=line.style end
-  if res.field=="actor" then hit=line.actor end
-  if res.field=="effect" then hit=line.effect end
-  if res.field=="layer" then hit=line.layer end
-  if hit=="" then hit="_empty_" end
-  ch=0
-  for m=1,#marks do if marks[m]==hit then ch=1 end end
-  if ch==0 or i+count==#subs then sel={i+count} end
-  count=count+1
-until ch==0 or hit==nil or i+count>#subs
-return sel
-end
-
-
-
---	Alpha Shift	--
-function alfashift(subs,sel)
-    count=1
-    for x, i in ipairs(sel) do
-    line=subs[i]
-    text=line.text
-    aa=re.find(text,"\\{\\\\alpha\\&HFF\\&\\}[\\w[:punct:]]")
-    if not aa then t_error("Line "..x.." does not \nappear to have \n\\alpha&&HFF&&",true) end
-    if count>1 then
-	switch=1
-	repeat 
-	text=re.sub(text,"(\\{\\\\alpha\\&HFF\\&\\})([\\w[:punct:]])","\\2\\1")
-	text=text
-	:gsub("({\\alpha&HFF&}) "," %1")
-	:gsub("({\\alpha&HFF&})\\N","\\N%1")
-	:gsub("({\\alpha&HFF&})$","")
-	switch=switch+1
-	until switch>=count
-    end
-    count=count+1
-    line.text=text
-    subs[i]=line
-    end
-end
-
-
-
---	Merge tags	--
-function merge(subs,sel)
-    tk={}
-    tg={}
-    stg=""
-    for x, i in ipairs(sel) do
-        line=subs[i]
-        text=line.text
-	text=text:gsub("{\\\\k0}","")
-	repeat text,c=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}") until c==0
-	vis=text:gsub("%b{}","")
-	if x==1 then rt=vis
-	ltrmatches=re.find(rt,".")
-	  for l=1,#ltrmatches do
-	    table.insert(tk,ltrmatches[l].str)
-	  end
-	end
-	if vis~=rt then t_error("Error. Inconsistent text.",true) end
-	stags=text:match("^{(\\[^}]-)}") or ""
-	stg=stg..stags stg=duplikill(stg)
-	text=text:gsub("^{\\[^}]-}","") :gsub("{[^\\}]-}","")
-	count=0
-	for seq in text:gmatch("[^{]-{%*?\\[^}]-}") do
-	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
-	    pos=re.find(chars,".")
-	    if pos==nil then ps=0+count else ps=#pos+count end
-	    tgl={p=ps,t=tak,a=as}
-	    table.insert(tg,tgl)
-	    count=ps
-	end
-    end
-    newline=""
-    for i=1,#tk do
-	newline=newline..tk[i]
-	newt=""
-	for n, t in ipairs(tg) do
-	    if t.p==i then newt=newt..t.a..t.t newt=duplikill(newt) newt=newt:gsub("%*$","") end
-	end
-	if newt~="" then newline=newline.."{"..newt.."}" end
-    end
-    newtext="{"..stg.."}"..newline
-    newtext=extrakill(newtext,2)
-    line=subs[sel[1]]
-    line.text=newtext
-    subs[sel[1]]=line
-    for i=#sel,2,-1 do subs.delete(sel[i]) end
-    sel={sel[1]}
-    return sel
+function retextmod(orig,text)
+	local v1,v2,c,t2
+	v1=nobrea(orig)
+	c=0
+	repeat
+		t2=textmod(orig,text)
+		v2=nobrea(text)
+		c=c+1
+	until v1==v2 or c==666
+	if v1~=v2 then logg("Something went wrong with the text...") logg(v1) logg(v2) end
+	return t2
 end
 
 function textmod(orig,text)
+if text=="" then return orig end
     tk={}
     tg={}
 	text=text:gsub("{\\\\k0}","")
-	repeat text=text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-	    until not text:match("{(\\[^}]-)}{(\\[^}]-)}")
-	vis=text:gsub("%b{}","")
+	text=tagmerge(text)
+	vis=nobra(text)
 	ltrmatches=re.find(vis,".")
+	if not ltrmatches then logg("text: "..text..'\nvisible: '..vis)
+		logg("If you're seeing this, something really weird is happening with the re module.\nTry this again or rescan Autoload.")
+	end
 	  for l=1,#ltrmatches do
 	    table.insert(tk,ltrmatches[l].str)
 	  end
 	stags=text:match(STAG) or ""
 	text=text:gsub(STAG,"") :gsub("{[^\\}]-}","")
+	orig=orig:gsub("{([^\\}]+)}",function(c) return wrap("\\\\"..c.."|||") end)
 	count=0
 	for seq in orig:gmatch("[^{]-{%*?\\[^}]-}") do
 	    chars,as,tak=seq:match("([^{]-){(%*?)(\\[^}]-)}")
@@ -2140,16 +2090,15 @@ function textmod(orig,text)
     for i=1,#tk do
 	newline=newline..tk[i]
 	newt=""
-	for n, t in ipairs(tg) do
+	for n,t in ipairs(tg) do
 	    if t.p==i then newt=newt..t.a..t.t end
 	end
 	if newt~="" then newline=newline.."{"..as..newt.."}" end
     end
-    newtext=stags..newline
+    newtext=stags..newline:gsub("(|||)(\\\\)","%1}{%2"):gsub("({[^}]-)\\\\([^\\}]-)|||","{%2}%1")
     text=newtext:gsub("{}","")
     return text
 end
-
 
 --	Honorificslaughterhouse		--
 function honorifix(subs,sel)
@@ -2191,8 +2140,18 @@ end
 
 --	framerate	--
 function framerate(subs)
-    f1=res.fps1
-    f2=res.fps2
+    f1=res.rep1
+    f2=res.rep2
+    if not tonumber(f1) or not tonumber(f2) then
+	local GUI={
+	{x=0,y=0,width=2,class="label",label="No framerates supplied.\nTry these. (From -> to)"},
+	{x=0,y=1,class="dropdown",name="f1",items={23.976,24,25,29.970,30},value=23.976},
+	{x=1,y=1,class="dropdown",name="f2",items={23.976,24,25,29.970,30},value=25},
+	}
+	fP,fres=ADD(GUI,{"OK","Cancel"},{ok='OK',close='Cancel'})
+	if fP=="Cancel" then ak() end
+	f1=fres.f1 f2=fres.f2
+    end
     for i=1, #subs do
         if subs[i].class=="dialogue" then
             local line=subs[i]
@@ -2203,7 +2162,36 @@ function framerate(subs)
     end
 end
 
---	reanimatools 	--
+--	reanimatools 	-----
+function esc(str) str=str:gsub("[%%%(%)%[%]%.%-%+%*%?%^%$]","%%%1") return str end
+function wrap(str) return "{"..str.."}" end
+function nobra(t) return t:gsub("%b{}","") end
+function nobrea(t) return t:gsub("%b{}",""):gsub("\\[Nh]","") end
+function nobrea1(t) return t:gsub("%b{}",""):gsub(" *\\[Nh] *"," ") end
+function tagmerge(t) repeat t,r=t:gsub("({\\[^}]-)}{(\\[^}]-})","%1%2") until r==0 return t end
+function addtag(tag,text) text=text:gsub("^({\\[^}]-)}","%1"..tag.."}") return text end
+function round(n,dec) dec=dec or 0 n=math.floor(n*10^dec+0.5)/10^dec return n end
+function logg(m) m=tf(m) or "nil" aegisub.log("\n "..m) end
+function logg2(m)
+	local lt=type(m)
+	aegisub.log("\n >> "..lt)
+	if lt=='table' then
+		aegisub.log(" (#"..#m..")")
+		if not m[1] then
+			for k,v in pairs(m) do
+				if type(v)=='table' then vvv='[table]' elseif type(v)=='number' then vvv=v..' (n)' else vvv=v end
+				aegisub.log("\n	"..k..': '..vvv)
+			end
+		elseif type(m[1])=='table' then aegisub.log("\n nested table")
+		else aegisub.log("\n {"..table.concat(m,', ').."}") end
+	else
+		m=tf(m) or "nil" aegisub.log("\n "..m)
+	end
+end
+function loggtab(m) m=tf(m) or "nil" aegisub.log("\n {"..table.concat(m,', ').."}") end
+function progress(msg) if aegisub.progress.is_cancelled() then ak() end aegisub.progress.title(msg) end
+function t_error(message,cancel) ADD({{class="label",label=message}},{"OK"},{close='OK'}) if cancel then ak() end end
+
 function addtag3(tg,txt)
 	no_tf=txt:gsub("\\t%b()","")
 	tgt=tg:match("(\\%d?%a+)[%d%-&]") val="[%d%-&]"
@@ -2242,13 +2230,9 @@ function string2time(timecode)
 	return timecode
 end
 
-function esc(str) str=str:gsub("[%%%(%)%[%]%.%-%+%*%?%^%$]","%%%1") return str end
-
-tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
-tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
-tags3={"pos","move","org","fad"}
-
 function duplikill(tagz)
+	local tags1={"blur","be","bord","shad","xbord","xshad","ybord","yshad","fs","fsp","fscx","fscy","frz","frx","fry","fax","fay"}
+	local tags2={"c","2c","3c","4c","1a","2a","3a","4a","alpha"}
 	tagz=tagz:gsub("\\t%b()",function(t) return t:gsub("\\","|") end)
 	for i=1,#tags1 do
 	    tag=tags1[i]
@@ -2262,6 +2246,8 @@ function duplikill(tagz)
 	    repeat tagz,c=tagz:gsub("\\"..tag.."&H%x+&([^}]-)(\\"..tag.."&H%x+&)","%2%1") until c==0
 	end
 	repeat tagz,c=tagz:gsub("\\fn[^\\}]+([^}]-)(\\fn[^\\}]+)","%2%1") until c==0
+	repeat tagz,c=tagz:gsub("(\\[ibusq])%d(.-)(%1%d)","%2%3") until c==0
+	repeat tagz,c=tagz:gsub("(\\an)%d(.-)(%1%d)","%3%2") until c==0
 	tagz=tagz:gsub("(|i?clip%(%A-%))(.-)(\\i?clip%(%A-%))","%2%3")
 	:gsub("(\\i?clip%b())(.-)(\\i?clip%b())",function(a,b,c)
 	    if a:match("m") and c:match("m") or not a:match("m") and not c:match("m") then return b..c else return a..b..c end end)
@@ -2270,6 +2256,7 @@ function duplikill(tagz)
 end
 
 function extrakill(text,o)
+	local tags3={"pos","move","org","fad"}
 	for i=1,#tags3 do
 	    tag=tags3[i]
 	    if o==2 then
@@ -2285,9 +2272,16 @@ end
 
 function cleantr(tags)
 	trnsfrm=""
-	for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
-	tags=tags:gsub("\\t%b()","")
-	:gsub("^({[^}]*)}","%1"..trnsfrm.."}")
+	zerotf=""
+	for t in tags:gmatch("\\t%b()") do
+		if t:match("\\t%(\\") then
+			zerotf=zerotf..t:match("\\t%((.*)%)$")
+		else
+			trnsfrm=trnsfrm..t
+		end
+	end
+	zerotf="\\t("..zerotf..")"
+	tags=tags:gsub("\\t%b()",""):gsub("^({[^}]*)}","%1"..zerotf..trnsfrm.."}"):gsub("\\t%(%)","")
 	return tags
 end
 
@@ -2323,7 +2317,7 @@ end
 
 function tohex(num)
 n1=math.floor(num/16)
-n2=num%16
+n2=math.floor(num%16)
 num=tohex1(n1)..tohex1(n2)
 return num
 end
@@ -2350,34 +2344,40 @@ function stylechk(subs,sn)
   return sr
 end
 
-function getpos(subs,text)
+function getpos(subs,text)	-- modified version
+    st=nil defst=nil
     for g=1,#subs do
-	if subs[g].class=="info" then
-	    local k=subs[g].key
-	    local v=subs[g].value
-	    if k=="PlayResX" then resx=v end
-	    if k=="PlayResY" then resy=v end
+        if subs[g].class=="info" then
+		local k=subs[g].key
+		local v=subs[g].value
+		if k=="PlayResX" then resx=v end
+		if k=="PlayResY" then resy=v end
         end
 	if resx==nil then resx=0 end
 	if resy==nil then resy=0 end
         if subs[g].class=="style" then
-            local st=subs[g]
-	    if st.name==line.style then
-		acleft=st.margin_l	if line.margin_l>0 then acleft=line.margin_l end
-		acright=st.margin_r	if line.margin_r>0 then acright=line.margin_r end
-		acvert=st.margin_t	if line.margin_t>0 then acvert=line.margin_t end
-		acalign=st.align	if text:match("\\an%d") then acalign=text:match("\\an(%d)") end
-		aligntop="789" alignbot="123" aligncent="456"
-		alignleft="147" alignright="369" alignmid="258"
-		if alignleft:match(acalign) then horz=acleft h_al="left"
-		elseif alignright:match(acalign) then horz=resx-acright h_al="right"
-		elseif alignmid:match(acalign) then horz=resx/2 h_al="mid" end
-		if aligntop:match(acalign) then vert=acvert v_al="top"
-		elseif alignbot:match(acalign) then vert=resy-acvert v_al="bottom"
-		elseif aligncent:match(acalign) then vert=resy/2 v_al="mid" end
-	    break
-	    end
+		local s=subs[g]
+		if s.name==line.style then st=s break end
+		if s.name=="Default" then defst=s end
         end
+	if subs[g].class=="dialogue" then
+		if defst then st=defst else t_error("Style '"..line.style.."' not found.\nStyle 'Default' not found.",1) end
+		break
+	end
+    end
+    if st then
+	acleft=st.margin_l	if line.margin_l>0 then acleft=line.margin_l end
+	acright=st.margin_r	if line.margin_r>0 then acright=line.margin_r end
+	acvert=st.margin_t	if line.margin_t>0 then acvert=line.margin_t end
+	acalign=st.align	if text:match("\\an%d") then acalign=text:match("\\an(%d)") end
+	aligntop="789" alignbot="123" aligncent="456"
+	alignleft="147" alignright="369" alignmid="258"
+	if alignleft:match(acalign) then horz=acleft h_al="left"
+	elseif alignright:match(acalign) then horz=resx-acright h_al="right"
+	elseif alignmid:match(acalign) then horz=resx/2 h_al="mid" end
+	if aligntop:match(acalign) then vert=acvert v_al="top"
+	elseif alignbot:match(acalign) then vert=resy-acvert v_al="bottom"
+	elseif aligncent:match(acalign) then vert=resy/2 v_al="mid" end
     end
     if horz>0 and vert>0 then 
 	if not text:match("^{\\") then text="{\\rel}"..text end
@@ -2386,14 +2386,55 @@ function getpos(subs,text)
     return text
 end
 
-function progress(msg)
-  if aegisub.progress.is_cancelled() then ak() end
-  aegisub.progress.title(msg)
+-- save inline tags
+function inline_pos(t)
+	inTags={}
+	tl=t:len()
+	if tl==0 then return {} end
+	p=0
+	t1=''
+	repeat
+		seg=t:match("^(%b{})") -- try to match tags/comments
+		if seg then
+			table.insert(inTags,{n=p,t=seg})
+		else
+			seg=t:match("^([^{]+)") -- or match text
+			if not seg then t_error("Error: There appears to be a problem with the brackets here...\n"..t1..t,1) end
+			SL=re.find(seg,".")
+			p=p+#SL -- position of next '{' [or end]
+		end
+		t1=t1..seg
+		t=t:gsub("^"..esc(seg),"")
+		tl=t:len()
+	until tl==0
+	return inTags
 end
 
-function addtag(tag,text) text=text:gsub("^({\\[^}]-)}","%1"..tag.."}") return text end
-function round(n,dec) dec=dec or 0 n=math.floor(n*10^dec+0.5)/10^dec return n end
-function logg(m) m=tf(m) or "nil" aegisub.log("\n "..m) end
+-- rebuild inline tags
+function inline_ret(t,tab)
+	tl=t:len()
+	nt=''
+	kill='_Z#W_' -- this is supposed to never match
+	for k,v in ipairs(tab) do
+		N=tonumber(v.n)
+		if N==0 then nt=nt..v.t
+		else
+			m='.'
+			-- match how many chars at the start
+			m=m:rep(N)
+			RS=re.find(t,m)
+			if not RS then logg(">>> Fatal error. Try rescanning Autoload dir. <<<") end
+			seg=RS[1].str
+			seg=re.sub(seg,'^'..kill,'')
+			nt=nt..seg..v.t
+			kill=m -- how many matched in the last round
+		end
+	end
+	-- the rest
+	seg=re.sub(t,'^'..kill,'')
+	nt=nt..seg
+	return nt
+end
 
 --	Config Stuff	--
 function saveconfig()
@@ -2473,6 +2514,7 @@ file=io.open(unimpkonfig)
 	      if lastimp and val.name=="log" then val.value=lastlog end
 	      if lastimp and val.name=="zeros" then val.value=lastzeros end
 	      if lastimp and val.name=="field" then val.value=lastfield end
+	      if lastimp and val.name=="modzero" then val.value=lastmod0 end
 	    end
 	  end
 	end
@@ -2568,6 +2610,19 @@ function info(subs,sel,act)
 			if st.bold then actbold="Bold" else actbold="Regular" end
 		    end 
 		end
+		ast=l.start_time
+		aet=l.end_time
+		if ms2fr(1) then
+			afr=" ("..ms2fr(aet)-ms2fr(ast).." frames)"
+			fps=round(aegisub.frame_from_ms(99999999)/(99999999/1000)*1000)/1000
+			frate="\nFramerate: "..fps.." fps"
+		else afr='' frate="\nFramerate: unknown"
+		end
+		actime=(l.end_time-ast)/1000 ..'s'..afr
+		actime=actime:gsub("(%(1 frame)s","%1")
+		if stfr~=nil then  else fps=0 end
+
+
 		aligntop="789" alignbot="123" aligncent="456"
 		alignleft="147" alignright="369" alignmid="258"
 		if aligntop:match(acalign) then vert=acvert
@@ -2577,12 +2632,14 @@ function info(subs,sel,act)
 		elseif alignright:match(acalign) then horz=resx-acright
 		elseif alignmid:match(acalign) then horz=resx/2 end
 		
-		aktif="Active line: "..ano.."\nStyle used: "..l.style.."\nFont used: "..acfont.."\nWeight: "..actbold.."\nFont size: "..acsize.."\nBorder: "..acbord.."\nShadow: "..acshad.."\nDuration: "..dura.."s\nCharacters: "..char.."\nCharacters per second: "..cps.."\nDefault position: "..horz..","..vert.."\n\nVisible text:\n"..visible
+		aktif="Active line: #"..ano.."\nStyle used: "..l.style.."\nFont used: "..acfont.."\nWeight: "..actbold.."\nFont size: "..acsize.."\nBorder: "..acbord.."\nShadow: "..acshad.."\nDuration: "..actime.."\nCharacters: "..char.."\nCharacters per second: "..cps.."\nDefault position: "..horz..","..vert.."\n\nVisible text:\n"..visible
 	    end
         end
 
     end
-    infodump=nfo.."Styles used: "..#styletab.."\nDialogue lines: "..dc..", Selected: "..#sel.."\nCombined length of selected lines: "..seldur.."s\nSelection duration: "..(E-S)/1000 .."s\n\n"..aktif
+    if ms2fr(1) then selfr=" ("..ms2fr(E)-ms2fr(S).." frames)" else selfr='' end
+    selfr=selfr:gsub("(%(1 frame)s","%1")
+    infodump=nfo.."Styles used: "..#styletab.."\nDialogue lines: "..dc..", Selected: "..#sel.."\nCombined length of selected lines: "..seldur.."s\nSelection duration: "..(E-S)/1000 .."s"..selfr..frate.."\n\n"..aktif
 end
 
 help_i=[[
@@ -2728,7 +2785,24 @@ and only go up to 2 and then start again, so: 1 1 1 2 2 2 1 1 1 2 2 2
 
 "add to marker" uses the Left and Right fields to add stuff to the current content of actor/effect/text.
 If you number lines for the OP, you can set "OP-" in Left and "-eng" in Right to get "OP-01-eng".
-(Mod does nothing when adding markers.)]]
+(Mod does nothing when adding markers.)
+
+"zero fill" finds numbers and fills them with zeroes based on the dropdown menu. Works only for actor, effect, and text.
+For text, it skips tags and comments, as well as negative numbers and decimals.
+
+"in text" works with "number lines".
+The Marker field is ignored, and numbering is applied to numbers found in text.
+In every line, wherever a number is detected in text, it's replaced by the number for that line.
+Mostly useful for non-subbing purposes. Make 20 lines with: <img src="name01.jpg"><br>
+Run the function and the number of the jpg will change for each line. (Copypaste back to html.)
+
+"random" generates random numbers.
+Use Left and Right fields to set the limits, e.g. from 1 to 100 or from -20 to 20.
+Marker is where the numbers will appear. You can use effect, actor, comment (it'll be {random: #}),
+or margins, though they can't have negatives and decimals, so the functionality is limited.
+Rounding is set by the dropdown menu on the right: 1 is whole numbers, 01 can be 0.1, 001 -> 0.001, etc.
+These numbers can then be used by other functions to modify various things (Relocator's Randomise).
+Mod 1 is one result per line, Mod 2 will give the same result for each 2 lines, etc. This can be used to keep the same results for all layers on the same frame.]]
 
 help_d=[[
 - DO STUFF -
@@ -2753,33 +2827,16 @@ If you want to leave one of the captures as is, use .. to separate it from other
 > Example: pos%(([%d%.]+),([%d%.]+) -> pos(a+50,b-100
 This will shift position right by 50 and up by 100.
 
-- Alpha Shift -
-Shifts {\alpha&HFF&} by one letter for each line. Text thus appears letter by letter.
-It's an alternative to the script that spawns \ko, but this works with shadow too.
-Duplicate a line with {\alpha&HFF&} however many times you need and run the script on the whole selection.
-
-- Motion Blur - 
-Creates motion blur by duplicating the line and using some alpha.
-By default you keep the existing blur for each line, but you can set a value to override all lines.
-'Distance' is the distance between the \pos coordinates of the resulting 2 lines.
-If you use 3 lines, the 3rd one will be in the original position, i.e. in the middle.
-The direction is determined from the first 2 points of a vectorial clip (like with clip2frz/clip2fax).
-
-- Merge Tags -
-Select lines with the same text but different tags,
-and they will be merged into one line with tags from all of them.
-For example:
-{\bord2}AB{\shad3}C
-A{\fs55}BC
--> {\bord2}A{\fs55}B{\shad3}C
-If 2 lines have the same tag in the same place, the value of the later line overrides the earlier one.
-
-- Jump to Next -
-This is meant to get you to the "next sign" in the subtitle grid.
-When mocha-tracking 1000+ lines, it can be a pain in the ass to find where one sign ends and another begins.
-Select lines that belong to the current "sign", ie. different layers/masks/texts.
-The script will search for the first line in the grid that doesn't match any of the selected ones,
-based on the "Marker".
+- Split Text to Actor/Effect
+This allows you to split off patterns of text and move them to Effect/Actor.
+If text is "Abc/def/xyz", you put / in Left, and you set Marker to Effect, you'll get "Abc" in Effect and "def/xyz" in Text.
+If you set Mod to "0", the separator will be included, so with } in Left, you can move start tags to Effect.
+If you set Mod to "2", the separator will be left in Text.
+If there's another separator in Right, there's a second split and the chunk goes to Actor. ("Abc" in Effect, "def" in Actor, "xyz" in Text.)
+If you select Actor in Marker, it will be the primary target and Effect the secondary.
+Obviously no other fields than Eff/Act are really useful for this, so they don't work.
+If you repeat the function, new chunks will be added to Actor/Effect, so you can for example separate by \ and move stuff tag by tag.
+(Text thus split can be put back together with MultiCopy's Attach function.)
 
 - Reverse Text -
 Reverses text (character by character). Nukes comments and inline tags.
@@ -2790,9 +2847,6 @@ Reverses text (word by word). Nukes comments and inline tags.
 - Reverse Transforms -
 \blur1\t(\blur3) becomes \blur3\t(\blur1). Only for initial tags. Only one transform for each tag.
 
-- Reverse FBF Times -
-Reverses timing for fbf lines so that last frame becomes the first and vice versa.
-
 - Fake Capitals -
 Creates fake capitals by increasing font size for first letters.
 With all caps, for first letters of words. With mixed text, for uppercase letters.
@@ -2802,7 +2856,7 @@ Looks like this: {\fs60}F{\fs}AKE {\fs60}C{\fs}APITALS
 - Format Dates -
 Formats dates to one of 4 options. Has its own GUI. Only converts from the other 3 options in the GUI.
 
-- Split into Letters -
+- Split into Letters (alpha) -
 Makes a line for each letter, making the other letters invisible with alpha.
 This lets you do things with each letter separately.
 
@@ -2812,7 +2866,7 @@ This splits the line into letters and makes each of them move in a different dir
 - Dissolve Text -
 Various modes of dissolving text. Has its own Help.
 
-- Randomized Transforms -
+- Randomised Transforms -
 Various modes of randomly transforming text. Has its own Help.
 
 - Clone Clip -
@@ -2825,10 +2879,6 @@ Use Left/Right fields to set how many frames should be duplicated before/after t
 \move and \t --> lines before get \pos with start coordinates and state before transforms;
 lines after get end coordinates and state after transforms.
 Lines are automatically numbered in Effect field. You can disable that by typing 0 in Mod field.
-
-- FadeWorks -
-Creates complex fade effects. Check the manual on the website, which includes .ass examples.
-http://unanimated.xtreemhost.com/ts/scripts-manuals.htm#import
 
 - Time by Frames -
 Left = frames to shift start time by, each line (2 = each new line starts 2 frames later than previous)
@@ -2853,127 +2903,37 @@ Comments out what's visible and makes visible what's commented. Allows switching
 - Honorificslaughterhouse -
 Comments out honorifics.]]
 
-
-
---	Significance GUI		-------------------------------------------------------------------------------------
-function significance(subs,sel,act)
-ADD=aegisub.dialog.display
-ADP=aegisub.decode_path
-ak=aegisub.cancel
-ATAG="{%*?\\[^}]-}"
-STAG="^{\\[^}]-}"
-COMM="{[^\\}]-}"
-aegisub.progress.title("Loading...")
-aegisub.progress.task("This should take less than a second, so you won't really read this.")
-if datata==nil then data="" else data=datata end
-if sub1==nil then sub1="" end
-if sub2==nil then sub2="" end
-if sub3==nil then sub3=1 end
-msg={"If it breaks, it's your fault.","This should be doing something...","Breaking your computer. Please wait.","Unspecified operations in progress.","This may or may not work.","Trying to avoid bugs...","Zero one one zero one zero...","10110101001101101010110101101100001","I'm surprised anyone's using this","If you're seeing this for too long, it's a bad sign.","This might hurt a little.","Please wait... I'm pretending to work.","Close all your programs and run."}
-rm=math.random(1,#msg)	msge=msg[rm]
-if lastimp then dropstuff=lastuff lok=lastlog zerozz=lastzeros fld=lastfield
-else dropstuff="replacer" lok=false zerozz="01" fld="effect" end
-g_impex={"import OP","import ED","import sign","import signs","export sign","import chptrs","update lyrics"}
-g_stuff={"save/load","replacer","lua calc","alpha shift","motion blur","merge tags","jump to next","reverse text","reverse words","reverse transforms","reverse fbf times","fake capitals","format dates","split into letters","explode","dissolve text","randomized transforms","what is the Matrix?","clone clip","duplicate and shift lines","fadeworks","time by frames","convert framerate","transform \\k to \\t\\alpha","fix kara tags for fbf lines","make style from act. line","make comments visible","switch commented/visible","honorificslaughterhouse"}
-unconfig={
-	-- Sub --
-	{x=0,y=16,width=3,height=1,class="label",label="Left                                                    "},
-	{x=3,y=16,width=3,height=1,class="label",label="Right                                                   "},
-	{x=6,y=16,width=3,height=1,class="label",label="Mod                                                     "},
-	{x=0,y=17,width=3,height=1,class="edit",name="rep1",value=sub1},
-	{x=3,y=17,width=3,height=1,class="edit",name="rep2",value=sub2},
-	{x=6,y=17,width=3,height=1,class="edit",name="rep3",value=sub3,hint="Numbers: start/repeat[limit]\nreplacer/lua calc: limit"},
-	
-	-- import
-	{x=9,y=3,width=2,height=1,class="label",label="Import/Export"},
-	{x=9,y=4,width=2,height=1,class="dropdown",name="mega",items=g_impex,value="import signs"},
-	{x=11,y=4,width=1,height=1,class="checkbox",name="keep",label="keep line",value=true,},
-	{x=9,y=5,width=3,height=1,class="checkbox",name="restr",label="style restriction (lyrics)",value=false,},
-	{x=9,y=6,width=3,height=1,class="edit",name="rest"},
-	
-	-- chapters
-	{x=9,y=7,width=1,height=1,class="label",label="Chapters"},
-	{x=10,y=7,width=2,height=1,class="checkbox",name="intro",label="autogenerate \"Intro\"",value=true,},
-	{x=9,y=8,width=2,height=1,class="label",label="chapter marker:"},
-	{x=11,y=8,width=1,height=1,class="dropdown",name="marker",items={"actor","effect","comment"},value="actor"},
-	{x=9,y=9,width=2,height=1,class="label",label="chapter name:"},
-	{x=11,y=9,width=1,height=1,class="dropdown",name="nam",items={"comment","effect"},value="comment"},
-	{x=9,y=10,width=2,height=1,class="label",label="filename from:"},
-	{x=11,y=10,width=1,height=1,class="dropdown",name="sav",items={"script","video"},value="script"},
-	{x=9,y=11,width=2,height=1,class="checkbox",name="chmark",label="chapter mark:",value=false,hint="just sets the marker. no xml."},
-	{x=11,y=11,width=1,height=1,class="dropdown",name="chap",items={"Intro","OP","Part A","Part B","Part C","ED","Preview"},value="OP"},
-	{x=9,y=12,width=3,height=1,class="edit",name="lang"},
-	
-	-- numbers
-	{x=9,y=13,width=2,height=1,class="label",label="Numbers"},
-	{x=9,y=14,width=2,height=1,class="dropdown",name="modzero",items={"number lines","add to marker"},value="number lines"},
-	{x=11,y=14,width=1,height=1,class="dropdown",name="zeros",items={"1","01","001","0001"},value=zerozz},
-	{x=9,y=15,width=2,height=1,class="dropdown",name="field",items={"actor","effect","layer","style","text"},value=fld},
-	
-	-- stuff
-	{x=0,y=15,width=1,height=1,class="label",label="Stuff  "},
-	{x=1,y=15,width=2,height=1,class="dropdown",name="stuff",items=g_stuff,value=dropstuff}, --dropstuff
-	{x=3,y=15,width=1,height=1,class="dropdown",name="regex",items={"lua patterns","perl regexp"},value="perl regexp"},
-	{x=4,y=15,width=1,height=1,class="checkbox",name="log",label="log",value=lok,hint="replacers"},
-	{x=8,y=15,width=1,height=1,class="label",label="Marker:"},
-	
-	-- textboxes
-	{x=0,y=0,width=9,height=15,class="textbox",name="dat",value=data},
-	{x=9,y=1,width=3,height=1,class="label",label=" Selected Lines: "..#sel},
-	
-	-- help
-	{x=9,y=0,width=3,height=1,class="dropdown",name="help",
-	items={"--- Help menu ---","Import/Export","Update Lyrics","Do Stuff","Numbers","Chapters"},value="--- Help menu ---"},
-	{x=9,y=17,width=3,height=1,class="label",label="   Significance version: "..script_version},
-}
-	loadconfig()
-	repeat
-	  if pressed=="Help" then aegisub.progress.title("Loading Help") aegisub.progress.task("RTFM")
-	    if res.help=="Import/Export" then help=help_i end
-	    if res.help=="Update Lyrics" then help=help_u end
-	    if res.help=="Do Stuff" then help=help_d end
-	    if res.help=="Numbers" then help=help_n end
-	    if res.help=="Chapters" then help=help_c end
-	    if res.help=="--- Help menu ---" then help="Choose something from the menu, dumbass -->" end
-		for key,val in ipairs(unconfig) do
-		    if val.name=="dat" then val.value=help end
-		end
-	  end
-	  if pressed=="Info" then aegisub.progress.title("Gathering Info") aegisub.progress.task("...") info(subs,sel,act)
-		for key,val in ipairs(unconfig) do
-		    if val.name=="dat" then val.value=infodump end
-		end
-	  end
-	pressed,res=ADD(unconfig,
-	{"Import/Export","Do Stuff","Numbers","Chapters","Repeat Last","Info","Help","Save Config","Cancel"},{ok='Import/Export',cancel='Cancel'})
-	until pressed~="Help" and pressed~="Info"
-	if pressed=="Cancel" then    ak() end
-	lastimp=true lastuff=res.stuff lastlog=res.log lastzeros=res.zeros lastfield=res.field
-	if pressed=="Repeat Last" then if not lastres then ak() end pressed=lastP res=lastres end
-	ms2fr=aegisub.frame_from_ms
-	fr2ms=aegisub.ms_from_frame
-	progress("Doing Stuff") aegisub.progress.task(msge)
-	    sub1=res.rep1
-	    sub2=res.rep2
-	    sub3=res.rep3
-	    zer=res.zeros
-	if pressed=="Import/Export" then    important(subs,sel,act) end
-	if pressed=="Numbers" then    numbers(subs,sel) end
-	if pressed=="Chapters" then    chopters(subs,sel) end
-	if pressed=="Do Stuff" then
-	    if res.stuff=="jump to next" then sel=nextsel(subs,sel)
-	    elseif res.stuff=="convert framerate" then framerate(subs)
-	    elseif res.stuff=="alpha shift" then alfashift(subs,sel)
-	    elseif res.stuff=="merge tags" then sel=merge(subs,sel)
-	    elseif res.stuff=="honorificslaughterhouse" then honorifix(subs,sel)
-	    else sel=stuff(subs,sel,act) end
-	end
-	lastP=pressed
-	lastres=res
-	if pressed=="Save Config" then saveconfig() end
-    
-    aegisub.set_undo_point(script_name)
-    return sel
+function switch(subs,sel)
+res={}
+res.dat=''
+res.stuff='switch commented/visible'
+stuff(subs,sel)
 end
 
-if haveDepCtrl then depRec:registerMacro(significance) else aegisub.register_macro(script_name,script_description,significance) end
+function rvrstxt(subs,sel)
+res={}
+res.dat=''
+res.stuff='reverse text'
+stuff(subs,sel)
+end
+
+function rvrswrds(subs,sel)
+res={}
+res.dat=''
+res.stuff='reverse words'
+stuff(subs,sel)
+end
+
+if haveDepCtrl then
+  depRec:registerMacros({
+	{script_name,script_description,significance},
+	{": Non-GUI macros :/Significance: Switch commented && visible text","Switch commented & visible text",switch},
+	{": Non-GUI macros :/Significance: Reverse text","Reverse text",rvrstxt},
+	{": Non-GUI macros :/Significance: Reverse words","Reverse words",rvrswrds},
+  },false)
+else
+	aegisub.register_macro(script_name,script_description,significance)
+	aegisub.register_macro(": Non-GUI macros :/Significance: Switch commented && visible text","Switch commented & visible text",switch)
+	aegisub.register_macro(": Non-GUI macros :/Significance: Reverse text","Reverse text",rvrstxt)
+	aegisub.register_macro(": Non-GUI macros :/Significance: Reverse words","Reverse words",rvrswrds)
+end
