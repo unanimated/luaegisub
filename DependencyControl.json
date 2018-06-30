@@ -1,7 +1,7 @@
 ﻿{
   "dependencyControlFeedFormatVersion": "0.2.0",
   "name": "unanimated's Automation Scripts",
-  "description": "Tertiary repository for most of unanimated's automation scripts.",
+  "description": "Secondary repository for most of unanimated's automation scripts.",
   "baseUrl": "https://github.com/unanimated/luaegisub",
   "fileBaseUrl": "https://raw.githubusercontent.com/unanimated/luaegisub/@{channel}/@{namespace}",
   "url": "@{baseUrl}",
@@ -12,23 +12,23 @@
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
       "name": "Cycles",
-      "description": "Cycles blur, border, shadow, alpha, alignment",
+      "description": "Cycles blur, border, shadow, alpha, etc.",
       "channels": {
         "master": {
-          "version": "1.8.0",
-          "released": "2015-05-27",
+          "version": "2.0.0",
+          "released": "2018-06-10",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "d81ef30e03f8ba978eb827a23fce557fbcb4cbdf"
+              "sha1": "a6609d07ecc9738c85f1c91e58d3e0592763e425"
             }
           ]
         }
       },
       "changelog": {
-        "1.8.0": ["Added DependencyControl"]
+        "2.0.0": ["Check the Updates page"]
       }
     },
     
@@ -63,20 +63,20 @@
       "description": "insert/shift linebreaks",
       "channels": {
         "master": {
-          "version": "2.3.0",
-          "released": "2015-06-01",
+          "version": "2.4.0",
+          "released": "2018-06-24",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "635559ddb40b55c6a5148a287389e236ef7c99c6"
+              "sha1": "90ef136b00345ee52c448054e52a0b1baeb149d5"
             }
           ]
         }
       },
       "changelog": {
-        "2.3.0": ["improved options for manual breaking; added DependencyControl"]
+        "2.4.0": ["Check the Updates page"]
       }
     },
     
@@ -137,22 +137,20 @@
       "description": "Removes selected stuff from script",
       "channels": {
         "master": {
-          "version": "3.4.2",
-          "released": "2016-09-13",
+          "version": "5.0.0",
+          "released": "2018-06-10",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "B727DEB89A79D8FF56DCA50BFA3A8ED2E0648E8E"
+              "sha1": "43addccdac9a6a7bc85ded9450075edb767df5f3"
             }
           ]
         }
       },
       "changelog": {
-        "3.4.2": ["'delete unused styles' checks for styles used only with \\r"],
-        "3.4.1": ["fixed nuking \\fs"],
-        "3.4.0": ["remove \\s \\u; remove selected tags only from transforms; remove all tag blocks except first & last; fixed/improved some things; added DespondencyControl"]
+        "5.0.0": ["Check the Updates page"]
       }
     },
     
@@ -187,20 +185,20 @@
       "description": "A multi-headed typesetting tool",
       "channels": {
         "master": {
-          "version": "5.0.0",
-          "released": "2015-06-01",
+          "version": "6.0.0",
+          "released": "2018-06-10",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "3dbcf57046a9bdad5cd45acb94fcf902b7a5eb46"
+              "sha1": "90ccc82658f0eada18d6c22db142952e39c030f8"
             }
           ]
         }
       },
       "changelog": {
-        "5.0.0": ["gradient: vertical, horizontal, by character, by line, centered gradient; special - convert \\s to selected tags; insert tags at text position; reuse tags; added DespondencyControl"]
+        "6.0.0": ["Check the Updates page"]
       }
     },
     
@@ -211,20 +209,20 @@
       "description": "Advanced metamorphosis of multidimensional coordinates",
       "channels": {
         "master": {
-          "version": "4.0.0",
-          "released": "2015-06-01",
+          "version": "4.4.0",
+          "released": "2018-06-30",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "1ea5d3fd4525f4d872733809b8aac9adc9fa4fcd"
+              "sha1": "7e282184fe1bc62e69e0866390437ff5f63f6099"
             }
           ]
         }
       },
       "changelog": {
-        "4.0.0": ["replicate; fbf retrack; killtranstimes; clip2move; clip to reposition; line2fbf: \\t accel+move clip; fscx/y support in clip2fax; more clip options in Teleporter; added DespondencyControl"]
+        "4.4.0": ["Check the Updates page"]
       }
     },
     
@@ -235,44 +233,44 @@
       "description": "recalculates things",
       "channels": {
         "master": {
-          "version": "3.0.0",
-          "released": "2015-05-25",
+          "version": "4.0.0",
+          "released": "2018-05-13",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "5e8e8566c3dbc73dceeb5b5d9640733c28e86362"
+              "sha1": "5aefde4e05f278f37d6956fc36ab03da4ffb59ab"
             }
           ]
         }
       },
       "changelog": {
-        "3.0.0": ["Added DespondencyControl"]
+        "4.0.0": ["Check the Updates page"]
       }
     },
     
     "ua.Colorize": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
-      "name": "Colorize",
+      "name": "Colourise",
       "description": "Does things with colours",
       "channels": {
         "master": {
-          "version": "4.5.0",
-          "released": "2015-06-01",
+          "version": "5.0.0",
+          "released": "2018-06-10",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "d430478010cd1c8dc956bdbfaf28f87d69d335c8"
+              "sha1": "80d932bfc186761914cc56a1ecae685cfde2af26"
             }
           ]
         }
       },
       "changelog": {
-        "4.5.0": ["added accel to gradient; reverse gradient; improved set colours across; improved tune colours; fixed a ton of things including handling of transforms; added DespondencyControl"]
+        "4.5.0": ["Check the Updates page"]
       }
     },
     
@@ -283,22 +281,20 @@
       "description": "Selectricks and Sortricks",
       "channels": {
         "master": {
-          "version": "3.2.0",
-          "released": "2016-27-01",
+          "version": "3.3.3",
+          "released": "2018-05-13",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "FBFE78F4EE333D586AEB47D0308C947E96140A3D"
+              "sha1": "495c74418bb3e547708c25f3ebe0d11f8bea9ef1"
             }
           ]
         }
       },
       "changelog": {
-        "3.2.0": ["search filter; only 1st result; beginning of line; (Torque) fixed Aegisub crash"],
-        "3.0.0": ["save config; select by time; other, minor additions"],
-        "2.8.2": ["Added DespondencyControl"]
+        "3.3.3": ["Check the Updates page"]
       }
     },
     
@@ -333,20 +329,20 @@
       "description": "Multi-Line Editor",
       "channels": {
         "master": {
-          "version": "1.7.0",
-          "released": "2015-06-01",
+          "version": "1.8.0",
+          "released": "2018-05-13",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "4c38403c14ec6e7b8d8694b210983bebe74262a6"
+              "sha1": "04bba9479f96bff8a19160183a0ab548d42031c3"
             }
           ]
         }
       },
       "changelog": {
-        "1.7.0": ["merged with Re-Split; much-improved capitalisation; added DespondencyControl"]
+        "1.8.0": ["Check the Updates page"]
       }
     },
     
@@ -357,44 +353,44 @@
       "description": "Copy and paste just about anything from/to multiple lines",
       "channels": {
         "master": {
-          "version": "3.4.0",
-          "released": "2015-06-01",
+          "version": "3.5.0",
+          "released": "2018-05-13",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "a7676a233230615372ec01ace01c40e5a97fbc58"
+              "sha1": "ee90f0e7b21ffaab410474ba6c6c23f4f171b026"
             }
           ]
         }
       },
       "changelog": {
-        "3.4.0": ["pasteover+; added DespondencyControl"]
+        "3.5.0": ["Check the Updates page"]
       }
     },
     
-    "ua.ApplyFade": {
+    "ua.FadeWorkS": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
-      "name": "Apply Fade",
-      "description": "Applies fade to selected lines",
+      "name": "FadeWorkS",
+      "description": "Works with Fades",
       "channels": {
         "master": {
-          "version": "3.9.2",
-          "released": "2015-05-25",
+          "version": "4.0.0",
+          "released": "2018-06-10",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "9739a2cb54263d75a431f58dccc2cf4e6c605dc8"
+              "sha1": "7d92a54d3047f2d0d65eab0b23343fcb0b4f472f"
             }
           ]
         }
       },
       "changelog": {
-        "3.9.2": ["Added DespondencyControl"]
+        "4.0.0": ["Check the Updates page"]
       }
     },
     
@@ -405,20 +401,20 @@
       "description": "Import stuff, number stuff, chapter stuff, replace stuff, do a significant amount of other stuff to stuff.",
       "channels": {
         "master": {
-          "version": "3.0.0",
-          "released": "2015-06-01",
+          "version": "3.2.0",
+          "released": "2018-06-10",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "f86dfc16b774b5142ec085e34bfe920c71118671"
+              "sha1": "b2d7557f9ba1c6880a37124b86404cfd47833bee"
             }
           ]
         }
       },
       "changelog": {
-        "3.0.0": ["make style from active line; FadeWorks; added DespondencyControl"]
+        "3.2.0": ["Check the Updates page"]
       }
     },
     
@@ -429,21 +425,20 @@
       "description": "Time Machine.",
       "channels": {
         "master": {
-          "version": "2.9.0",
-          "released": "2015-09-05",
+          "version": "3.0.0",
+          "released": "2018-05-13",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "447ec28df58f10fc3bf428e6b214ce8fb529a6a5"
+              "sha1": "7fa9a1a7278c0774b0e3a2895de09a4d23bff370"
             }
           ]
         }
       },
       "changelog": {
-        "2.9.0": ["shift linking point of adjacent lines (new macros added; automation menu changed)"],
-        "2.8.0": ["Added DespondencyControl"]
+        "3.0.0": ["Check the Updates page"]
       }
     },
     
@@ -478,20 +473,20 @@
       "description": "Masquerade",
       "channels": {
         "master": {
-          "version": "2.5.0",
-          "released": "2015-06-01",
+          "version": "3.0.0",
+          "released": "2018-06-10",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "b71869d41e4a845b9b9586643880a002d512f120"
+              "sha1": "49b217a9706196222719ff25117907d8c9c08f07"
             }
           ]
         }
       },
       "changelog": {
-        "2.5.0": ["adjusted 'shift tags' to support non-standard characters; added DespondencyControl"]
+        "3.0.0": ["Check the Updates page"]
       }
     },
     
@@ -502,20 +497,20 @@
       "description": "Copy and Fax Things. Occasionally perform a necroscopy.",
       "channels": {
         "master": {
-          "version": "3.0.0",
-          "released": "2015-06-01",
+          "version": "4.1.0",
+          "released": "2018-06-24",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "19854cf60d4d1d708047b49a1c420dd8ee3d8bf7"
+              "sha1": "b25234859bc304d941b4c0a70a38345f11a55a21"
             }
           ]
         }
       },
       "changelog": {
-        "3.0.0": ["split by \\N: rewritten, positioning by tags and spaces + fixed some things; fax: fscx/fscy support; other things fixed/improved; added DespondencyControl"]
+        "4.1.0": ["Check the Updates page"]
       }
     },
     
