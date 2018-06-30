@@ -1,15 +1,15 @@
--- Manual: http://unanimated.xtreemhost.com/ts/scripts-manuals.htm#selectrix
+-- Manual: http://unanimated.hostfree.pw/ts/scripts-manuals.htm#selectrix
 
 script_name="Selectricks"
 script_description="Selectricks and Sortricks"
 script_author="unanimated"
-script_version="3.2"
+script_version="3.33"
 script_namespace="ua.Selectrix"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-  script_version="3.2.0"
-  depRec=DependencyControl{feed="https://raw.githubusercontent.com/TypesettingTools/unanimated-Aegisub-Scripts/master/DependencyControl.json"}
+  script_version="3.3.3"
+  depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
 re=require'aegisub.re'
@@ -22,10 +22,9 @@ ulower=unicode.to_lower_case
 function konfig(subs,sel)
 	edtr=0
 	main_mode=
-	{"--------text--------","style","actor","effect","text","visible text (no tags)","------numbers------","layer","duration","word count","character count","char. per second","blur","left margin","right margin","vertical margin","start time","end time","------sorting only------","sort by time","reverse","width of text","dialogue first","dialogue last","ts/dialogue/oped","dialogue/oped/ts","{TS} to the top","masks to the bottom","by comments"}
-	presetses={"Default style - All","nonDefault - All","OP in style","ED in style","layer 0","lines w/ comments 1","same text (contin.)","same text (all lines)","skiddiks, your their?","its/id/ill/were/wont","any/more+some/time","range of lines","----from selection----","no-blur signs","commented lines","lines w/ comments 2","move sel. up","move sel. down","------sorting------","move sel. to the top","move sel. to bottom","sel: first to bottom","sel: last to top"}
-	GUI=
-	{
+	{"--------text--------","0 text","1 style","2 actor","3 effect","text|actor|effect","text|act|eff|style","visible text (no tags)","------numbers------","layer","duration","word count","character count","char. per second","blur","left margin","right margin","vertical margin","start time","end time","------sorting only------","sort by time","reverse","width of text","dialogue first","dialogue last","ts/dialogue/oped","dialogue/oped/ts","{TS} to the top","masks to the bottom","by comments"}
+	presetses={"Default style - All","nonDefault - All","OP in style","ED in style","layer 0","lines w/ comments 1","same text (contin.)","same text (all lines)","same style","same actor","same effect","skiddiks, your their?","its/id/ill/were/wont","any/more+some/time","range of lines","----from selection----","no-blur signs","commented lines","lines w/ comments 2","move sel. up","move sel. down","------sorting------","move sel. to the top","move sel. to bottom","sel: first to bottom","sel: last to top"}
+	GUI={
 	{x=0,y=0,class="label",label="Select/sort:"},
 	{x=0,y=1,class="label",label="Used area:"},
 	{x=0,y=2,class="label",label="Numbers:"},
@@ -39,17 +38,18 @@ function konfig(subs,sel)
 	{x=1,y=5,width=4,class="dropdown",name="srch",value="",items={""}},
 	{x=1,y=6,width=4,class="edit",name="filt",value=filter or ""},
 	
-	{x=1,y=0,class="dropdown",name="mode",value="text",items=main_mode},
-	{x=1,y=1,class="dropdown",name="selection",value="current selection",items={"current selection","all lines"}},
-	{x=1,y=2,class="dropdown",name="equal",value="==",items={"==",">=","<="},hint="options for layer/duration"},
+	{x=1,y=0,class="dropdown",name="mode",value="0 text",items=main_mode},
+	{x=1,y=1,class="dropdown",name="selection",value="current selection",items={"current selection","all lines","add to selection"}},
+	{x=1,y=2,class="dropdown",name="equal",value="==",items={"==",">=","<=","<= [non-zero]"},hint="options for layer/duration"},
 	{x=1,y=3,class="dropdown",name="nomatch",value="matches",items={"matches","doesn't match"}},
-	{x=3,y=0,class="checkbox",name="case",label="Case Sensitive"},
-	{x=3,y=1,class="checkbox",name="exact",label="Exact match"},
+	{x=3,y=0,width=2,class="checkbox",name="case",label="Case sensitive"},
+	{x=3,y=1,width=2,class="checkbox",name="exact",label="Exact match"},
 	{x=2,y=1,class="checkbox",name="regexp",label="Regexp   "},
-	{x=2,y=2,width=2,class="checkbox",name="nocom",label="Exclude commented lines",value=true},
-	{x=2,y=3,class="label",label="Sorting:"},
-	{x=3,y=3,class="checkbox",name="rev",label="Reversed"},
+	{x=2,y=2,width=3,class="checkbox",name="nocom",label="Exclude commented lines",value=true},
+	{x=2,y=3,class="checkbox",name="sep",label="Sep. words",hint="match all words separately\n(disabled by regexp / exact match)"},
+	{x=3,y=3,width=2,class="checkbox",name="rev",label="Reversed sorting"},
 	
+	{x=0,y=7,class="label",label="Limitations:"},
 	{x=1,y=7,class="checkbox",name="onlyfirst",label="Only 1st result",hint="not applicable with 'doesn't match'\n(switches to 'matches')"},
 	{x=2,y=7,width=2,class="checkbox",name="beg",label="Beginning of line",hint="pattern must be at the beginning of line\n(relevant only without regexp)"},
 	
@@ -81,27 +81,29 @@ function konfig(subs,sel)
 	
 	if res.yr then your_retarded=true end
 	beg=res.beg	filter=res.filt
+	-- res.mode=res.mode:gsub('^%d ','')
 	if filter~="" then F1=true else F1=false end
 
 	if P=="Preset" then 
 		if res.pres=="no-blur signs" or res.pres=="commented lines" or res.pres=="lines w/ comments 2" 
 		    or res.pres:match"move sel." or res.pres:match"sel:"
-		then sel=presel(subs, sel)
-		else edtr=1 preset(subs, sel) end
+		then sel=presel(subs,sel)
+		else edtr=1 preset(subs,sel) end
 	end
 	if P=="Sort" and res.selection=="current selection" then sorting(subs,sel) end
 	if P=="Sort" and res.selection=="all lines" then sel=selectall(subs,sel) sorting(subs,sel) end
 
 	if P=="Set Selection" and res.selection=="current selection" then edtr=1 slct(subs,sel) end
 	if P=="Set Selection" and res.selection=="all lines" then edtr=1 sel=selectall(subs,sel) slct(subs,sel) end
+	if P=="Set Selection" and res.selection=="add to selection" then edtr=1 sel3={} for z=1,#sel do table.insert(sel3,sel[z]) end sel=selectall(subs,sel) slct(subs,sel) end
 	if P=="Save" then saveconfig() end
 	lastmatch=res.match
 	return sel
 end
 
 
---	Analyze Line
-function analyze(l)
+--	Analyse Line
+function analyse(l)
 	text=l.text
 	style=l.style
 	dur=l.end_time-l.start_time
@@ -136,17 +138,22 @@ end
 function slct(subs,sel)
     sel2={}
     eq=res.equal
+    SEP={}
+    progress('Selecting...')
     for i=#sel,1,-1 do
-	line=subs[sel[i]]
-	analyze(line)
-	a=sel[i]
+	local line=subs[sel[i]]
+	analyse(line)
+	local a=sel[i]
 
-	nums=0
-	if res.mode=="style" then search_area=style end
-	if res.mode=="actor" then search_area=line.actor end
-	if res.mode=="effect" then search_area=line.effect end
-	if res.mode=="text" then search_area=text if res.mod then search_area=comment end end
-	if res.mode=="visible text (no tags)" then search_area=text:gsub("{[^}]-}","") end
+	local nums=0
+	local search_area, numb, numbers
+	if res.mode=="0 text" then search_area=text if res.mod then search_area=comment end end
+	if res.mode=="1 style" then search_area=style end
+	if res.mode=="2 actor" then search_area=line.actor end
+	if res.mode=="3 effect" then search_area=line.effect end
+	if res.mode=="text|actor|effect" then search_area=text..'\n'..line.actor..'\n'..line.effect end
+	if res.mode=="text|act|eff|style" then search_area=text..'\n'..line.actor..'\n'..line.effect..'\n'..style end
+	if res.mode=="visible text (no tags)" then search_area=text:gsub("{[^}]-}",""):gsub(" *\\N *"," ") end
 	if res.mode=="layer" then numb=line.layer nums=1 end
 	if res.mode=="duration" then numb=dur nums=1 end
 	if res.mode=="word count" then numb=wrd nums=1 end
@@ -163,7 +170,12 @@ function slct(subs,sel)
 	if nums==1 then numbers=true else numbers=false end
 	if not numbers then s_area_lower=ulower(search_area) end
 	
+	local nonregexp,nonregexplower,Fnonregexp,Fnonregexplower,M
+	
 	nonregexp=esc(res.match)		nonregexplower=ulower(nonregexp)	-- reg.search
+	if res.sep then
+		for s in res.match:gmatch("%S+") do table.insert(SEP,esc(s)) end
+	end
 	
 	Fnonregexp=esc(filter)			Fnonregexplower=ulower(Fnonregexp)	-- filter
 	
@@ -182,8 +194,10 @@ function slct(subs,sel)
 		if eq=="==" and numb>tonumber(num2) then table.remove(sel,i) end
 		if eq==">=" and numb<tonumber(NUM) then table.remove(sel,i) end
 		if eq=="<=" and numb>tonumber(NUM) then table.remove(sel,i) end
+		if eq=="<= [non-zero]" and numb>tonumber(NUM) or eq=="<= [non-zero]" and numb==0 then table.remove(sel,i) end
 	end
 	
+	-- Text Search
       if not numbers then
 	if res.case then
 	  if res.exact then if search_area~=res.match then table.remove(sel,i) end
@@ -191,10 +205,18 @@ function slct(subs,sel)
 	    if res.regexp then
 		matches=re.match(search_area,res.match)
 		if F1 then local Fmatches=re.match(search_area,filter) end
-		if matches==nil and Fmatches then table.remove(sel,i) end
+		if matches==nil or Fmatches then table.remove(sel,i) end
 	    else 
 		if beg then M="^"..nonregexp else M=nonregexp end
-		if not search_area:match(M) or F1 and search_area:match(Fnonregexp) then table.remove(sel,i) end
+		local MATCH=true
+		if res.sep then
+			for s=1,#SEP do
+				ms=SEP[s]
+				if not search_area:match(ms) then MATCH=false break end
+			end
+		else MATCH=search_area:match(M)
+		end
+		if not MATCH or F1 and search_area:match(Fnonregexp) then table.remove(sel,i) end
 	    end
 	  end
 	end
@@ -208,7 +230,15 @@ function slct(subs,sel)
 		if matches==nil or Fmatches then table.remove(sel,i) end
 	    else	-- default search
 		if beg then M="^"..nonregexplower else M=nonregexplower end
-		if not s_area_lower:match(M) or F1 and s_area_lower:match(Fnonregexplower) then table.remove(sel,i) end
+		local MATCH=true
+		if res.sep then
+			for s=1,#SEP do
+				ms=ulower(SEP[s])
+				if not s_area_lower:match(ms) then MATCH=false break end
+			end
+		else MATCH=s_area_lower:match(M)
+		end
+		if not MATCH or F1 and s_area_lower:match(Fnonregexplower) then table.remove(sel,i) end
 	    end
 	  end
 	end
@@ -222,6 +252,10 @@ function slct(subs,sel)
 		table.insert(sel2,a)
 		end
 	end
+    end
+    
+    if res.selection=="add to selection" then
+	for z=1,#sel3 do table.insert(sel,sel3[z]) end
     end
 
     if res.onlyfirst then res.nomatch="matches" for s=#sel,2,-1 do table.remove(sel,s) end return sel end
@@ -252,7 +286,6 @@ function taim(T)
 		:gsub("^(%d+)s","0h0m%1s")
 	end
 	H,M,S=T:match("(%d*%.?%d+)h(%d+)m(%d+)s")
-	--logg(T)
 	if not H then t_error("Wrong timecode: "..res.match,1) end
 	TC=H*3600000+M*60000+S*1000+crap
 	return TC
@@ -260,6 +293,7 @@ end
 
 --	PRESET All
 function preset(subs,sel)
+progress('Selecting...')
 act=sel[1]
 if res.pres:match("same text") then
   marks={}  lm=nil
@@ -268,6 +302,36 @@ if res.pres:match("same text") then
     mark=rine.text:gsub("{[^}]-}","")
     if mark=="" then mark="_empty_" end
     if mark~=lm then table.insert(marks,mark) end
+    lm=mark
+  end
+end
+if res.pres=="same style" then
+  smarks={}  lm=nil
+  for x,i in ipairs(sel) do
+    rine=subs[i]
+    mark=rine.style
+    if mark=="" then mark="_empty_" end
+    if mark~=lm then table.insert(smarks,mark) end
+    lm=mark
+  end
+end
+if res.pres=="same actor" then
+  amarks={}  lm=nil
+  for x,i in ipairs(sel) do
+    rine=subs[i]
+    mark=rine.actor
+    if mark=="" then mark="_empty_" end
+    if mark~=lm then table.insert(amarks,mark) end
+    lm=mark
+  end
+end
+if res.pres=="same effect" then
+  emarks={}  lm=nil
+  for x,i in ipairs(sel) do
+    rine=subs[i]
+    mark=rine.effect
+    if mark=="" then mark="_empty_" end
+    if mark~=lm then table.insert(emarks,mark) end
     lm=mark
   end
 end
@@ -286,6 +350,8 @@ edst=10000000	edet=0
 	local line=subs[i]
 	local text=line.text
 	local st=line.style
+	local actr=line.actor
+	local eff=line.effect
 	local start=line.start_time
 	local endt=line.end_time
 	local nc=text:gsub("{[^\\}]-}","")
@@ -327,6 +393,21 @@ edst=10000000	edet=0
 		for m=1,#marks do if marks[m]==ct then ch=1 end end
 		if ch==1 then table.insert(sel,i) end
 	    end
+	    if res.pres=="same style" then
+		ch=0
+		for m=1,#smarks do if smarks[m]==st or res.mod and st:match(esc(smarks[m])) then ch=1 end end
+		if ch==1 then table.insert(sel,i) end
+	    end
+	    if res.pres=="same actor" then
+		ch=0
+		for m=1,#amarks do if amarks[m]==actr then ch=1 end end
+		if ch==1 then table.insert(sel,i) end
+	    end
+	    if res.pres=="same effect" then
+		ch=0
+		for m=1,#emarks do if emarks[m]==eff then ch=1 end end
+		if ch==1 then table.insert(sel,i) end
+	    end
 	    if res.pres=="skiddiks, your their?" then
 	      if st:match("Defa") or st:match("Alt") then
 		if nc:match("[Yy]ou\'?re?%s")
@@ -340,12 +421,16 @@ edst=10000000	edet=0
 	    if res.pres=="its/id/ill/were/wont" then
 	      if st:match("Defa") or st:match("Alt") then
 		nc=" "..nc:lower().." "
+		nc=nc:gsub(" *\\n *"," ")
 		if nc:match(" its ")
 		or nc:match(" id ")
 		or nc:match(" ill ")
-		or nc:match(" were ")
 		or nc:match(" wont ")
 		then table.insert(sel,i)
+		end
+		if nc:match(" were ") then
+			if not nc:match(" we were ") and not nc:match(" you were ") and not nc:match(" they were ") then table.insert(sel,i)
+		end
 		end
 	      end
 	    end
@@ -387,6 +472,7 @@ end
 
 --	PRESET From Selection
 function presel(subs,sel)
+	progress('Selecting...')
 	sorttab={}
 	if res.pres=="move sel. up" then table.sort(sel,function(a,b) return a>b end) end
 	if res.match:match("^%d+$") then moveby=res.match:match("^(%d+)$") else moveby=1 end
@@ -465,7 +551,7 @@ function sorting(subs,sel)
     -- lines into table
     for x, i in ipairs(sel) do
 	local l=subs[i]
-	analyze(l)
+	analyse(l)
 	l.i=x
 	l.wrd=wrd
 	l.ch=char
@@ -494,11 +580,11 @@ function sorting(subs,sel)
     if res.mode=="layer" then table.sort(subtable,function(a,b) return a.layer<b.layer or (a.layer==b.layer and a.i<b.i) end) end
     if res.mode=="duration" then table.sort(subtable,function(a,b) 
 	return a.end_time-a.start_time<b.end_time-b.start_time or (a.end_time-a.start_time==b.end_time-b.start_time and a.i<b.i) end) end
-    if res.mode=="actor" then table.sort(subtable, function(a,b) return a.actor<b.actor or (a.actor==b.actor and a.i<b.i) end) end
-    if res.mode=="effect" then table.sort(subtable,function(a,b) return a.effect<b.effect or (a.effect==b.effect and a.i<b.i) end) end
-    if res.mode=="style" then table.sort(subtable,function(a,b) return a.style<b.style or (a.style==b.style and a.i<b.i) end) end
-    if res.mode=="text" then table.sort(subtable,function(a,b) 
+    if res.mode=="0 text" then table.sort(subtable,function(a,b) 
 	return a.text:lower()<b.text:lower() or (a.text:lower()==b.text:lower() and a.i<b.i) end) end
+    if res.mode=="1 style" then table.sort(subtable,function(a,b) return a.style<b.style or (a.style==b.style and a.i<b.i) end) end
+    if res.mode=="2 actor" then table.sort(subtable, function(a,b) return a.actor<b.actor or (a.actor==b.actor and a.i<b.i) end) end
+    if res.mode=="3 effect" then table.sort(subtable,function(a,b) return a.effect<b.effect or (a.effect==b.effect and a.i<b.i) end) end
     if res.mode=="visible text (no tags)" then table.sort(subtable,function(a,b) 
 	return a.text:lower():gsub("{[^}]-}","")<b.text:lower():gsub("{[^}]-}","") 
 	or (a.text:lower():gsub("{[^}]-}","")==b.text:lower():gsub("{[^}]-}","") and a.i<b.i) end) end
@@ -755,6 +841,22 @@ function string2time(timecode)
 	return timecode
 end
 
+function chkbx()
+	errM="No matches found.\n\nSearch string: \""..res.match.."\""
+	if res.case then errM=errM.."\n • Case sensitive" end
+	if res.exact then errM=errM.."\n • Exact match" end
+	if res.sep then errM=errM.."\n • Sep. words" end
+	if res.beg then errM=errM.."\n • Beginning of line" end
+	if res.mod and res.mode=='0 text' then errM=errM.."\n • Mod (Search in {comments})" end
+	errM=errM:gsub("\"\n","\"\n\nOptions checked:\n")
+	return errM
+end
+
+function progress(msg)
+  if aegisub.progress.is_cancelled() then ak() end
+  aegisub.progress.title(msg)
+end
+
 function selector(subs,sel,act)
 	ADD=aegisub.dialog.display
 	ADP=aegisub.decode_path
@@ -765,7 +867,7 @@ function selector(subs,sel,act)
 	savesearch()
 	if edtr==1 and res.editor then editlines(subs,sel,act) end
 	if P=="Set Selection" then
-		if res.nomatch=="matches" and #sel==0 then act=nil t_error("No matches found.") end
+		if res.nomatch=="matches" and #sel==0 then act=nil errM=chkbx() t_error(errM) end
 		if res.nomatch=="doesn't match" and #sel2==0 then act=nil t_error("No matches found.") end
 	end
 	aegisub.set_undo_point(script_name)
