@@ -1,13 +1,13 @@
 script_name="Significance"
 script_description="Import stuff, number stuff, chapter stuff, replace stuff, do a significant amount of other stuff to stuff."
 script_author="unanimated"
-script_version="3.2"
+script_version="3.3"
 script_namespace="ua.Significance"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-  script_version="3.2.0"
-  depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
+	script_version="3.3.0"
+	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
 clipboard=require("aegisub.clipboard")
@@ -15,27 +15,32 @@ re=require'aegisub.re'
 
 --	Significance GUI		--------------------------------------------------------------------------------------
 function significance(subs,sel,act)
-ADD=aegisub.dialog.display
-ADP=aegisub.decode_path
-ak=aegisub.cancel
-ms2fr=aegisub.frame_from_ms
-fr2ms=aegisub.ms_from_frame
-ATAG="{[*>]?\\[^}]-}"
-STAG="^{[*>]?\\[^}]-}"
-COMM="{[^\\}]-}"
-aegisub.progress.title("Loading...")
-if datata==nil then data="" else data=datata end
-if sub1==nil then sub1="" end
-if sub2==nil then sub2="" end
-if sub3==nil then sub3=1 end
-for i=1,#subs do if subs[i].class=="dialogue" then line0=i-1 break end end
-msg={"If it breaks, it's your fault.","This should be doing something...","Breaking your computer. Please wait.","Unspecified operations in progress.","This may or may not work.","Trying to avoid bugs...","Zero one one zero one zero...","10110101001101101010110101101100001","I'm surprised anyone's using this","If you're seeing this for too long, it's a bad sign.","This might hurt a little.","Please wait... I'm pretending to work.","Close all your programs and run."}
-rm=math.random(1,#msg)	msge=msg[rm]
-if lastimp then dropstuff=lastuff lok=lastlog zerozz=lastzeros fld=lastfield
-else dropstuff="replacer" lok=false zerozz="01" fld="effect" end
-g_impex={"import OP","import ED","import sign","import signs","export sign","import chptrs","update lyrics"}
-g_stuff={"save/load","replacer","lua calc","split text to actor/effect","reverse text","reverse words","reverse transforms","fake capitals","format dates","split into letters (alpha)","explode","dissolve text","randomised transforms","what is the Matrix?","clone clip","duplicate and shift lines","time by frames","convert framerate","transform \\k to \\t\\alpha","fix kara tags for fbf lines","make style from act. line","make comments visible","switch commented/visible","honorificslaughterhouse"}
-unconfig={
+	ADD=aegisub.dialog.display
+	ADP=aegisub.decode_path
+	ak=aegisub.cancel
+	ms2fr=aegisub.frame_from_ms
+	fr2ms=aegisub.ms_from_frame
+	ATAG="{[*>]?\\[^}]-}"
+	STAG="^{[*>]?\\[^}]-}"
+	COMM="{[^\\}]-}"
+	aegisub.progress.title("Loading...")
+	datata=datata or ""
+	sub1=sub1 or ""
+	sub2=sub2 or ""
+	sub3=sub3 or 1
+	for i=1,#subs do if subs[i].class=="dialogue" then line0=i-1 break end end
+	msg={"If it breaks, it's your fault.","This should be doing something...","Breaking your computer. Please wait.","Unspecified operations in progress.","This may or may not work.","Trying to avoid bugs...","Zero one one zero one zero...","10110101001101101010110101101100001","I'm surprised anyone's using this","If you're seeing this for too long, it's a bad sign.","This might hurt a little.","Please wait... I'm pretending to work.","Close all your programs and run."}
+	rm=math.random(1,#msg)	msge=msg[rm]
+	if lastimp then dropstuff=lastuff lok=lastlog zerozz=lastzeros fld=lastfield mod0=lastmod0
+	else dropstuff="replacer" lok=false zerozz="01" fld="effect" mod0="number lines" end
+	g_impex={"import OP","import ED","import sign","import signs","export sign","import chptrs","update lyrics"}
+	g_stuff={"save/load","replacer","lua calc","split text to actor/effect","reverse text","reverse words","reverse transforms","fake capitals","format dates","split into letters (alpha)","explode","dissolve text","randomised transforms","what is the Matrix?","clone clip","duplicate and shift lines","time by frames","convert framerate","transform \\k to \\t\\alpha","fix kara tags for fbf lines","make style from act. line","make comments visible","switch commented/visible","honorificslaughterhouse"}
+	LN1=sel[1]-line0
+	LN2=sel[#sel]-line0
+	lin=LN1.."-"..LN2
+	lin=lin:gsub("^(%d+)%-%1$","%1")
+	if LN2-LN1+1>#sel then lin=lin:gsub("-"," ... #") end
+	unconfig={
 	-- Sub --
 	{x=0,y=16,width=3,class="label",label="Left                                                    "},
 	{x=3,y=16,width=3,class="label",label="Right                                                   "},
@@ -66,13 +71,13 @@ unconfig={
 	
 	-- numbers
 	{x=9,y=13,width=2,class="label",label="Numbers"},
-	{x=9,y=14,width=2,class="dropdown",name="modzero",items={"number lines","add to marker","zero fill","random"},value=lastmod0},
+	{x=9,y=14,width=2,class="dropdown",name="modzero",items={"number lines","add to marker","zero fill","random"},value=mod0},
 	{x=11,y=14,class="dropdown",name="zeros",items={"1","01","001","0001"},value=zerozz},
 	{x=9,y=15,width=2,class="dropdown",name="field",items={"actor","effect","layer","style","text","left","right","vert","comment"},value=fld},
 	{x=11,y=15,class="checkbox",name="intxt",label="in text",hint="numbers found in text"},
 	
 	-- stuff
-	{x=0,y=15,class="label",label="Stuff  "},
+	{x=0,y=15,class="label",label="&Stuff  "},
 	{x=1,y=15,width=2,class="dropdown",name="stuff",items=g_stuff,value=dropstuff}, --dropstuff
 	{x=3,y=15,class="dropdown",name="regex",items={"lua patterns","perl regexp"},value="perl regexp"},
 	{x=4,y=15,class="checkbox",name="log",label="log",value=lok,hint="provides some information for many of the functions here"},
@@ -80,56 +85,50 @@ unconfig={
 	
 	-- textboxes
 	{x=0,y=0,width=9,height=15,class="textbox",name="dat",value=data},
-	{x=9,y=1,width=3,class="label",label=" Selected Lines: "..#sel.." ["..sel[1]-line0.."-"..sel[#sel]-line0.."]"},
+	{x=9,y=1,width=3,class="label",label=" Selected Lines: "..#sel.." [#"..lin.."]"},
 	
 	-- help
 	{x=9,y=0,width=3,class="dropdown",name="help",
 	items={"--- Help menu ---","Import/Export","Update Lyrics","Do Stuff","Numbers","Chapters"},value="--- Help menu ---"},
 	{x=9,y=17,width=3,class="label",label="   Significance version: "..script_version},
-}
+	}
 	loadconfig()
 	repeat
-	  if P=="Help" then aegisub.progress.title("Loading Help") aegisub.progress.task("RTFM")
-	    if res.help=="Import/Export" then help=help_i end
-	    if res.help=="Update Lyrics" then help=help_u end
-	    if res.help=="Do Stuff" then help=help_d end
-	    if res.help=="Numbers" then help=help_n end
-	    if res.help=="Chapters" then help=help_c end
-	    if res.help=="--- Help menu ---" then help="Choose something from the menu, dumbass -->" end
-		for key,val in ipairs(unconfig) do
-		    if val.name=="dat" then val.value=help end
+		if P=="&Help" then aegisub.progress.title("Loading Help") aegisub.progress.task("RTFM")
+			if res.help=="Import/Export" then help=help_i end
+			if res.help=="Update Lyrics" then help=help_u end
+			if res.help=="Do Stuff" then help=help_d end
+			if res.help=="Numbers" then help=help_n end
+			if res.help=="Chapters" then help=help_c end
+			if res.help=="--- Help menu ---" then help="Choose something from the menu, dumbass -->" end
+			for key,val in ipairs(unconfig) do if val.name=="dat" then val.value=help end end
 		end
-	  end
-	  if P=="Info" then aegisub.progress.title("Gathering Info") aegisub.progress.task("...") info(subs,sel,act)
-		for key,val in ipairs(unconfig) do
-		    if val.name=="dat" then val.value=infodump end
+		if P=="&Info" then aegisub.progress.title("Gathering Info") aegisub.progress.task("...") info(subs,sel,act)
+			for key,val in ipairs(unconfig) do if val.name=="dat" then val.value=infodump end end
 		end
-	  end
-	P,res=ADD(unconfig,
-	{"Import/Export","Do Stuff","Numbers","Chapters","Repeat Last","Info","Help","Save Config","Cancel"},{ok='Import/Export',cancel='Cancel'})
-	until P~="Help" and P~="Info"
+	P,res=ADD(unconfig,{"Import/Export","Do &Stuff","&Numbers","&Chapters","&Repeat Last","&Info","&Help","Save Config","Cancel"},{ok='Import/Export',cancel='Cancel'})
+	until P~="&Help" and P~="&Info"
 	if P=="Cancel" then    ak() end
 	lastimp=true lastuff=res.stuff lastlog=res.log lastzeros=res.zeros lastfield=res.field lastmod0=res.modzero
-	if P=="Repeat Last" then if not lastres then ak() end P=lastP res=lastres end
+	if P=="&Repeat Last" then if not lastres then ak() end P=lastP res=lastres end
 	progress("Doing Stuff") aegisub.progress.task(msge)
-	    sub1=res.rep1
-	    sub2=res.rep2
-	    sub3=res.rep3
-	    zer=res.zeros
+		sub1=res.rep1
+		sub2=res.rep2
+		sub3=res.rep3
+		zer=res.zeros
 	if P=="Import/Export" then    important(subs,sel,act) end
-	if P=="Numbers" then    numbers(subs,sel) end
-	if P=="Chapters" then    chopters(subs,sel) end
-	if P=="Do Stuff" then
-	    if res.stuff=="convert framerate" then framerate(subs)
-	    elseif res.stuff=="honorificslaughterhouse" then honorifix(subs,sel)
-	    else sel=stuff(subs,sel,act) end
+	if P=="&Numbers" then    numbers(subs,sel) end
+	if P=="&Chapters" then    chopters(subs,sel) end
+	if P=="Do &Stuff" then
+		if res.stuff=="convert framerate" then framerate(subs)
+		elseif res.stuff=="honorificslaughterhouse" then honorifix(subs,sel)
+		else sel=stuff(subs,sel,act) end
 	end
 	lastP=P
 	lastres=res
 	if P=="Save Config" then saveconfig() end
-    
-    aegisub.set_undo_point(script_name)
-    return sel
+
+	return sel
 end
 
 
@@ -144,277 +143,271 @@ function important(subs,sel,act)
 	sdata={}
 	if res.mega=="update lyrics" and res.dat=="" then t_error("No lyrics given.",1)
 	else
-	res.dat=res.dat.."\n"
-	  for dataline in res.dat:gmatch("(.-)\n") do
-	    if dataline~="" then table.insert(sdata,dataline) end
-	  end
+		res.dat=res.dat.."\n"
+		for dataline in res.dat:gmatch("(.-)\n") do if dataline~="" then table.insert(sdata,dataline) end end
 	end
-	
+
 	-- user input
 	sub1=res.rep1
 	sub2=res.rep2
 	sub3=res.rep3
 	zer=res.zeros
 	rest=res.rest
-	
+
 	-- this checks whether the pattern for lines with lyrics was found
 	songcheck=0
-	
+
 	-- paths
 	scriptpath=ADP("?script")
 	if script_path=="relative" then path=scriptpath.."\\"..relative_path end
 	if script_path=="absolute" then path=absolute_path end
 
-	-- IMPORT -- 
+	-- IMPORT --
 	if res.mega:match("import") and not res.mega:match("chptrs") then
-	    
-	    noshift=false	defect=false	keeptxt=false	deline=false
-	    
-	    -- import-single-sign GUI
-	    if res.mega=="import sign" then
-		press,reslt=ADD({
-		{x=0,y=0,class="label",label="File name:"},
-		{x=0,y=1,width=2,class="edit",name="signame"},
-		{x=1,y=0,width=2,class="dropdown",name="signs",items={"title","eptitle","custom","eyecatch"},value="custom"},
-		{x=2,y=1,class="label",label=".ass"},
-		{x=0,y=2,width=3,class="checkbox",name="matchtime",label="keep current line's times",value=true,},
-		{x=0,y=3,width=3,class="checkbox",name="keeptext",label="keep current line's text",value=false,},
-		{x=0,y=4,width=3,class="checkbox",name="keeptags",label="combine tags (current overrides) ",value=false,},
-		{x=0,y=5,width=3,class="checkbox",name="addtags",label="combine tags (imported overrides)",value=false,},
-		{x=0,y=6,width=3,class="checkbox",name="noshift",label="don't shift times (import as is)",value=false,},
-		{x=0,y=7,width=3,class="checkbox",name="deline",label="delete original line",value=false,},
-		},{"OK","Cancel"},{ok='OK',close='Cancel'})
-		if press=="Cancel" then ak() end
-		if reslt.signs=="custom" then signame=reslt.signame else signame=reslt.signs end
-		noshift=reslt.noshift		keeptxt=reslt.keeptext	deline=reslt.deline
-		keeptags=reslt.keeptags		addtags=reslt.addtags
-	    end
-	
-	    -- read signs.ass
-	    if res.mega=="import signs" then
-		file=io.open(path.."signs.ass")
-		if file==nil then ADD({{class="label",label=path.."signs.ass\nNo such file."}},{"ok"},{cancel='ok'}) ak() end
-		signs=file:read("*all")
+
+		noshift=false	defect=false	keeptxt=false	deline=false
+
+		-- import-single-sign GUI
+		if res.mega=="import sign" then
+			press,reslt=ADD({
+			{x=0,y=0,class="label",label="File name:"},
+			{x=0,y=1,width=2,class="edit",name="signame"},
+			{x=1,y=0,width=2,class="dropdown",name="signs",items={"title","eptitle","custom","eyecatch"},value="custom"},
+			{x=2,y=1,class="label",label=".ass"},
+			{x=0,y=2,width=3,class="checkbox",name="matchtime",label="keep current line's times",value=true,},
+			{x=0,y=3,width=3,class="checkbox",name="keeptext",label="keep current line's text",value=false,},
+			{x=0,y=4,width=3,class="checkbox",name="keeptags",label="combine tags (current overrides) ",value=false,},
+			{x=0,y=5,width=3,class="checkbox",name="addtags",label="combine tags (imported overrides)",value=false,},
+			{x=0,y=6,width=3,class="checkbox",name="noshift",label="don't shift times (import as is)",value=false,},
+			{x=0,y=7,width=3,class="checkbox",name="deline",label="delete original line",value=false,},
+			},{"OK","Cancel"},{ok='OK',close='Cancel'})
+			if press=="Cancel" then ak() end
+			if reslt.signs=="custom" then signame=reslt.signame else signame=reslt.signs end
+			noshift=reslt.noshift		keeptxt=reslt.keeptext	deline=reslt.deline
+			keeptags=reslt.keeptags		addtags=reslt.addtags
+		end
+
+		-- read signs.ass
+		if res.mega=="import signs" then
+			file=io.open(path.."signs.ass")
+			if file==nil then ADD({{class="label",label=path.."signs.ass\nNo such file."}},{"ok"},{cancel='ok'}) ak() end
+			signs=file:read("*all")
+			io.close(file)
+		end
+
+		-- sort out if using OP, ED, signs, or whatever .ass and read the file
+		songtype=res.mega:match("import (%a+)")
+		if songtype=="sign" then songtype=signame end
+		file=io.open(path..songtype..".ass")
+		if file==nil then t_error(path..songtype..".ass\nNo such file.",1) end
+		song=file:read("*all")
 		io.close(file)
-	    end
-	
-	    -- sort out if using OP, ED, signs, or whatever .ass and read the file
-	    songtype=res.mega:match("import (%a+)")
-	    if songtype=="sign" then songtype=signame end
-	    file=io.open(path..songtype..".ass")
-	    if file==nil then t_error(path..songtype..".ass\nNo such file.",1) end
-	    song=file:read("*all")
-	    io.close(file)
-	    
-	    -- cleanup useless stuff
-	    song=song:gsub("^.-(Dialogue:)","%1")
-	    song=song.."\n"
-	    song=song:gsub("\n\n$","\n")
-	    song=song:gsub("%[[^%]]-%]\n","\n")
-	    -- make table out of lines
-	    slines={}
-	    for sline in song:gmatch("(.-)\n") do
-		if sline~="" then table.insert(slines,sline) end
-	    end
-	    -- save (some) current line properties
-	    btext=atext
-	    basetime=aline.start_time
-	    basend=aline.end_time
-	    basestyle=aline.style
-	    baselayer=aline.layer
-	    
-	    -- import-signs list and GUI
-	    if res.mega=="import signs" then
-		-- make a table of signs in signs.ass
-		signlist={}
-		signlistxt=""
-		for x=1,#slines do
-		    efct=slines[x]:match("%a+: %d+,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-(,[^,]-,).*")
-		    --aegisub.log("\n efct "..efct)
-		    esfct=esc(efct)
-		    if not signlistxt:match(esfct) then signlistxt=signlistxt..efct end
+
+		-- cleanup useless stuff
+		song=song:gsub("^.-(Dialogue:)","%1")
+		song=song.."\n"
+		song=song:gsub("\n\n$","\n")
+		song=song:gsub("%[[^%]]-%]\n","\n")
+		-- make table out of lines
+		slines={}
+		for sline in song:gmatch("(.-)\n") do
+			if sline~="" then table.insert(slines,sline) end
 		end
-		for sn in signlistxt:gmatch(",([^,]-),") do table.insert(signlist,sn) end
-		-- import-signs GUI
-		button,reslt=ADD({
-		{x=0,y=0,class="label",label="Choose a sign to import:"},
-		{x=0,y=1,class="dropdown",name="impsign",items=signlist,value=signlist[1]},
-		{x=0,y=2,class="checkbox",name="matchtime",label="keep current line's times",value=true,},
-		{x=0,y=3,class="checkbox",name="keeptext",label="keep current line's text",value=false,},
-		{x=0,y=4,class="checkbox",name="keeptags",label="combine tags (current overrides) ",value=false,},
-		{x=0,y=5,class="checkbox",name="addtags",label="combine tags (imported overrides)",value=false,},
-		{x=0,y=6,class="checkbox",name="noshift",label="don't shift times (import as is)",value=false,},
-		{x=0,y=7,class="checkbox",name="defect",label="delete 'effect'",value=false,},
-		{x=0,y=8,class="checkbox",name="deline",label="delete original line",value=false,},
-		},{"OK","Cancel"},{ok='OK',close='Cancel'})
-		if button=="Cancel" then ak() end
-		if button=="OK" then whatsign=reslt.impsign end
-		noshift=reslt.noshift		defect=reslt.defect	keeptxt=reslt.keeptext	deline=reslt.deline
-		keeptags=reslt.keeptags		addtags=reslt.addtags
-		-- nuke lines for the other signs
+		-- save (some) current line properties
+		btext=atext
+		basetime=aline.start_time
+		basend=aline.end_time
+		basestyle=aline.style
+		baselayer=aline.layer
+
+		-- import-signs list and GUI
+		if res.mega=="import signs" then
+			-- make a table of signs in signs.ass
+			signlist={}
+			signlistxt=""
+			for x=1,#slines do
+				efct=slines[x]:match("%a+: %d+,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-(,[^,]-,).*")
+				esfct=esc(efct)
+				if not signlistxt:match(esfct) then signlistxt=signlistxt..efct end
+			end
+			for sn in signlistxt:gmatch(",([^,]-),") do table.insert(signlist,sn) end
+			-- import-signs GUI
+			button,reslt=ADD({
+			{x=0,y=0,class="label",label="Choose a sign to import:"},
+			{x=0,y=1,class="dropdown",name="impsign",items=signlist,value=signlist[1]},
+			{x=0,y=2,class="checkbox",name="matchtime",label="keep current line's times",value=true,},
+			{x=0,y=3,class="checkbox",name="keeptext",label="keep current line's text",value=false,},
+			{x=0,y=4,class="checkbox",name="keeptags",label="combine tags (current overrides) ",value=false,},
+			{x=0,y=5,class="checkbox",name="addtags",label="combine tags (imported overrides)",value=false,},
+			{x=0,y=6,class="checkbox",name="noshift",label="don't shift times (import as is)",value=false,},
+			{x=0,y=7,class="checkbox",name="defect",label="delete 'effect'",value=false,},
+			{x=0,y=8,class="checkbox",name="deline",label="delete original line",value=false,},
+			},{"OK","Cancel"},{ok='OK',close='Cancel'})
+			if button=="Cancel" then ak() end
+			if button=="OK" then whatsign=reslt.impsign end
+			noshift=reslt.noshift		defect=reslt.defect	keeptxt=reslt.keeptext	deline=reslt.deline
+			keeptags=reslt.keeptags		addtags=reslt.addtags
+			-- nuke lines for the other signs
+			for x=#slines,1,-1 do
+				efct=slines[x]:match("%a+: %d+,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,([^,]-),.*")
+				if efct~=whatsign then table.remove(slines,x) end
+			end
+		end
+
+		-- check start time of the first line (for overall shifting)
+		starttime=slines[1]:match("%a+: %d+,([^,]+)")
+		shiftime=string2time(starttime)
+		if res.mega:match("sign") and noshift then shiftime=0 end
+
+		-- importing lines from whatever .ass
 		for x=#slines,1,-1 do
-		    efct=slines[x]:match("%a+: %d+,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,([^,]-),.*")
-		    if efct~=whatsign then table.remove(slines,x) end
+			local ltype,layer,s_time,e_time,style,actor,margl,margr,margv,eff,txt=slines[x]:match("(%a+): (%d+),([^,]-),([^,]-),([^,]-),([^,]-),([^,]-),([^,]-),([^,]-),([^,]-),(.*)")
+			l2=aline
+			if ltype=="Comment" then l2.comment=true else l2.comment=false end
+			l2.layer=layer
+			-- timing/shifting depending on settings
+			if res.mega:match("import sign") and reslt.matchtime then l2.start_time=basetime l2.end_time=basend else
+			  s_time=string2time(s_time)
+			  e_time=string2time(e_time)
+			  if not noshift then s_time=s_time+basetime  e_time=e_time+basetime end
+			  l2.start_time=s_time-shiftime
+			  l2.end_time=e_time-shiftime
+			end
+			l2.style=style
+			l2.actor=actor
+			l2.margin_l=margl
+			l2.margin_r=margr
+			l2.margin_t=margv
+			l2.effect=eff
+			if defect then l2.effect="" end
+			l2.text=txt
+			atext=txt 
+			if keeptxt and actor~="x" then
+			    btext2=btext:gsub("{\\[^}]-}","")
+			    l2.text=l2.text:gsub("^({\\[^}]-}).*","%1"..btext2) atext=btext2
+			end
+			if keeptags and actor~="x" then
+			    l2.text=addtag(atags,l2.text)
+			    l2.text=l2.text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
+			    :gsub("({%*?\\[^}]-})",function(tg) return extrakill(tg,2) end)
+			end
+			if addtags and actor~="x" then
+			    l2.text="{"..atags.."}"..l2.text
+			    l2.text=l2.text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
+			    :gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
+			    :gsub("({%*?\\[^}]-})",function(tg) return extrakill(tg,2) end)
+			end
+			subs.insert(act+1,l2)
 		end
-	    end
-	    
-	    -- check start time of the first line (for overall shifting)
-	    starttime=slines[1]:match("%a+: %d+,([^,]+)")
-	    shiftime=string2time(starttime)
-	    if res.mega:match("sign") and noshift then shiftime=0 end
-	    
-	    -- importing lines from whatever .ass
-	    for x=#slines,1,-1 do
-		local ltype,layer,s_time,e_time,style,actor,margl,margr,margv,eff,txt=slines[x]:match("(%a+): (%d+),([^,]-),([^,]-),([^,]-),([^,]-),([^,]-),([^,]-),([^,]-),([^,]-),(.*)")
-		l2=aline
-		if ltype=="Comment" then l2.comment=true else l2.comment=false end
-		l2.layer=layer
-		-- timing/shifting depending on settings
-		if res.mega:match("import sign") and reslt.matchtime then l2.start_time=basetime l2.end_time=basend else
-		  s_time=string2time(s_time)
-		  e_time=string2time(e_time)
-		  if not noshift then s_time=s_time+basetime  e_time=e_time+basetime end
-		  l2.start_time=s_time-shiftime
-		  l2.end_time=e_time-shiftime
+		-- delete line if not keeping
+		if deline then res.keep=false end
+		if not res.keep then subs.delete(act) else 
+		-- keep line, restore initial state + comment out
+		atext=btext aline.comment=true aline.start_time=basetime aline.end_time=basend aline.style=basestyle aline.actor="" aline.effect=""
+		aline.layer=baselayer aline.text=atext subs[act]=aline
 		end
-		l2.style=style
-		l2.actor=actor
-		l2.margin_l=margl
-		l2.margin_r=margr
-		l2.margin_t=margv
-		l2.effect=eff
-		if defect then l2.effect="" end
-		l2.text=txt
-		atext=txt 
-		if keeptxt and actor~="x" then
-		    btext2=btext:gsub("{\\[^}]-}","")
-		    l2.text=l2.text:gsub("^({\\[^}]-}).*","%1"..btext2) atext=btext2
-		end
-		if keeptags and actor~="x" then
-		    l2.text=addtag(atags,l2.text)
-		    l2.text=l2.text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
-		    :gsub("({%*?\\[^}]-})",function(tg) return extrakill(tg,2) end)
-		end
-		if addtags and actor~="x" then
-		    l2.text="{"..atags.."}"..l2.text
-		    l2.text=l2.text:gsub("{(\\[^}]-)}{(\\[^}]-)}","{%1%2}")
-		    :gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
-		    :gsub("({%*?\\[^}]-})",function(tg) return extrakill(tg,2) end)
-		end
-		
-		--aegisub.log("\n btext "..btext)
-		subs.insert(act+1,l2)
-	    end
-	    -- delete line if not keeping
-	    if deline then res.keep=false end
-	    if not res.keep then subs.delete(act) else 
-	    -- keep line, restore initial state + comment out
-	    atext=btext aline.comment=true aline.start_time=basetime aline.end_time=basend aline.style=basestyle aline.actor="" aline.effect=""
-	    aline.layer=baselayer aline.text=atext subs[act]=aline
-	    end
 	end
-	
+
 	-- EXPORT --
 	if res.mega=="export sign" then
-	    exportsign=""
-	    for z,i in ipairs(sel) do
-              line=subs[i]
-              text=line.text
-	      if z==1 then snam=line.effect end
-	      exportsign=exportsign..line.raw.."\n"
-	    end
-	    press,reslt=ADD({
-		{x=0,y=0,class="label",label="Target:",},
-		{x=0,y=1,class="label",label="Name:",},
-		{x=1,y=0,width=2,class="dropdown",name="addsign",
-		items={"Add to signs.ass","Save to new file:"},value="Add to signs.ass"},
-		{x=1,y=1,width=2,class="edit",name="newsign",value=snam},
-		},{"OK","Cancel"},{ok='OK',close='Cancel'})
-	    if press=="Cancel" then ak() end
-	    if press=="OK" then
-	    if reslt.newsign=="" then t_error("No name supplied.",1) end
-	    newsgn=reslt.newsign:gsub("%.ass$","")
-	    if reslt.addsign=="Add to signs.ass" then 
-		file=io.open(path.."signs.ass")
-		if not file then file=io.open(path.."signs.ass","w") end
-		sign=file:read("*all") or ""
+		exportsign=""
+		for z,i in ipairs(sel) do
+			line=subs[i]
+			text=line.text
+			if z==1 then snam=line.effect end
+			exportsign=exportsign..line.raw.."\n"
+		end
+		press,reslt=ADD({
+			{x=0,y=0,class="label",label="Target:",},
+			{x=0,y=1,class="label",label="Name:",},
+			{x=1,y=0,width=2,class="dropdown",name="addsign",
+			items={"Add to signs.ass","Save to new file:"},value="Add to signs.ass"},
+			{x=1,y=1,width=2,class="edit",name="newsign",value=snam},
+			},{"OK","Cancel"},{ok='OK',close='Cancel'})
+		if press=="Cancel" then ak() end
+		if press=="OK" then
+		if reslt.newsign=="" then t_error("No name supplied.",1) end
+		newsgn=reslt.newsign:gsub("%.ass$","")
+		if reslt.addsign=="Add to signs.ass" then 
+			file=io.open(path.."signs.ass")
+			if not file then file=io.open(path.."signs.ass","w") end
+			sign=file:read("*all") or ""
+			file:close()
+			exportsign=exportsign:gsub("(%u%a+: %d+,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-),[^,]-,(.-)\n","%1,"..reslt.newsign..",%2\n")
+			sign=sign:gsub("%u%a+: [^\n]+,"..esc(reslt.newsign)..",.-\n","") :gsub("^\n*","")
+			sign=sign.."\n"..exportsign
+			file=io.open(path.."signs.ass","w")
+			file:write(sign)
+		end
+		if reslt.addsign=="Save to new file:" then
+			file=io.open(path..newsgn..".ass","w")
+			file:write(exportsign)
+		end
 		file:close()
-		exportsign=exportsign:gsub("(%u%a+: %d+,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-,[^,]-),[^,]-,(.-)\n","%1,"..reslt.newsign..",%2\n")
-		sign=sign:gsub("%u%a+: [^\n]+,"..esc(reslt.newsign)..",.-\n","") :gsub("^\n*","")
-		sign=sign.."\n"..exportsign
-		file=io.open(path.."signs.ass","w")
-		file:write(sign)
-	    end
-	    if reslt.addsign=="Save to new file:" then
-		file=io.open(path..newsgn..".ass","w")
-		file:write(exportsign)
-	    end
-	    file:close()
-	    end
+		end
 	end
-	
+
 	-- IMPORT CHAPTERS
 	if res.mega=="import chptrs" then
-	  xml=aegisub.dialog.open("Chapters file (xml)","",scriptpath.."\\","*.xml",false,true)
-	  if xml==nil then ak() end
-	  file=io.open(xml)
-	  xmlc=file:read("*all")
-	  io.close(file)
-	  chc=0
-	  for ch in xmlc:gmatch("<ChapterAtom>(.-)</ChapterAtom>") do
-		chnam=ch:match("<ChapterString>(.-)</ChapterString>")
-		chtim=ch:match("<ChapterTimeStart>(.-)</ChapterTimeStart>")
-		chtim=chtim:gsub("(%d%d):(%d%d):(%d%d)%.(%d%d%d?)(.*)",function(a,b,c,d,e) if d:len()==2 then d=d.."0" end return d+c*1000+b*60000+a*3600000 end)
-		l2=aline
-		if fr2ms(1)==nil then chs=chtim else chs=fr2ms(ms2fr(chtim)) end
-		l2.start_time=chs
-		l2.end_time=chs+1
-		l2.actor="chptr"
-		l2.text="{"..chnam.."}"
-		subs.insert(act+chc,l2)
-		chc=chc+1
-	  end
+		xml=aegisub.dialog.open("Chapters file (xml)","",scriptpath.."\\","*.xml",false,true)
+		if xml==nil then ak() end
+		file=io.open(xml)
+		xmlc=file:read("*all")
+		io.close(file)
+		chc=0
+		for ch in xmlc:gmatch("<ChapterAtom>(.-)</ChapterAtom>") do
+			chnam=ch:match("<ChapterString>(.-)</ChapterString>")
+			chtim=ch:match("<ChapterTimeStart>(.-)</ChapterTimeStart>")
+			chtim=chtim:gsub("(%d%d):(%d%d):(%d%d)%.(%d%d%d?)(.*)",function(a,b,c,d,e) if d:len()==2 then d=d.."0" end return d+c*1000+b*60000+a*3600000 end)
+			l2=aline
+			if fr2ms(1)==nil then chs=chtim else chs=fr2ms(ms2fr(chtim)) end
+			l2.start_time=chs
+			l2.end_time=chs+1
+			l2.actor="chptr"
+			l2.text="{"..chnam.."}"
+			subs.insert(act+chc,l2)
+			chc=chc+1
+		end
 	end
 
 	-- Update Lyrics
 	if res.mega=="update lyrics" then
-	  sup1=esc(sub1)	sup2=esc(sub2)
-	  for z,i in ipairs(sel) do
-		progress("Updating Lyrics... "..round(z/#sel)*100 .."%")
-		line=subs[i]
-		text=line.text
-		
-		songlyr=sdata
-		if line.style:match(rest) then stylecheck=1 else stylecheck=0 end
-		if res.restr and stylecheck==0 then pass=0 else pass=1 end
-		if res.field=="actor" then marker=line.actor
-		elseif res.field=="effect" then marker=line.effect end
-		denumber=marker:gsub("%d","")
-		-- marked lines
-		if marker:match(sup1.."%d+"..sup2) and denumber==sub1..sub2 and pass==1 then
-		    index=tonumber(marker:match(sup1.."(%d+)"..sup2))
-		    puretext=text:gsub("{%*?\\[^}]-}","")
-		    lastag=text:match("({\\[^}]-}).$")
-		    if songlyr[index]~=nil and songlyr[index]~=puretext then
-			text=text:gsub("^({\\[^}]-}).*","%1"..songlyr[index])
-			if not text:match("^{\\[^}]-}") then text=songlyr[index] end
-		    end
-		    songcheck=1
-		    if songlyr[index]~=puretext then
-			if lastag~=nil then text=text:gsub("(.)$",lastag.."%1") end
-			change="   (Changed)"
-			else change=""
-		    end
-		    aegisub.log("\nupdate: "..puretext.." --> "..songlyr[index]..change)
+		sup1=esc(sub1)	sup2=esc(sub2)
+		for z,i in ipairs(sel) do
+			progress("Updating Lyrics... "..round(z/#sel)*100 .."%")
+			line=subs[i]
+			text=line.text
+			
+			songlyr=sdata
+			if line.style:match(rest) then stylecheck=1 else stylecheck=0 end
+			if res.restr and stylecheck==0 then pass=0 else pass=1 end
+			if res.field=="actor" then marker=line.actor
+			elseif res.field=="effect" then marker=line.effect end
+			denumber=marker:gsub("%d","")
+			-- marked lines
+			if marker:match(sup1.."%d+"..sup2) and denumber==sub1..sub2 and pass==1 then
+			    index=tonumber(marker:match(sup1.."(%d+)"..sup2))
+			    puretext=text:gsub("{%*?\\[^}]-}","")
+			    lastag=text:match("({\\[^}]-}).$")
+			    if songlyr[index]~=nil and songlyr[index]~=puretext then
+				text=text:gsub("^({\\[^}]-}).*","%1"..songlyr[index])
+				if not text:match("^{\\[^}]-}") then text=songlyr[index] end
+			    end
+			    songcheck=1
+			    if songlyr[index]~=puretext then
+				if lastag~=nil then text=text:gsub("(.)$",lastag.."%1") end
+				change="   (Changed)"
+				else change=""
+			    end
+			    aegisub.log("\nupdate: "..puretext.." --> "..songlyr[index]..change)
+			end
+			line.text=text
+			subs[i]=line
 		end
-	    line.text=text
-	    subs[i]=line
-	  end
 	end
-    
-    if res.mega=="update lyrics" and songcheck==0 then press,reslt=ADD({{x=0,y=0,class="label",label="The "..res.field.." field of selected lines doesn't match given pattern \""..sub1.."#"..sub2.."\".\n(Or style pattern wasn't matched if restriction enabled.)\n#=number sequence"}},{"ok"},{cancel='ok'}) end
-    
-    noshift=nil		defect=nil	keeptxt=nil	deline=nil	keeptags=nil	addtags=nil
+
+	if res.mega=="update lyrics" and songcheck==0 then press,reslt=ADD({{x=0,y=0,class="label",label="The "..res.field.." field of selected lines doesn't match given pattern \""..sub1.."#"..sub2.."\".\n(Or style pattern wasn't matched if restriction enabled.)\n#=number sequence"}},{"ok"},{cancel='ok'}) end
+	noshift=nil		defect=nil	keeptxt=nil	deline=nil	keeptags=nil	addtags=nil
 end
 
 
@@ -443,87 +436,84 @@ function numbers(subs,sel)
 		
 	end
 	
-    for z=1,#sel do
-        i=sel[z]
-	line=subs[i]
-        text=line.text
-	
-	if res.modzero=="number lines" then
-	progress("Numbering... "..round(z/#sel)*100 .."%")
-		if startn==nil or numcycle>0 and startn>numcycle then t_error("Wrong parameters. Syntax: start/repeat[limit]\nExamples:\n5    (5 6 7 8...)\n5/3    (5 5 5 6 6 6 7 7 7...)\n5/3[6]    (5 5 5 6 6 6 5 5 5 6 6 6...)\n5[6]    (5 6 5 6 5 6...)",1) end
-		index=z
-		count=math.ceil(index/int)+(startn-1)
-		  if numcycle>0 and count>numcycle then repeat count=count-(numcycle-startn+1) until count<=numcycle end
-		count=tostring(count)
-		if zl>count:len() then repeat count="0"..count until zl==count:len() end
-		number=sub1..count..sub2
+	for z=1,#sel do
+		i=sel[z]
+		line=subs[i]
+		text=line.text
 		
-		if res.intxt then
-			text=text:gsub("%d+",number)
-		end
-		if res.field=="actor" then line.actor=number end 
-		if res.field=="effect" then line.effect=number end
-		if res.field=="layer" then line.layer=count end
-		if res.field=="text" then text=number end
-		if res.field=="left" then line.margin_l=number end
-		if res.field=="right" then line.margin_r=number end
-		if res.field=="vert" then line.margin_t=number end
-		if res.field=="comment" then text=text..wrap(number) end
-	end
-	
-	if res.modzero=="add to marker" then
-	progress("Adding... "..round(z/#sel)*100 .."%")
-		if res.field=="actor" then line.actor=sub1..line.actor..sub2
-		elseif res.field=="effect" then line.effect=sub1..line.effect..sub2
-		elseif res.field=="text" then text=sub1..text..sub2
-		end
-	end
-	
-	if res.modzero=="zero fill" then
-	progress("Filling... "..round(z/#sel)*100 .."%")
-		form="%0"..zl.."d"
-		mark=res.field
-		aet="actoreffect"
-		if aet:match(mark) then
-			target=line[mark]
-			target=target:gsub("(%d+)",function(d) return string.format(form,d) end)
-			line[mark]=target
+		if res.modzero=="number lines" then
+		progress("Numbering... "..round(z/#sel)*100 .."%")
+			if startn==nil or numcycle>0 and startn>numcycle then t_error("Wrong parameters. Syntax: start/repeat[limit]\nExamples:\n5    (5 6 7 8...)\n5/3    (5 5 5 6 6 6 7 7 7...)\n5/3[6]    (5 5 5 6 6 6 5 5 5 6 6 6...)\n5[6]    (5 6 5 6 5 6...)",1) end
+			index=z
+			count=math.ceil(index/int)+(startn-1)
+			  if numcycle>0 and count>numcycle then repeat count=count-(numcycle-startn+1) until count<=numcycle end
+			count=tostring(count)
+			if zl>count:len() then repeat count="0"..count until zl==count:len() end
+			number=sub1..count..sub2
 			
+			if res.intxt then text=text:gsub("%d+",number) end
+			if res.field=="actor" then line.actor=number end 
+			if res.field=="effect" then line.effect=number end
+			if res.field=="layer" then line.layer=count end
+			if res.field=="text" then text=number end
+			if res.field=="left" then line.margin_l=number end
+			if res.field=="right" then line.margin_r=number end
+			if res.field=="vert" then line.margin_t=number end
+			if res.field=="comment" then text=text..wrap(number) end
 		end
-		if mark=='text' then
-			nt=''
-			repeat
-				seg,t2=text:match("^(%b{})(.*)")
-				if not seg then seg,t2=text:match("^([^{]+)(.*)")
-					if not seg then break end
-					seg=seg:gsub("(%-?[%d.]+)",function(d)
-					if tonumber(d)>0 and not d:match("%.%d") then return string.format(form,d) else return d end
-					end)
-				end
-				nt=nt..seg
-				text=t2
-			until text==''
-			text=nt
+		
+		if res.modzero=="add to marker" then
+		progress("Adding... "..round(z/#sel)*100 .."%")
+			if res.field=="actor" then line.actor=sub1..line.actor..sub2
+			elseif res.field=="effect" then line.effect=sub1..line.effect..sub2
+			elseif res.field=="text" then text=sub1..text..sub2
+			end
 		end
+		
+		if res.modzero=="zero fill" then
+		progress("Filling... "..round(z/#sel)*100 .."%")
+			form="%0"..zl.."d"
+			mark=res.field
+			aet="actoreffect"
+			if aet:match(mark) then
+				target=line[mark]
+				target=target:gsub("(%d+)",function(d) return string.format(form,d) end)
+				line[mark]=target
+			end
+			if mark=='text' then
+				nt=''
+				repeat
+					seg,t2=text:match("^(%b{})(.*)")
+					if not seg then seg,t2=text:match("^([^{]+)(.*)")
+						if not seg then break end
+						seg=seg:gsub("(%-?[%d.]+)",function(d)
+						if tonumber(d)>0 and not d:match("%.%d") then return string.format(form,d) else return d end
+						end)
+					end
+					nt=nt..seg
+					text=t2
+				until text==''
+				text=nt
+			end
+		end
+		
+		if res.modzero=="random" then
+			li=math.ceil(z/sub3)
+			local num=0
+			for t=1,#ranTab do
+				if li==t then num=ranTab[t] break end
+			end
+			if mark:match "margin" and num<0 then num=0-num end
+			if mark=="comment" then
+				text=text..wrap("random: "..num)
+			else
+				line[mark]=num
+			end
+		end
+		
+		line.text=text
+		subs[i]=line
 	end
-	
-	if res.modzero=="random" then
-		li=math.ceil(z/sub3)
-		local num=0
-		for t=1,#ranTab do
-			if li==t then num=ranTab[t] break end
-		end
-		if mark:match "margin" and num<0 then num=0-num end
-		if mark=="comment" then
-			text=text..wrap("random: "..num)
-		else
-			line[mark]=num
-		end
-	end
-	
-	line.text=text
-	subs[i]=line
-    end
 end
 
 
@@ -531,170 +521,167 @@ end
 
 --	CHAPTERS	------------------------------------------------------------------------------------------------
 function chopters(subs,sel)
-  if res.marker=="effect" and res.nam=="effect" then t_error("Error. Both marker and name cannot be 'effect'.",1) end
-  if res.chmark then
-    if res.lang~="" then kap=res.lang else kap=res.chap end
-    for z,i in ipairs(sel) do
-      line=subs[i]
-      text=line.text
-	if res.marker=="actor" then line.actor="chptr" end
-	if res.marker=="effect" then line.effect="chptr" end
-	if res.marker=="comment" then text=text.."{chptr}" end
-	if res.nam=="effect" then line.effect=kap end
-	if res.nam=="comment" then text=wrap(kap)..text end
-      line.text=text
-      subs[i]=line
-    end
-  else
+    if res.marker=="effect" and res.nam=="effect" then t_error("Error. Both marker and name cannot be 'effect'.",1) end
+    if res.chmark then
+	if res.lang~="" then kap=res.lang else kap=res.chap end
+	for z,i in ipairs(sel) do
+		line=subs[i]
+		text=line.text
+		if res.marker=="actor" then line.actor="chptr" end
+		if res.marker=="effect" then line.effect="chptr" end
+		if res.marker=="comment" then text=text.."{chptr}" end
+		if res.nam=="effect" then line.effect=kap end
+		if res.nam=="comment" then text=wrap(kap)..text end
+		line.text=text
+		subs[i]=line
+	end
+    else
 	euid=2013
 	chptrs={}
 	subchptrs={}
 	if res.lang=="" then clang="eng" else clang=res.lang end
-    for i=1,#subs do
-      if subs[i].class=="info" then
-	if subs[i].key=="Video File" then videoname=subs[i].value videoname=videoname:gsub("%.mkv","") end
-      end
-      
-      if subs[i].class=="dialogue" then
-        line=subs[i]
-	text=line.text
-	actor=line.actor
-	effect=line.effect
-	start=line.start_time
-	if text:match("{[Cc]hapter}") or text:match("{[Cc]hptr}") or text:match("{[Cc]hap}") then comment="chapter" else comment="" end
-	if res.marker=="actor" then marker=actor:lower() end
-	if res.marker=="effect" then marker=effect:lower() end
-	if res.marker=="comment" then marker=comment:lower() end
 	
-	    if marker=="chapter" or marker=="chptr" or marker=="chap" then
-		if res.nam=="comment" then
-		name=text:match("^{([^}]*)}")
-		name=name:gsub(" [Ff]irst [Ff]rame",""):gsub(" [Ss]tart",""):gsub("part a","Part A"):gsub("part b","Part B"):gsub("preview","Preview")
-		else
-		name=effect
+	for i=1,#subs do
+		if subs[i].class=="info" then
+			if subs[i].key=="Video File" then videoname=subs[i].value videoname=videoname:gsub("%.mkv","") end
 		end
-		
-		if name:match("::") then main,subname=name:match("(.+)::(.+)") sub=1
-		else sub=0
+		if subs[i].class=="dialogue" then
+			line=subs[i]
+			text=line.text
+			actor=line.actor
+			effect=line.effect
+			start=line.start_time
+			if text:match("{[Cc]hapter}") or text:match("{[Cc]hptr}") or text:match("{[Cc]hap}") then comment="chapter" else comment="" end
+			if res.marker=="actor" then marker=actor:lower() end
+			if res.marker=="effect" then marker=effect:lower() end
+			if res.marker=="comment" then marker=comment:lower() end
+			
+			if marker=="chapter" or marker=="chptr" or marker=="chap" then
+				if res.nam=="comment" then
+				name=text:match("^{([^}]*)}")
+				name=name:gsub(" [Ff]irst [Ff]rame",""):gsub(" [Ss]tart",""):gsub("part a","Part A"):gsub("part b","Part B"):gsub("preview","Preview")
+				else
+				name=effect
+				end
+				
+				if name:match("::") then main,subname=name:match("(.+)::(.+)") sub=1
+				else sub=0
+				end
+				
+				lineid=start+2013
+				
+				timecode=math.floor(start/1000)
+				tc1=math.floor(timecode/60)
+				tc2=timecode%60
+				tc3=start%1000
+				tc4="00"
+				if tc2==60 then tc2=0 tc1=tc1+1 end
+				if tc1>119 then tc1=tc1-120 tc4="02" end
+				if tc1>59 then tc1=tc1-60 tc4="01" end
+				if tc1<10 then tc1="0"..tc1 end
+				if tc2<10 then tc2="0"..tc2 end
+				if tc3<100 then tc3="0"..tc3 end
+				linetime=tc4..":"..tc1..":"..tc2.."."..tc3
+				if linetime=="00:00:00.00" then linetime="00:00:00.033" end
+				
+				if sub==0 then
+				cur_chptr={id=lineid,name=name,tim=linetime}
+				table.insert(chptrs,cur_chptr)
+				else
+				cur_chptr={id=lineid,subname=subname,tim=linetime,main=main}
+				table.insert(subchptrs,cur_chptr)
+				end
+			end
+			if line.style=="Default" then euid=euid+text:len() end
 		end
-		
-		lineid=start+2013
-		
-		timecode=math.floor(start/1000)
-		tc1=math.floor(timecode/60)
-		tc2=timecode%60
-		tc3=start%1000
-		tc4="00"
-		if tc2==60 then tc2=0 tc1=tc1+1 end
-		if tc1>119 then tc1=tc1-120 tc4="02" end
-		if tc1>59 then tc1=tc1-60 tc4="01" end
-		if tc1<10 then tc1="0"..tc1 end
-		if tc2<10 then tc2="0"..tc2 end
-		if tc3<100 then tc3="0"..tc3 end
-		linetime=tc4..":"..tc1..":"..tc2.."."..tc3
-		if linetime=="00:00:00.00" then linetime="00:00:00.033" end
-		
-		if sub==0 then
-		cur_chptr={id=lineid,name=name,tim=linetime}
-		table.insert(chptrs,cur_chptr)
-		else
-		cur_chptr={id=lineid,subname=subname,tim=linetime,main=main}
-		table.insert(subchptrs,cur_chptr)
-		end
-	    
-	    end
-	if line.style=="Default" then euid=euid+text:len() end
-      end
-    end
+	end
 
 	-- subchapters
 	subchapters={}
-    for c=1,#subchptrs do
-	local ch=subchptrs[c]
-	
-	ch_main=ch.main
-	ch_uid=ch.id
-	ch_name=ch.subname
-	ch_time=ch.tim
-	
-	schapter="      <ChapterAtom>\n        <ChapterDisplay>\n          <ChapterString>"..ch_name.."</ChapterString>\n          <ChapterLanguage>"..clang.."</ChapterLanguage>\n        </ChapterDisplay>\n        <ChapterUID>"..ch_uid.."</ChapterUID>\n        <ChapterTimeStart>"..ch_time.."</ChapterTimeStart>\n        <ChapterFlagHidden>0</ChapterFlagHidden>\n        <ChapterFlagEnabled>1</ChapterFlagEnabled>\n      </ChapterAtom>\n"
-	
-	subchapter={main=ch_main,chap=schapter}
-	table.insert(subchapters,subchapter)
-    end
-    
+	for c=1,#subchptrs do
+		local ch=subchptrs[c]
+		ch_main=ch.main
+		ch_uid=ch.id
+		ch_name=ch.subname
+		ch_time=ch.tim
+		schapter="      <ChapterAtom>\n        <ChapterDisplay>\n          <ChapterString>"..ch_name.."</ChapterString>\n          <ChapterLanguage>"..clang.."</ChapterLanguage>\n        </ChapterDisplay>\n        <ChapterUID>"..ch_uid.."</ChapterUID>\n        <ChapterTimeStart>"..ch_time.."</ChapterTimeStart>\n        <ChapterFlagHidden>0</ChapterFlagHidden>\n        <ChapterFlagEnabled>1</ChapterFlagEnabled>\n      </ChapterAtom>\n"
+		subchapter={main=ch_main,chap=schapter}
+		table.insert(subchapters,subchapter)
+	end
+
 	-- chapters
 	insert_chapters=""
-	
+
 	if res.intro then
-	insert_chapters="    <ChapterAtom>\n      <ChapterUID>"..#subs.."</ChapterUID>\n      <ChapterFlagHidden>0</ChapterFlagHidden>\n      <ChapterFlagEnabled>1</ChapterFlagEnabled>\n      <ChapterDisplay>\n        <ChapterString>Intro</ChapterString>\n        <ChapterLanguage>"..clang.."</ChapterLanguage>\n      </ChapterDisplay>\n      <ChapterTimeStart>00:00:00.033</ChapterTimeStart>\n    </ChapterAtom>\n"
-	
+		insert_chapters="    <ChapterAtom>\n      <ChapterUID>"..#subs.."</ChapterUID>\n      <ChapterFlagHidden>0</ChapterFlagHidden>\n      <ChapterFlagEnabled>1</ChapterFlagEnabled>\n      <ChapterDisplay>\n        <ChapterString>Intro</ChapterString>\n        <ChapterLanguage>"..clang.."</ChapterLanguage>\n      </ChapterDisplay>\n      <ChapterTimeStart>00:00:00.033</ChapterTimeStart>\n    </ChapterAtom>\n"
 	end
 	
 	table.sort(chptrs,function(a,b) return a.tim<b.tim end)
-	
-    for c=1,#chptrs do
-	local ch=chptrs[c]
-	
-	ch_uid=ch.id
-	ch_name=ch.name
-	ch_time=ch.tim
-	
-	local subchaps=""
-	for c=1,#subchapters do 
-	local subc=subchapters[c]
-	if subc.main==ch_name then subchaps=subchaps..subc.chap end
+
+	for c=1,#chptrs do
+		local ch=chptrs[c]
+		ch_uid=ch.id
+		ch_name=ch.name
+		ch_time=ch.tim
+		local subchaps=""
+		for c=1,#subchapters do 
+		local subc=subchapters[c]
+		if subc.main==ch_name then subchaps=subchaps..subc.chap end
+		end
+		chapter="    <ChapterAtom>\n      <ChapterUID>"..ch_uid.."</ChapterUID>\n      <ChapterFlagHidden>0</ChapterFlagHidden>\n      <ChapterFlagEnabled>1</ChapterFlagEnabled>\n      <ChapterDisplay>\n        <ChapterString>"..ch_name.."</ChapterString>\n        <ChapterLanguage>"..clang.."</ChapterLanguage>\n      </ChapterDisplay>\n"..subchaps.."      <ChapterTimeStart>"..ch_time.."</ChapterTimeStart>\n    </ChapterAtom>\n"
+		insert_chapters=insert_chapters..chapter
 	end
 	
-	chapter="    <ChapterAtom>\n      <ChapterUID>"..ch_uid.."</ChapterUID>\n      <ChapterFlagHidden>0</ChapterFlagHidden>\n      <ChapterFlagEnabled>1</ChapterFlagEnabled>\n      <ChapterDisplay>\n        <ChapterString>"..ch_name.."</ChapterString>\n        <ChapterLanguage>"..clang.."</ChapterLanguage>\n      </ChapterDisplay>\n"..subchaps.."      <ChapterTimeStart>"..ch_time.."</ChapterTimeStart>\n    </ChapterAtom>\n"
-
-	insert_chapters=insert_chapters..chapter
-    end
-	
 	chapters="<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<Chapters>\n  <EditionEntry>\n    <EditionFlagHidden>0</EditionFlagHidden>\n    <EditionFlagDefault>0</EditionFlagDefault>\n    <EditionUID>"..euid.."</EditionUID>\n"..insert_chapters.."  </EditionEntry>\n</Chapters>"
-   
-    chdialog=
-	{{x=0,y=0,width=35,class="label",label="Text to export:"},
-	{x=0,y=1,width=35,height=20,class="textbox",name="copytext",value=chapters},
-	{x=0,y=21,width=35,class="label",label="File will be saved in the same folder as the .ass file."},}
-	
-    pressed,reslt=ADD(chdialog,{"Save xml file","mp4-compatible chapters","Cancel","Copy to clipboard"},{cancel='Cancel'})
-    if pressed=="Copy to clipboard" then clipboard.set(chapters) end
+
 	scriptpath=ADP("?script")
 	scriptname=aegisub.file_name()
 	scriptname=scriptname:gsub("%.ass","")
-	if ch_script_path=="relative" then path=scriptpath.."\\"..relative_path end
-	if ch_script_path=="absolute" then path=absolute_path end
+	if ch_script_path=="relative" then path=scriptpath.."\\"..ch_relative_path end
+	if ch_script_path=="absolute" then path=ch_absolute_path end
+	path=path.."\\"
+	repeat path,r=path:gsub("\\[^\\]+\\%.%.\\","\\") until r==0
 	if res.sav=="script" then filename=scriptname else filename=videoname end
-	
-    if pressed=="Save xml file" then
-	local file=io.open(path.."\\"..filename..".xml","w")
-	file:write(chapters)
-	file:close()
-    end
-    if pressed=="mp4-compatible chapters" then
-	mp4chap=""
-	m4c=1
-	for ch in chapters:gmatch("<ChapterAtom>(.-)</ChapterAtom>") do
-		chnam=ch:match("<ChapterString>(.-)</ChapterString>")
-		chtim=ch:match("<ChapterTimeStart>(.-)</ChapterTimeStart>")
-		num=tostring(m4c)
-		if num:len()==1 then num="0"..num end
-		chnum="CHAPTER"..num
-		mp4chap=mp4chap..chnum.."="..chtim.."\n"..chnum.."NAME="..chnam.."\n\n"
-		m4c=m4c+1
-	end
-	chapters=mp4chap:gsub("\n\n$","")
-	chdialog[2].value=chapters
-	pressed,reslt=ADD(chdialog,{"Save txt file","Cancel","Copy to clipboard"},{cancel='Cancel'})
+
+	chdialog={
+	{x=0,y=0,width=35,class="label",label="Text to export:"},
+	{x=0,y=1,width=35,height=20,class="textbox",name="copytext",value=chapters},
+	{x=0,y=21,width=35,class="label",label='File "'..filename..'.xml" will be saved in "'..path..'"\nIf you want to change the path, use Save Config.'},
+	}
+	pressed,reslt=ADD(chdialog,{"Save xml file","mp4-compatible chapters","Cancel","Copy to clipboard"},{cancel='Cancel'})
 	if pressed=="Copy to clipboard" then clipboard.set(chapters) end
-	if pressed=="Save txt file" then
-	  local file=io.open(path.."\\"..filename.."chapters.txt","w")
-	  file:write(chapters)
-	  file:close()
+	if pressed=="Save xml file" then
+		local file=io.open(path..filename..".xml","w")
+		if file==nil then os.execute("mkdir \""..path.."\"") file=io.open(path..filename..".xml","w") end
+		if file==nil then t_error("File could not be saved. Probably path doesn't exist:\n"..path,1) end
+		file:write(chapters)
+		file:close()
+	end
+	if pressed=="mp4-compatible chapters" then
+		mp4chap=""
+		m4c=1
+		for ch in chapters:gmatch("<ChapterAtom>(.-)</ChapterAtom>") do
+			chnam=ch:match("<ChapterString>(.-)</ChapterString>")
+			chtim=ch:match("<ChapterTimeStart>(.-)</ChapterTimeStart>")
+			num=tostring(m4c)
+			if num:len()==1 then num="0"..num end
+			chnum="CHAPTER"..num
+			mp4chap=mp4chap..chnum.."="..chtim.."\n"..chnum.."NAME="..chnam.."\n\n"
+			m4c=m4c+1
+		end
+		chapters=mp4chap:gsub("\n\n$","")
+		chdialog[2].value=chapters
+		chdialog[3].label=chdialog[3].label:gsub('%.xml','_chapters.txt')
+		pressed,reslt=ADD(chdialog,{"Save txt file","Cancel","Copy to clipboard"},{cancel='Cancel'})
+		if pressed=="Copy to clipboard" then clipboard.set(chapters) end
+		if pressed=="Save txt file" then
+			local file=io.open(path..filename.."_chapters.txt","w")
+			if file==nil then os.execute("mkdir \""..path.."\"") file=io.open(path..filename.."_chapters.txt","w") end
+			file:write(chapters)
+			file:close()
+		end
 	end
     end
-  end
 end
 
 
@@ -1329,13 +1316,11 @@ function stuff(subs,sel,act)
 	if res.stuff=="replacer" then
 	  lim=sub3:match("^%d+")
 	  if lim==nil then limit=1 else limit=tonumber(lim) end
-	  replicant1=sub1:gsub("\\","\\")
-	  replicant2=sub2:gsub("\\","\\")
+	  replicant1=sub1
+	  replicant2=sub2
 	  tk=text
 	  count=0
 	  if res.regex=="lua patterns" then
-	    replicant1=replicant1:gsub("\\\\","\\")
-	    replicant2=replicant2:gsub("\\\\","\\")
 	    repeat 
 	    text=text:gsub(replicant1,replicant2) count=count+1
 	    until count==limit
@@ -1350,6 +1335,7 @@ function stuff(subs,sel,act)
 	      end
 	    end
 	  else
+	    if replicant1=='' then t_error('Replacing an empty string is not allowed with regexp.',1) end
 	    repeat
 	    text=re.sub(text,replicant1,replicant2) count=count+1
 	    until count==limit
@@ -2107,6 +2093,7 @@ function honorifix(subs,sel)
         line=subs[i]
         line.text=line.text
 	:gsub("%-san","{-san}")
+	:gsub("%-tan","{-tan}")
 	:gsub("%-chan","{-chan}")
 	:gsub("%-kun","{-kun}")
 	:gsub("%-sama","{-sama}")
@@ -2140,29 +2127,29 @@ end
 
 --	framerate	--
 function framerate(subs)
-    f1=res.rep1
-    f2=res.rep2
-    if not tonumber(f1) or not tonumber(f2) then
-	local GUI={
-	{x=0,y=0,width=2,class="label",label="No framerates supplied.\nTry these. (From -> to)"},
-	{x=0,y=1,class="dropdown",name="f1",items={23.976,24,25,29.970,30},value=23.976},
-	{x=1,y=1,class="dropdown",name="f2",items={23.976,24,25,29.970,30},value=25},
-	}
-	fP,fres=ADD(GUI,{"OK","Cancel"},{ok='OK',close='Cancel'})
-	if fP=="Cancel" then ak() end
-	f1=fres.f1 f2=fres.f2
-    end
-    for i=1, #subs do
-        if subs[i].class=="dialogue" then
-            local line=subs[i]
-	    line.start_time=line.start_time/f2*f1
-	    line.end_time=line.end_time/f2*f1
-            subs[i]=line
-        end
-    end
+	f1=res.rep1
+	f2=res.rep2
+	if not tonumber(f1) or not tonumber(f2) then
+		local GUI={
+		{x=0,y=0,width=2,class="label",label="No framerates supplied.\nTry these. (From -> to)"},
+		{x=0,y=1,class="dropdown",name="f1",items={23.976,24,25,29.970,30},value=23.976},
+		{x=1,y=1,class="dropdown",name="f2",items={23.976,24,25,29.970,30},value=25},
+		}
+		fP,fres=ADD(GUI,{"OK","Cancel"},{ok='OK',close='Cancel'})
+		if fP=="Cancel" then ak() end
+		f1=fres.f1 f2=fres.f2
+	end
+	for i=1,#subs do
+		if subs[i].class=="dialogue" then
+			local line=subs[i]
+			line.start_time=line.start_time/f2*f1
+			line.end_time=line.end_time/f2*f1
+			subs[i]=line
+		end
+	end
 end
 
---	reanimatools 	-----
+--	reanimatools 	------------
 function esc(str) str=str:gsub("[%%%(%)%[%]%.%-%+%*%?%^%$]","%%%1") return str end
 function wrap(str) return "{"..str.."}" end
 function nobra(t) return t:gsub("%b{}","") end
@@ -2289,7 +2276,7 @@ function numgrad(V1,V2,total,l,acc)
 	acc=acc or 1
 	acc_fac=(l-1)^acc/(total-1)^acc
 	VC=round(acc_fac*(V2-V1)+V1,2)
-return VC
+	return VC
 end
 
 function acgrad(C1,C2,total,l,acc)
@@ -2312,37 +2299,38 @@ function acgrad(C1,C2,total,l,acc)
 	B=tohex(round(B))
 	CC="&H"..B..G..R.."&"
 	end
-return CC
+	return CC
 end
 
 function tohex(num)
-n1=math.floor(num/16)
-n2=math.floor(num%16)
-num=tohex1(n1)..tohex1(n2)
-return num
+	n1=math.floor(num/16)
+	n2=math.floor(num%16)
+	num=tohex1(n1)..tohex1(n2)
+	return num
 end
 
 function tohex1(num)
-HEX={"1","2","3","4","5","6","7","8","9","A","B","C","D","E"}
-if num<1 then num="0" elseif num>14 then num="F" else num=HEX[num] end
-return num
+	HEX={"1","2","3","4","5","6","7","8","9","A","B","C","D","E"}
+	if num<1 then num="0" elseif num>14 then num="F" else num=HEX[num] end
+	return num
 end
 
 function t_error(message,cancel)
-  ADD({{class="label",label=message}},{"OK"},{close='OK'})
-  if cancel then ak() end
+	ADD({{class="label",label=message}},{"OK"},{close='OK'})
+	if cancel then ak() end
 end
 
 function stylechk(subs,sn)
-  for i=1,#subs do
-    if subs[i].class=="style" then
-      local st=subs[i]
-      if sn==st.name then sr=st break end
-    end
-  end
-  if sr==nil then t_error("Style '"..sn.."' doesn't exist.",1) end
-  return sr
+	for i=1,#subs do
+	    if subs[i].class=="style" then
+		local st=subs[i]
+		if sn==st.name then sr=st break end
+	    end
+	end
+	if sr==nil then t_error("Style '"..sn.."' doesn't exist.",1) end
+	return sr
 end
+
 
 function getpos(subs,text)	-- modified version
     st=nil defst=nil
@@ -2438,83 +2426,89 @@ end
 
 --	Config Stuff	--
 function saveconfig()
-unconf="Unimportant Configuration\n\n"
-  for key,val in ipairs(unconfig) do
-    if val.class=="floatedit" or val.class=="dropdown" then
-      unconf=unconf..val.name..":"..res[val.name].."\n"
-    end
-    if val.class=="checkbox" and val.name~="save" then
-      unconf=unconf..val.name..":"..tf(res[val.name]).."\n"
-    end
-  end
+	unconf="Unimportant Configuration\n\n"
+	for key,val in ipairs(unconfig) do
+		if val.class=="floatedit" or val.class=="dropdown" then
+			unconf=unconf..val.name..":"..res[val.name].."\n"
+		end
+		if val.class=="checkbox" and val.name~="save" then
+			unconf=unconf..val.name..":"..tf(res[val.name]).."\n"
+		end
+	end
 
-unimpkonfig=ADP("?user").."\\unimportant.conf"
-  file=io.open(unimpkonfig)
-    if file~=nil then
-	konf=file:read("*all")
-	io.close(file)
-	imp1=konf:match("imp1:(.-)\n")
-	imp2=konf:match("imp2:(.-)\n")
-	imp3=konf:match("imp3:(.-)\n")
-	chap1=konf:match("chap1:(.-)\n")
-	chap2=konf:match("chap2:(.-)\n")
-	chap3=konf:match("chap3:(.-)\n")
-    end
-    if imp1==nil then imp1="relative" end
-    if imp2==nil then imp2="" end
-    if imp3==nil then imp3="D:\\typesetting\\" end
-    if chap1==nil then chap1="relative" end
-    if chap2==nil then chap2="" end
-    if chap3==nil then chap3="D:\\typesetting\\" end
+	unimpkonfig=ADP("?user").."\\unimportant.conf"
+	file=io.open(unimpkonfig)
+	if file~=nil then
+		konf=file:read("*all")
+		io.close(file)
+		imp1=konf:match("imp1:(.-)\n")
+		imp2=konf:match("imp2:(.-)\n")
+		imp3=konf:match("imp3:(.-)\n")
+		chap1=konf:match("chap1:(.-)\n")
+		chap2=konf:match("chap2:(.-)\n")
+		chap3=konf:match("chap3:(.-)\n")
+	end
+	if imp1==nil then imp1="relative" end
+	if imp2==nil then imp2="" end
+	if imp3==nil then imp3="D:\\typesetting\\" end
+	if chap1==nil then chap1="relative" end
+	if chap2==nil then chap2="" end
+	if chap3==nil then chap3="D:\\typesetting\\" end
 
-  savestuff={
-  {x=0,y=0,class="label",label="Import script path:"},
-  {x=0,y=1,class="label",label="Import relative path:"},
-  {x=0,y=2,class="label",label="Import absolute path:"},
-  {x=0,y=3,class="label",label="Chapters save path:"},
-  {x=0,y=4,class="label",label="Chapters relative path:"},
-  {x=0,y=5,class="label",label="Chapters absolute path:"},
-  {x=1,y=0,class="dropdown",name="imp1",items={"relative","absolute"},value=imp1},
-  {x=1,y=1,class="edit",width=16,name="imp2",value=imp2},
-  {x=1,y=2,class="edit",width=16,name="imp3",value=imp3},
-  {x=1,y=3,class="dropdown",name="chap1",items={"relative","absolute"},value=chap1},
-  {x=1,y=4,class="edit",width=16,name="chap2",value=chap2},
-  {x=1,y=5,class="edit",width=16,name="chap3",value=chap3},
-  }
-  
-  click,rez=ADD(savestuff,{"Save","Cancel"},{ok='Save',close='Cancel'})
-  if click=="Cancel" then ak() end
-  rez.imp3=rez.imp3:gsub("[^\\]$","%1\\")
-  rez.chap3=rez.chap3:gsub("[^\\]$","%1\\")
-  
-  for key,val in ipairs(savestuff) do
-    if val.x==1 then
-      unconf=unconf..val.name..":"..rez[val.name].."\n"
-    end
-  end
-  
-file=io.open(unimpkonfig,"w")
-file:write(unconf)
-file:close()
-ADD({{class="label",label="Config saved to:\n"..unimpkonfig}},{"OK"},{close='OK'})
+	savestuff={
+	{x=0,y=0,width=3,class="label",label="This will save the values of dropdown menus and checkboxes, plus the following:"},
+	{x=0,y=1,class="label",label="Import script path:"},
+	{x=0,y=2,class="label",label="Import relative path:"},
+	{x=0,y=3,class="label",label="Import absolute path:"},
+	{x=0,y=4,class="label",label="Chapters save path:"},
+	{x=0,y=5,class="label",label="Chapters relative path:"},
+	{x=0,y=6,class="label",label="Chapters absolute path:"},
+	{x=1,y=1,class="dropdown",name="imp1",items={"relative","absolute"},value=imp1,hint="relative = script folder"},
+	{x=1,y=2,class="edit",width=2,name="imp2",value=imp2,hint="path from script folder"},
+	{x=1,y=3,class="edit",width=2,name="imp3",value=imp3},
+	{x=1,y=4,class="dropdown",name="chap1",items={"relative","absolute"},value=chap1,hint="relative = script folder"},
+	{x=1,y=5,class="edit",width=2,name="chap2",value=chap2,hint="path from script folder"},
+	{x=1,y=6,class="edit",width=2,name="chap3",value=chap3},
+	{x=0,y=7,width=3,class="label",label="Default ('relative' + '') is the script path. 'ABC' in 'relative path' will use subfolder 'ABC'.\n'..' in 'relative path' will go one folder higher."},
+	}
+
+	click,rez=ADD(savestuff,{"Save","Cancel"},{ok='Save',close='Cancel'})
+	if click=="Cancel" then ak() end
+	rez.imp3=rez.imp3:gsub("[^\\]$","%1\\")
+	rez.chap3=rez.chap3:gsub("[^\\]$","%1\\")
+
+	for key,val in ipairs(savestuff) do
+		if val.x==1 then unconf=unconf..val.name..":"..rez[val.name].."\n" end
+	end
+
+	file=io.open(unimpkonfig,"w")
+	file:write(unconf)
+	file:close()
+	ADD({{class="label",label="Config saved to:\n"..unimpkonfig}},{"OK"},{close='OK'})
 end
 
 function loadconfig()
 unimpkonfig=ADP("?user").."\\unimportant.conf"
 file=io.open(unimpkonfig)
+script_path="relative"
+relative_path=""
+absolute_path="D:\\typesetting\\"
+ch_script_path="relative"
+ch_relative_path=""
+ch_absolute_path="D:\\typesetting\\"
     if file~=nil then
 	konf=file:read("*all")
-	io.close(file)
+	file:close()
 	if konf:match("^%-%-") then konf="" t_error("Your config file is outdated.\nUse the 'Save Config' button to save a new one.")
 	else
-	  for key,val in ipairs(unconfig) do
-	    if val.class=="floatedit" or val.class=="checkbox" or val.class=="dropdown" then
-	      if konf:match(val.name) then val.value=detf(konf:match(val.name..":(.-)\n")) end
-	      if lastimp and val.name=="stuff" then val.value=lastuff end
-	      if lastimp and val.name=="log" then val.value=lastlog end
-	      if lastimp and val.name=="zeros" then val.value=lastzeros end
-	      if lastimp and val.name=="field" then val.value=lastfield end
-	      if lastimp and val.name=="modzero" then val.value=lastmod0 end
+	  for key,v in ipairs(unconfig) do
+	    if v.class=="floatedit" or v.class=="checkbox" or v.class=="dropdown" then
+		if konf:match(v.name) then v.value=detf(konf:match(v.name..":(.-)\n")) end
+		if lastimp and v.name=="stuff" then v.value=lastuff end
+		if lastimp and v.name=="log" then v.value=lastlog end
+		if lastimp and v.name=="zeros" then v.value=lastzeros end
+		if lastimp and v.name=="field" then v.value=lastfield end
+		if lastimp and v.name=="modzero" then v.value=lastmod0 end
 	    end
 	  end
 	end
@@ -2528,118 +2522,115 @@ file=io.open(unimpkonfig)
 end
 
 function tf(val)
-    if val==true then ret="true"
-    elseif val==false then ret="false"
-    else ret=val end
-    return ret
+	if val==true then ret="true"
+	elseif val==false then ret="false"
+	else ret=val end
+	return ret
 end
 
 function detf(txt)
-    if txt=="true" then ret=true
-    elseif txt=="false" then ret=false
-    else ret=txt end
-    return ret
+	if txt=="true" then ret=true
+	elseif txt=="false" then ret=false
+	else ret=txt end
+	return ret
 end
 
 function analyze(l)
-    text=l.text
-    dur=l.end_time-l.start_time
-    dura=dur/1000
-    txt=text:gsub("%b{}","") :gsub("\\N","")
-    visible=text:gsub("{\\alpha&HFF&}[^{}]-{[^{}]-}","")	:gsub("{\\alpha&HFF&}[^{}]*$","")	:gsub("{[^{}]-}","")
-			:gsub("\\[Nn]","*")	:gsub("%s?%*+%s?"," ")	:gsub("^%s+","")	:gsub("%s+$","")
-    wrd=0	for word in txt:gmatch("([%a\']+)") do wrd=wrd+1 end
-    chars=visible:gsub(" ","")	:gsub("[%.,\"]","")
-    char=chars:len()
-    cps=math.ceil(char/dura)
-    if dur==0 then cps=0 end
+	text=l.text
+	dur=l.end_time-l.start_time
+	dura=dur/1000
+	txt=text:gsub("%b{}","") :gsub("\\N","")
+	visible=text:gsub("{\\alpha&HFF&}[^{}]-%b{}",""):gsub("{\\alpha&HFF&}[^{}]*$",""):gsub("%b{}",""):gsub("\\N","\n"):gsub(" *\n+ *"," "):gsub("^ *(.-) *$","%1")
+	wrd=0	for word in txt:gmatch("([%a\']+)") do wrd=wrd+1 end
+	chars=visible:gsub(" ",""):gsub("[.,\"]","")
+	char=chars:len()
+	cps=math.ceil(char/dura)
+	if dur==0 then cps=0 end
 end
 
 function info(subs,sel,act)
-    styletab={}
-    dc=0
-    sdur=0
-    S=subs[sel[1]].start_time
-    E=subs[sel[#sel]].end_time
-    video=nil stitle=nil colorspace=nil resx=nil resy=nil
-    prop=aegisub.project_properties()
-    for x,i in ipairs(sel) do
-	line=subs[i]
-	dur=line.end_time-line.start_time
-	if line.start_time<S then S=line.start_time end
-	if line.end_time>E then E=line.end_time end
-	sdur=sdur+dur
-    end
-    seldur=sdur/1000
-    for i=1, #subs do
-        if subs[i].class=="info" then
-	    local k=subs[i].key
-	    local v=subs[i].value
-	    if k=="Title" then stitle=v end
-	    if k=="Video File" then video=v end
-	    if k=="YCbCr Matrix" then colorspace=v end
-	    if k=="PlayResX" then resx=v end
-	    if k=="PlayResY" then resy=v end
-        end
-	if video==nil then video=prop.video_file:gsub("^.*\\","") end
-	if stitle==nil then sct="" else sct="Script title: "..stitle.."\n" end
-	if video==nil then vf="" else vf="Video file: "..video.."\n" end
-	if resy==nil then reso="" else reso="Script resolution: "..resx.."x"..resy.."\n" end
-	if colorspace==nil then cols="" else cols="Colorspace: "..colorspace.."\n" end
-	nfo=sct..vf..reso..cols
-        if subs[i].class=="style" then
-            local s=subs[i]
-	    table.insert(styletab,s)
-        end
-        if subs[i].class=="dialogue" then
- 	    dc=dc+1
-            local l=subs[i]
-	    if i==act then
-		ano=dc
-		analyze(l)
-		for s=1,#styletab do st=styletab[s]
-		    if st.name==l.style then
-			acfont=st.fontname
-			acsize=st.fontsize
-			acalign=st.align
-			acleft=st.margin_l
-			acright=st.margin_r
-			acvert=st.margin_t
-			acbord=st.outline
-			acshad=st.shadow
-			if st.bold then actbold="Bold" else actbold="Regular" end
-		    end 
+	styletab={}
+	dc=0
+	sdur=0
+	S=subs[sel[1]].start_time
+	E=subs[sel[#sel]].end_time
+	video=nil stitle=nil colorspace=nil resx=nil resy=nil
+	prop=aegisub.project_properties()
+	for x,i in ipairs(sel) do
+		line=subs[i]
+		dur=line.end_time-line.start_time
+		if line.start_time<S then S=line.start_time end
+		if line.end_time>E then E=line.end_time end
+		sdur=sdur+dur
+	end
+	seldur=sdur/1000
+	for i=1, #subs do
+		if subs[i].class=="info" then
+			local k=subs[i].key
+			local v=subs[i].value
+			if k=="Title" then stitle=v end
+			if k=="Video File" then video=v end
+			if k=="YCbCr Matrix" then colorspace=v end
+			if k=="PlayResX" then resx=v end
+			if k=="PlayResY" then resy=v end
 		end
-		ast=l.start_time
-		aet=l.end_time
-		if ms2fr(1) then
-			afr=" ("..ms2fr(aet)-ms2fr(ast).." frames)"
-			fps=round(aegisub.frame_from_ms(99999999)/(99999999/1000)*1000)/1000
-			frate="\nFramerate: "..fps.." fps"
-		else afr='' frate="\nFramerate: unknown"
+		if video==nil then video=prop.video_file:gsub("^.*\\","") end
+		if stitle==nil then sct="" else sct="Script title: "..stitle.."\n" end
+		if video==nil then vf="" else vf="Video file: "..video.."\n" end
+		if resy==nil then reso="" else reso="Script resolution: "..resx.."x"..resy.."\n" end
+		if colorspace==nil then cols="" else cols="Colorspace: "..colorspace.."\n" end
+		nfo=sct..vf..reso..cols
+		if subs[i].class=="style" then
+		    local s=subs[i]
+		    table.insert(styletab,s)
 		end
-		actime=(l.end_time-ast)/1000 ..'s'..afr
-		actime=actime:gsub("(%(1 frame)s","%1")
-		if stfr~=nil then  else fps=0 end
+		if subs[i].class=="dialogue" then
+			dc=dc+1
+			local l=subs[i]
+			if i==act then
+				ano=dc
+				analyze(l)
+				for s=1,#styletab do st=styletab[s]
+				    if st.name==l.style then
+					acfont=st.fontname
+					acsize=st.fontsize
+					acalign=st.align
+					acleft=st.margin_l
+					acright=st.margin_r
+					acvert=st.margin_t
+					acbord=st.outline
+					acshad=st.shadow
+					if st.bold then actbold="Bold" else actbold="Regular" end
+				    end 
+				end
+				ast=l.start_time
+				aet=l.end_time
+				if ms2fr(1) then
+					afr=" ("..ms2fr(aet)-ms2fr(ast).." frames)"
+					fps=round(aegisub.frame_from_ms(99999999)/(99999999/1000)*1000)/1000
+					frate="\nFramerate: "..fps.." fps"
+				else afr='' frate="\nFramerate: unknown"
+				end
+				actime=(l.end_time-ast)/1000 ..'s'..afr
+				actime=actime:gsub("(%(1 frame)s","%1")
+				if stfr~=nil then  else fps=0 end
 
+				aligntop="789" alignbot="123" aligncent="456"
+				alignleft="147" alignright="369" alignmid="258"
+				if aligntop:match(acalign) then vert=acvert
+				elseif alignbot:match(acalign) then vert=resy-acvert
+				elseif aligncent:match(acalign) then vert=resy/2 end
+				if alignleft:match(acalign) then horz=acleft
+				elseif alignright:match(acalign) then horz=resx-acright
+				elseif alignmid:match(acalign) then horz=resx/2 end
 
-		aligntop="789" alignbot="123" aligncent="456"
-		alignleft="147" alignright="369" alignmid="258"
-		if aligntop:match(acalign) then vert=acvert
-		elseif alignbot:match(acalign) then vert=resy-acvert
-		elseif aligncent:match(acalign) then vert=resy/2 end
-		if alignleft:match(acalign) then horz=acleft
-		elseif alignright:match(acalign) then horz=resx-acright
-		elseif alignmid:match(acalign) then horz=resx/2 end
-		
-		aktif="Active line: #"..ano.."\nStyle used: "..l.style.."\nFont used: "..acfont.."\nWeight: "..actbold.."\nFont size: "..acsize.."\nBorder: "..acbord.."\nShadow: "..acshad.."\nDuration: "..actime.."\nCharacters: "..char.."\nCharacters per second: "..cps.."\nDefault position: "..horz..","..vert.."\n\nVisible text:\n"..visible
-	    end
-        end
-
-    end
-    if ms2fr(1) then selfr=" ("..ms2fr(E)-ms2fr(S).." frames)" else selfr='' end
-    selfr=selfr:gsub("(%(1 frame)s","%1")
-    infodump=nfo.."Styles used: "..#styletab.."\nDialogue lines: "..dc..", Selected: "..#sel.."\nCombined length of selected lines: "..seldur.."s\nSelection duration: "..(E-S)/1000 .."s"..selfr..frate.."\n\n"..aktif
+				aktif="Active line: #"..ano.."\nStyle used: "..l.style.."\nFont used: "..acfont.."\nWeight: "..actbold.."\nFont size: "..acsize.."\nBorder: "..acbord.."\nShadow: "..acshad.."\nDuration: "..actime.."\nCharacters: "..char.."\nCharacters per second: "..cps.."\nDefault position: "..horz..","..vert.."\n\nVisible text:\n"..visible
+			end
+		end
+	end
+	if ms2fr(1) then selfr=" ("..ms2fr(E)-ms2fr(S).." frames)" else selfr='' end
+	selfr=selfr:gsub("(%(1 frame)s","%1")
+	infodump=nfo.."Styles used: "..#styletab.."\nDialogue lines: "..dc..", Selected: "..#sel.."\nCombined length of selected lines: "..seldur.."s\nSelection duration: "..(E-S)/1000 .."s"..selfr..frate.."\n\n"..aktif
 end
 
 help_i=[[
@@ -2687,7 +2678,9 @@ Default is the script's folder. If you want the default to be one folder up, use
 You can use an absolute path, have one huge signs.ass there,
 and have all the signs marked "show_name-sign_name" in the effect field.
 
-IMPORT CHPTRS - Imports chapters from xml files - creates lines with "chptr" in actor and {ch. name} as text]]
+IMPORT CHPTRS - Imports chapters from xml files - creates lines with "chptr" in actor and {ch. name} as text.
+
+The path for importing things can be set in 'Save Config'. Default is script path.]]
 
 help_u=[[
 UPDATE LYRICS
@@ -2743,7 +2736,7 @@ It is, however, recommended to just use different markers, like j01 / e01.]]
 help_c=[[
 - CHAPTERS -
 
-This will generate chapters from the .ass file
+This will generate chapters from the .ass file. Use 'Save Config' to set path for saving the .xml.
 
 MARKER: For a line to be used for chapters, it has to be marked with "chapter"/"chptr"/"chap"
 in actor/effect field (depending on settings) or the same 3 options as a separate comment, ie. {chapter} etc.
