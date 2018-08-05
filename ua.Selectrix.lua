@@ -3,13 +3,13 @@
 script_name="Selectricks"
 script_description="Selectricks and Sortricks"
 script_author="unanimated"
-script_version="3.33"
+script_version="3.4"
 script_namespace="ua.Selectrix"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-  script_version="3.3.3"
-  depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
+	script_version="3.4.0"
+	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
 re=require'aegisub.re'
@@ -20,56 +20,56 @@ ulower=unicode.to_lower_case
 
 --	SELECTRIX GUI		--
 function konfig(subs,sel)
+	for i=1,#subs do if subs[i].class=="dialogue" then line0=i-1 break end end
 	edtr=0
 	main_mode=
-	{"--------text--------","0 text","1 style","2 actor","3 effect","text|actor|effect","text|act|eff|style","visible text (no tags)","------numbers------","layer","duration","word count","character count","char. per second","blur","left margin","right margin","vertical margin","start time","end time","------sorting only------","sort by time","reverse","width of text","dialogue first","dialogue last","ts/dialogue/oped","dialogue/oped/ts","{TS} to the top","masks to the bottom","by comments"}
-	presetses={"Default style - All","nonDefault - All","OP in style","ED in style","layer 0","lines w/ comments 1","same text (contin.)","same text (all lines)","same style","same actor","same effect","skiddiks, your their?","its/id/ill/were/wont","any/more+some/time","range of lines","----from selection----","no-blur signs","commented lines","lines w/ comments 2","move sel. up","move sel. down","------sorting------","move sel. to the top","move sel. to bottom","sel: first to bottom","sel: last to top"}
+	{"--------text--------","0 text","1 style","2 actor","3 effect","text|actor|effect","text|act|eff|style","visible text (no tags)","------numbers------","layer","duration","word count","character count","char. per second","blur","left margin","right margin","vertical margin","start time","end time","line #","------sorting only------","sort by time","reverse","width of text","dialogue first","dialogue last","ts/dialogue/oped","dialogue/oped/ts","{TS} to the top","masks to the bottom","by comments"}
+	presetses={"Default style - All","nonDefault - All","OP in style","ED in style","layer 0","lines w/ comments 1","same text (contin.)","same text (all lines)","same style","same actor","same effect","skiddiks, your their?","its/id/ill/were/wont","any/more+some/time","range of lines","----from selection----","no-blur signs","commented lines","lines w/ comments 2","odd line #","even line #","move sel. up","move sel. down","------sorting------","move sel. to the top","move sel. to bottom","sel: first to bottom","sel: last to top"}
 	GUI={
-	{x=0,y=0,class="label",label="Select/sort:"},
-	{x=0,y=1,class="label",label="Used area:"},
-	{x=0,y=2,class="label",label="Numbers:"},
-	{x=0,y=4,class="label",label="Match this:"},
-	{x=0,y=5,class="label",label="History:"},
-	{x=0,y=6,class="label",label="Filter:"},
 	{x=2,y=0,class="label",label="Text:  "},
-	
+
 	-- MAIN MODE
+	{x=0,y=4,class="label",label="Match &this:"},
 	{x=1,y=4,width=4,class="edit",name="match",value=lastmatch or ""},
+	{x=0,y=5,class="label",label="&History:"},
 	{x=1,y=5,width=4,class="dropdown",name="srch",value="",items={""}},
+	{x=0,y=6,class="label",label="&Filter:"},
 	{x=1,y=6,width=4,class="edit",name="filt",value=filter or ""},
-	
+
+	{x=0,y=0,class="label",label="&Select/sort:"},
 	{x=1,y=0,class="dropdown",name="mode",value="0 text",items=main_mode},
+	{x=0,y=1,class="label",label="Used &area:"},
 	{x=1,y=1,class="dropdown",name="selection",value="current selection",items={"current selection","all lines","add to selection"}},
+	{x=0,y=2,class="label",label="&Numbers:"},
 	{x=1,y=2,class="dropdown",name="equal",value="==",items={"==",">=","<=","<= [non-zero]"},hint="options for layer/duration"},
 	{x=1,y=3,class="dropdown",name="nomatch",value="matches",items={"matches","doesn't match"}},
-	{x=3,y=0,width=2,class="checkbox",name="case",label="Case sensitive"},
-	{x=3,y=1,width=2,class="checkbox",name="exact",label="Exact match"},
-	{x=2,y=1,class="checkbox",name="regexp",label="Regexp   "},
-	{x=2,y=2,width=3,class="checkbox",name="nocom",label="Exclude commented lines",value=true},
-	{x=2,y=3,class="checkbox",name="sep",label="Sep. words",hint="match all words separately\n(disabled by regexp / exact match)"},
-	{x=3,y=3,width=2,class="checkbox",name="rev",label="Reversed sorting"},
+	{x=3,y=0,width=2,class="checkbox",name="case",label="&Case sensitive"},
+	{x=3,y=1,width=2,class="checkbox",name="exact",label="&Exact match"},
+	{x=2,y=1,class="checkbox",name="regexp",label="&Regexp   "},
+	{x=2,y=2,width=3,class="checkbox",name="nocom",label="E&xclude commented lines",value=true},
+	{x=2,y=3,class="checkbox",name="sep",label="Sep. &words",hint="match all words separately\n(disabled by regexp / exact match)"},
+	{x=3,y=3,width=2,class="checkbox",name="rev",label="Re&versed sorting"},
 	
 	{x=0,y=7,class="label",label="Limitations:"},
-	{x=1,y=7,class="checkbox",name="onlyfirst",label="Only 1st result",hint="not applicable with 'doesn't match'\n(switches to 'matches')"},
-	{x=2,y=7,width=2,class="checkbox",name="beg",label="Beginning of line",hint="pattern must be at the beginning of line\n(relevant only without regexp)"},
-	
+	{x=1,y=7,class="checkbox",name="onlyfirst",label="&Only 1st result",hint="not applicable with 'doesn't match'\n(switches to 'matches')"},
+	{x=2,y=7,width=2,class="checkbox",name="beg",label="&Beginning of line",hint="pattern must be at the beginning of line\n(relevant only without regexp)"},
+
 	-- PRESETS
-	{x=0,y=8,class="label",label="Preset:"},
+	{x=0,y=8,class="label",label="&Preset:"},
 	{x=1,y=8,class="dropdown",name="pres","Default style - All",items=presetses},
-	{x=2,y=8,class="checkbox",name="mod",label="mod"},
-	{x=3,y=8,class="checkbox",name="editor",label="Load in editor"},
+	{x=2,y=8,class="checkbox",name="mod",label="&mod"},
+	{x=3,y=8,width=2,class="checkbox",name="editor",label="&Load in editor"},
 	
-	{x=1,y=9,class="checkbox",name="rem1",label="Remember dropdowns"},
-	{x=2,y=9,width=2,class="checkbox",name="rem2",label="Remember checkboxes"},
+	{x=1,y=9,class="checkbox",name="rem1",label="Remember &dropdowns"},
+	{x=2,y=9,width=2,class="checkbox",name="rem2",label="Remember chec&kboxes   "},
 	{x=4,y=9,class="checkbox",name="yr",label="yr",hint="your retarded (4 skiddiks)"},
 	{x=0,y=9,class="label",label="v. "..script_version},
-	
 	}
 	buttons={"Set Selection","Preset","Sort","Save","Cancel"}
 	loadconfig()
 	P,res=ADD(GUI,buttons,{ok='Set Selection',close='Cancel'})
 	if P=="Cancel" then aegisub.cancel() end
-	
+
 	-- search list / history
 	if res.srch~="" then res.match=res.srch end
 	if res.match~="" and res.match:len()<51 then
@@ -78,7 +78,7 @@ function konfig(subs,sel)
 		end
 		table.insert(searches,2,res.match)
 	end
-	
+
 	if res.yr then your_retarded=true end
 	beg=res.beg	filter=res.filt
 	-- res.mode=res.mode:gsub('^%d ','')
@@ -86,7 +86,7 @@ function konfig(subs,sel)
 
 	if P=="Preset" then 
 		if res.pres=="no-blur signs" or res.pres=="commented lines" or res.pres=="lines w/ comments 2" 
-		    or res.pres:match"move sel." or res.pres:match"sel:"
+		    or res.pres:match"move sel." or res.pres:match"sel:" or res.pres:match"line #"
 		then sel=presel(subs,sel)
 		else edtr=1 preset(subs,sel) end
 	end
@@ -165,6 +165,7 @@ function slct(subs,sel)
 	if res.mode=="vertical margin" then numb=line.margin_t nums=1 end
 	if res.mode=="start time" then numb=line.start_time nums=1 end
 	if res.mode=="end time" then numb=line.end_time nums=1 end
+	if res.mode=="line #" then numb=i nums=1 end
 	
 	if not search_area and nums==0 then t_error("'"..res.mode.."' is not applicable for selection. Try 'Sort'.",1) end
 	if nums==1 then numbers=true else numbers=false end
@@ -293,58 +294,58 @@ end
 
 --	PRESET All
 function preset(subs,sel)
-progress('Selecting...')
-act=sel[1]
-if res.pres:match("same text") then
-  marks={}  lm=nil
-  for x,i in ipairs(sel) do
-    rine=subs[i]
-    mark=rine.text:gsub("{[^}]-}","")
-    if mark=="" then mark="_empty_" end
-    if mark~=lm then table.insert(marks,mark) end
-    lm=mark
-  end
-end
-if res.pres=="same style" then
-  smarks={}  lm=nil
-  for x,i in ipairs(sel) do
-    rine=subs[i]
-    mark=rine.style
-    if mark=="" then mark="_empty_" end
-    if mark~=lm then table.insert(smarks,mark) end
-    lm=mark
-  end
-end
-if res.pres=="same actor" then
-  amarks={}  lm=nil
-  for x,i in ipairs(sel) do
-    rine=subs[i]
-    mark=rine.actor
-    if mark=="" then mark="_empty_" end
-    if mark~=lm then table.insert(amarks,mark) end
-    lm=mark
-  end
-end
-if res.pres=="same effect" then
-  emarks={}  lm=nil
-  for x,i in ipairs(sel) do
-    rine=subs[i]
-    mark=rine.effect
-    if mark=="" then mark="_empty_" end
-    if mark~=lm then table.insert(emarks,mark) end
-    lm=mark
-  end
-end
-if res.pres=="range of lines" then
-  range_st,range_end=res.match:match("(%d+)%-(%d+)")
-  if range_st==nil then range_st=res.match:match("%d+") range_end=range_st end
-  if range_st==nil then ADD({{class="label",label="Error: No numbers given."}},{"OK"},{close='OK'})
-	if cancel then aegisub.cancel() end
-  end
-end
-for i=#sel,1,-1 do	table.remove(sel,i) end
-opst=10000000	opet=0
-edst=10000000	edet=0
+	progress('Selecting...')
+	act=sel[1]
+	if res.pres:match("same text") then
+		marks={}  lm=nil
+		for x,i in ipairs(sel) do
+			rine=subs[i]
+			mark=rine.text:gsub("{[^}]-}","")
+			if mark=="" then mark="_empty_" end
+			if mark~=lm then table.insert(marks,mark) end
+			lm=mark
+		end
+	end
+	if res.pres=="same style" then
+		smarks={}  lm=nil
+		for x,i in ipairs(sel) do
+			rine=subs[i]
+			mark=rine.style
+			if mark=="" then mark="_empty_" end
+			if mark~=lm then table.insert(smarks,mark) end
+			lm=mark
+		end
+	end
+	if res.pres=="same actor" then
+		amarks={}  lm=nil
+		for x,i in ipairs(sel) do
+			rine=subs[i]
+			mark=rine.actor
+			if mark=="" then mark="_empty_" end
+			if mark~=lm then table.insert(amarks,mark) end
+			lm=mark
+		end
+	end
+	if res.pres=="same effect" then
+		emarks={}  lm=nil
+		for x,i in ipairs(sel) do
+			rine=subs[i]
+			mark=rine.effect
+			if mark=="" then mark="_empty_" end
+			if mark~=lm then table.insert(emarks,mark) end
+			lm=mark
+		end
+	end
+	if res.pres=="range of lines" then
+		range_st,range_end=res.match:match("(%d+)%-(%d+)")
+		if range_st==nil then range_st=res.match:match("%d+") range_end=range_st end
+		if range_st==nil then ADD({{class="label",label="Error: No numbers given."}},{"OK"},{close='OK'})
+			if cancel then aegisub.cancel() end
+		end
+	end
+	for i=#sel,1,-1 do	table.remove(sel,i) end
+	opst=10000000	opet=0
+	edst=10000000	edet=0
     for i=1,#subs do
 	if subs[i].class=="dialogue" then
 	local line=subs[i]
@@ -477,72 +478,80 @@ function presel(subs,sel)
 	if res.pres=="move sel. up" then table.sort(sel,function(a,b) return a>b end) end
 	if res.match:match("^%d+$") then moveby=res.match:match("^(%d+)$") else moveby=1 end
 	edtr=0
-    for i=#sel,1,-1 do
-	local line=subs[sel[i]]
-	local text=line.text
-	local st=line.style
-	    if res.pres=="no-blur signs" then edtr=1
-		blur=text:match("\\blur([%d%.]+)")
-		if st:match("Defa") or st:match("Alt") or st:match("OP") or st:match("ED") or blur~=nil then table.remove(sel,i) end
-	    end
-	    if res.pres=="commented lines" and not line.comment then edtr=1 table.remove(sel,i) end
-	    if res.pres=="lines w/ comments 2" then edtr=1
-		if res.nocom and line.comment or not text:match("{[^\\}]-}") then table.remove(sel,i) end
-	    end
-	    if res.pres=="move sel. to the top" or res.pres=="move sel. to bottom" then  line.ind=i
-		table.insert(sorttab,subs[sel[i]])
-		subs.delete(sel[i])
-	    end
-	    if res.pres=="move sel. up" then
-		sel[i]=sel[i]-moveby
-	    end
-	    if res.pres=="move sel. down" then
-		sel[i]=sel[i]+moveby
-	    end
-    end
-    if res.pres=="move sel. to the top" then    cs=1
-      repeat   if subs[cs].class~="dialogue" then cs=cs+1 end   until subs[cs].class=="dialogue"
-      for s=1,#sorttab do  subs.insert(cs,sorttab[s])  end
-      if not res.mod then
-	sel={}
-	for sl=cs,cs+#sorttab-1 do table.insert(sel,sl) end
-      end
-    end
-    if res.pres=="move sel. to bottom" then
-      for s=#sorttab,1,-1 do  subs.append(sorttab[s])  end
-      if not res.mod then
-	sel={}
-	for sl=#subs,#subs-#sorttab+1,-1 do table.insert(sel,sl) end
-      end
-    end
-    if res.pres=="sel: last to top" then
-      sell={}
-      for i=1,#sel do
-	l=subs[sel[i]]
-	table.insert(sell,l)
-      end
-      for i=1,#sel do
-	l=subs[sel[i]]
-	if i==1 then subs[sel[i]]=sell[#sel]
-	else subs[sel[i]]=sell[i-1]
+	for i=#sel,1,-1 do
+		local line=subs[sel[i]]
+		local text=line.text
+		local st=line.style
+		if res.pres=="no-blur signs" then edtr=1
+			blur=text:match("\\blur([%d%.]+)")
+			if st:match("Defa") or st:match("Alt") or st:match("OP") or st:match("ED") or blur~=nil then table.remove(sel,i) end
+		end
+		if res.pres=="commented lines" and not line.comment then edtr=1 table.remove(sel,i) end
+		if res.pres=="lines w/ comments 2" then edtr=1
+			if res.nocom and line.comment or not text:match("{[^\\}]-}") then table.remove(sel,i) end
+		end
+		if res.pres=="move sel. to the top" or res.pres=="move sel. to bottom" then  line.ind=i
+			table.insert(sorttab,subs[sel[i]])
+			subs.delete(sel[i])
+		end
+		if res.pres=="move sel. up" then
+			sel[i]=sel[i]-moveby
+		end
+		if res.pres=="move sel. down" then
+			sel[i]=sel[i]+moveby
+		end
+		if res.pres=="odd line #" then
+			ln=sel[i]-line0
+			if ln%2==0 then table.remove(sel,i) end
+		end
+		if res.pres=="even line #" then
+			ln=sel[i]-line0
+			if ln%2==1 then table.remove(sel,i) end
+		end
 	end
-      end
-    end
-    if res.pres=="sel: first to bottom" then
-      sell={}
-      for i=1,#sel do
-	l=subs[sel[i]]
-	table.insert(sell,l)
-      end
-      for i=1,#sel do
-	l=subs[sel[i]]
-	if i==#sel then subs[sel[i]]=sell[1]
-	else subs[sel[i]]=sell[i+1]
+	if res.pres=="move sel. to the top" then    cs=1
+		repeat   if subs[cs].class~="dialogue" then cs=cs+1 end   until subs[cs].class=="dialogue"
+		for s=1,#sorttab do  subs.insert(cs,sorttab[s]) end
+		if not res.mod then
+			sel={}
+			for sl=cs,cs+#sorttab-1 do table.insert(sel,sl) end
+		end
 	end
-      end
-    end
-    
-    return sel
+	if res.pres=="move sel. to bottom" then
+		for s=#sorttab,1,-1 do  subs.append(sorttab[s]) end
+		if not res.mod then
+			sel={}
+			for sl=#subs,#subs-#sorttab+1,-1 do table.insert(sel,sl) end
+		end
+	end
+	if res.pres=="sel: last to top" then
+		sell={}
+		for i=1,#sel do
+			l=subs[sel[i]]
+			table.insert(sell,l)
+		end
+		for i=1,#sel do
+			l=subs[sel[i]]
+			if i==1 then subs[sel[i]]=sell[#sel]
+			else subs[sel[i]]=sell[i-1]
+			end
+		end
+	end
+	if res.pres=="sel: first to bottom" then
+		sell={}
+		for i=1,#sel do
+			l=subs[sel[i]]
+			table.insert(sell,l)
+		end
+		for i=1,#sel do
+			l=subs[sel[i]]
+			if i==#sel then subs[sel[i]]=sell[1]
+			else subs[sel[i]]=sell[i+1]
+			end
+		end
+	end
+	    
+	return sel
 end
 
 --	SORTING
@@ -823,17 +832,17 @@ function savesearch()
 end
 
 function tf(val)
-    if val==true then ret="true"
-    elseif val==false then ret="false"
-    else ret=val end
-    return ret
+	if val==true then ret="true"
+	elseif val==false then ret="false"
+	else ret=val end
+	return ret
 end
 
 function detf(txt)
-    if txt=="true" then ret=true
-    elseif txt=="false" then ret=false
-    else ret=txt end
-    return ret
+	if txt=="true" then ret=true
+	elseif txt=="false" then ret=false
+	else ret=txt end
+	return ret
 end
 
 function string2time(timecode)
@@ -853,8 +862,8 @@ function chkbx()
 end
 
 function progress(msg)
-  if aegisub.progress.is_cancelled() then ak() end
-  aegisub.progress.title(msg)
+	if aegisub.progress.is_cancelled() then ak() end
+	aegisub.progress.title(msg)
 end
 
 function selector(subs,sel,act)
