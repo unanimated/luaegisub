@@ -5,12 +5,12 @@ script_description="A multi-headed typesetting beast. Scary as Hell."
 script_author="unanimated"
 script_url1="http://unanimated.hostfree.pw/ts/hydra.lua"
 script_url2="https://raw.githubusercontent.com/unanimated/luaegisub/master/hydra.lua"
-script_version="6.0"
+script_version="6.1"
 script_namespace="ua.HYDRA"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-	script_version="6.0.0"
+	script_version="6.1.0"
 	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
@@ -409,11 +409,13 @@ function hydradient(subs,sel)
 	tags=""
 	tags=gettags(tags)
 	if tags=="" then ak() end
+	ortags=tags
 	local gcpos=res.linetext gcl=nil
 	if res.middle and gcpos:match("*") then gc1,gc2=gcpos:match("^(.-)%*(.-)$") gcl=gc1:len() end
 	local GBCn=tonumber(gcpos:match("^%d$")) or 1
 	text1=subs[sel[1]].text
 	tags_1=text1:match(STAG) or ""
+	tags_1=detra(tags_1)
 	if GT=="by l" then GBL=0 z1=0
 		for z,i in ipairs(sel) do line=subs[i] linecheck() if GO then GBL=GBL+1 end end
 		-- GBL: values from last line
@@ -500,7 +502,7 @@ function hydradient(subs,sel)
 	if GT=="by c" and text:match '\\p1' then GO=nil fail("Some lines contain drawings.") end
 	if GT=="by c" and GBCn>#letrz0 then GO=nil end
 	if GO and GT=="by c" and #letrz0>1 then
-		orig=orig:gsub("(\\[Nh])","{%1}")
+	    orig=orig:gsub("(\\[Nh])","{%1}")
 	    if text:match "{[^}]*{" or text:match "}[^{]*}" or text:match "^[^{]*}" or text:match "{[^}]*$" then brackets=true table.insert(bra,1,i-line0) end
 	    re_check=0
 	    repeat
@@ -514,25 +516,25 @@ function hydradient(subs,sel)
 		end
 		if rest~="" then table.insert(LTR,rest) table.insert(TAG,"") end
 		for tg,V2 in tags:gmatch("(\\%d?%a+)([^\\]+)") do
-		  if tg:match("fr") and res.short then V2=shortrot(V2) end
-		  V1=text:match("^{[^}]-"..tg.."([%d%-&][^\\}]*)") or tag2style(tg,sr)
-		  if tg:match("fr") and res.short then V1=shortrot(V1) end
-		  initags=addtag3(tg..V1,initags)
-		  for l=2,#LTR do
-			LN=l count=#LTR
-			half=math.ceil(#LTR/2)
-			if gcl and gc1..gc2==visible then
-				if l<=gcl then count=gcl else count=#LTR-gcl LN=#LTR-l+1 end
-			elseif res.middle then count=half
-				if LN>half then LN=#LTR-LN+1 end
+			if tg:match("fr") and res.short then V2=shortrot(V2) end
+			V1=text:match("^{[^}]-"..tg.."([%d%-&][^\\}]*)") or tag2style(tg,sr)
+			if tg:match("fr") and res.short then V1=shortrot(V1) end
+			initags=addtag3(tg..V1,initags)
+			for l=2,#LTR do
+				LN=l count=#LTR
+				half=math.ceil(#LTR/2)
+				if gcl and gc1..gc2==visible then
+					if l<=gcl then count=gcl else count=#LTR-gcl LN=#LTR-l+1 end
+				elseif res.middle then count=half
+					if LN>half then LN=#LTR-LN+1 end
+				end
+				if tg:match("\\[fbsxy]") then VC=numgrad(V1,V2,count,LN,acc) end
+				if tg:match("\\%d?a") then VC=agrad(V1,V2,count,LN,acc) end
+				if tg:match("\\%d?c") then
+					if res.hsl then VC=acgradhsl(V1,V2,count,LN,acc) else VC=acgrad(V1,V2,count,LN,acc) end
+				end
+				TAG[l]=TAG[l]..tg..VC
 			end
-			if tg:match("\\[fbsxy]") then VC=numgrad(V1,V2,count,LN,acc) end
-			if tg:match("\\%d?a") then VC=agrad(V1,V2,count,LN,acc) end
-			if tg:match("\\%d?c") then
-				if res.hsl then VC=acgradhsl(V1,V2,count,LN,acc) else VC=acgrad(V1,V2,count,LN,acc) end
-			end
-			TAG[l]=TAG[l]..tg..VC
-		  end
 		end
 		nt=LTR[1]
 		for l=2,#LTR do nt=nt.."{"..TAG[l].."}"..LTR[l] end
@@ -547,25 +549,25 @@ function hydradient(subs,sel)
 	
 	-- by line
 	if GO and GT=="by l" then z1=z1+1
-	   LN=z1 total=GBL count=GBL
-	   half=math.ceil(total/2)
-	   if res.middle then count=half
-		if LN>half then LN=total-LN+1 end
-	   end
-	   stags=initags
-	   for tg,V2 in tags:gmatch("(\\%d?%a+)([^\\]+)") do
-		if tg:match("fr") and res.short then V2=shortrot(V2) end
-		V1=tags_1:match("^{[^}]-"..tg.."([%d%-&][^\\}]*)") or tag2style(tg,sr)
-		if tg:match("fr") and res.short then V1=shortrot(V1) end
-		if tg:match("\\[fbsxy]") then VC=numgrad(V1,V2,count,LN,acc) end
-		if tg:match("\\%d?a") then VC=agrad(V1,V2,count,LN,acc) end
-		if tg:match("\\%d?c") then
-			if res.hsl then VC=acgradhsl(V1,V2,count,LN,acc) else VC=acgrad(V1,V2,count,LN,acc) end
+		LN=z1 total=GBL count=GBL
+		half=math.ceil(total/2)
+		if res.middle then count=half
+			if LN>half then LN=total-LN+1 end
 		end
-		stags=addtag3(tg..VC,stags)
-	   end
-	   text=text:gsub(STAG,stags) :gsub("\\tra(%b())",function(t) return "\\t"..t:gsub("/","\\") end)
-	   if line.text==text then fail("Target values probably already present.") end
+		stags=initags
+		for tg,V2 in tags:gmatch("(\\%d?%a+)([^\\]+)") do
+			if tg:match("fr") and res.short then V2=shortrot(V2) end
+			V1=tags_1:match("^{[^}]-"..tg.."([%d%-&][^\\}]*)") or tag2style(tg,sr)
+			if tg:match("fr") and res.short then V1=shortrot(V1) end
+			if tg:match("\\[fbsxy]") then VC=numgrad(V1,V2,count,LN,acc) end
+			if tg:match("\\%d?a") then VC=agrad(V1,V2,count,LN,acc) end
+			if tg:match("\\%d?c") then
+				if res.hsl then VC=acgradhsl(V1,V2,count,LN,acc) else VC=acgrad(V1,V2,count,LN,acc) end
+			end
+			stags=addtag3(tg..VC,stags)
+		end
+		text=text:gsub(STAG,stags) :gsub("\\tra(%b())",function(t) return "\\t"..t:gsub("/","\\") end)
+		if line.text==text then fail("Target values probably already present.") end
 	end
 	
 	text=text:gsub("\\tra(%b())",function(t) return "\\t"..t:gsub("/","\\") end)
@@ -597,16 +599,15 @@ function special(subs,sel)
 	res.int=rez.int2
   end
   if res.spec:match"transform" or res.spec:match"strikeout" then
-    styleget(subs)
     getcolours()
     transphorm=""
     transphorm=gettags(transphorm)
   end
-  if res.spec:match"create.-shadow" then styleget(subs) end
   if res.spec=="split line in 3 parts" then
 	if res.trin==0 and res.trout==0 then t_error("No times given to split lines by.\nUse Transform t1 && t2 fields.",1) end
 	nsel={} for z,i in ipairs(sel) do table.insert(nsel,i) end
   end
+  styleget(subs)
   if res.spec=="select overlaps" then sel=selover(subs)
   else
     for z=#sel,1,-1 do
@@ -646,89 +647,91 @@ function special(subs,sel)
 	
 	-- CLEAN UP TAGS
 	if res.spec=="clean up tags" then
-	    text=text:gsub("{\\\\k0}",""):gsub(">\\","\\"):gsub("{(\\[^}]-)} *\\N *{(\\[^}]-)}","\\N{%1%2}")
-	    text=tagmerge(text)
-	    text=text:gsub("({\\[^}]-){(\\[^}]-})","%1%2"):gsub("{.-\\r","{\\r"):gsub("^{\\r([\\}])","{%1")
-	    text=text:gsub("\\fad%(0,0%)",""):gsub(ATAG.."$",""):gsub("^({\\[^}]-)\\frx0\\fry0","%1")
-	    text=text:gsub(ATAG,function(tgs)
-		tgs2=tgs
-		:gsub("\\+([\\}])","%1")
-		:gsub("(\\[^\\})]+)",function(a) if not a:match'clip' and not a:match'\\fn' and not a:match'\\r' then a=a:gsub(' ','') end return a end)
-		:gsub("(\\%a+)([%d%-]+%.%d+)",function(a,b) if not a:match("\\fn") then b=round(b,2) end return a..b end)
-		:gsub("(\\%a+)%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c) b=round(b,2) c=round(c,2) return a.."("..b..","..c..")" end)
-		:gsub("(\\%a+)%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",function(a,b,c,d,e)
-			b=round(b,2) c=round(c,2) d=round(d,2) e=round(e,2) return a.."("..b..","..c..","..d..","..e end)
-		tgs2=duplikill(tgs2)
-		tgs2=extrakill(tgs2)
-		tgs2=cleantr(tgs2)
-		return tgs2
-		end)
+		text=text:gsub("{\\\\k0}",""):gsub(">\\","\\"):gsub("{(\\[^}]-)} *\\N *{(\\[^}]-)}","\\N{%1%2}")
+		text=tagmerge(text)
+		text=text:gsub("({\\[^}]-){(\\[^}]-})","%1%2"):gsub("{.-\\r","{\\r"):gsub("^{\\r([\\}])","{%1")
+		text=text:gsub("\\fad%(0,0%)",""):gsub(ATAG.."$",""):gsub("^({\\[^}]-)\\frx0\\fry0","%1")
+		text=text:gsub(ATAG,function(tgs)
+			tgs2=tgs
+			:gsub("\\+([\\}])","%1")
+			:gsub("(\\[^\\})]+)",function(a) if not a:match'clip' and not a:match'\\fn' and not a:match'\\r' then a=a:gsub(' ','') end return a end)
+			:gsub("(\\%a+)([%d%-]+%.%d+)",function(a,b) if not a:match("\\fn") then b=round(b,2) end return a..b end)
+			:gsub("(\\%a+)%(([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c) b=round(b,2) c=round(c,2) return a.."("..b..","..c..")" end)
+			:gsub("(\\%a+)%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",function(a,b,c,d,e)
+				b=round(b,2) c=round(c,2) d=round(d,2) e=round(e,2) return a.."("..b..","..c..","..d..","..e end)
+			tgs2=duplikill(tgs2)
+			tgs2=extrakill(tgs2)
+			tgs2=cleantr(tgs2)
+			return tgs2
+			end)
 	end
 	
 	-- SORT TAGS
 	if res.spec=="sort tags in set order" then
-	  text=text:gsub("\\a6","\\an8") :gsub("\\1c","\\c")
-	  -- run for each set of tags
-	  for tags in text:gmatch(ATAG) do
-	    orig=tags
-	    tags=tags:gsub("{.-\\r","{\\r")
-	    -- save & nuke transforms
-	    trnsfrm=""
-	    for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
-	    tags=tags:gsub("\\t%b()","")
-	    ord=""
-	    -- go through tags, save them in order, and delete from tags
-	    for tg in order:gmatch("\\[%a%d]+") do
-		tag=tags:match("("..tg.."[^\\}]-)[\\}]")
-		if tg=="\\fs" then tag=tags:match("(\\fs%d[^\\}]-)[\\}]") end
-		if tg=="\\fad" then tag=tags:match("(\\fad%([^\\}]-)[\\}]") end
-		if tg=="\\c" then tag=tags:match("(\\c&[^\\}]-)[\\}]") end
-		if tg=="\\i" then tag=tags:match("(\\i[^%a\\}]-)[\\}]") end
-		if tg=="\\s" then tag=tags:match("(\\s[^%a\\}]-)[\\}]") end
-		if tg=="\\p" then tag=tags:match("(\\p[^%a\\}]-)[\\}]") end
-		if tag then ord=ord..tag etag=esc(tag) tags=tags:gsub(etag,"") end
-	    end
-	    -- attach whatever got left
-	    if tags~="{}" then ord=ord..tags:match("{(.-)}") end
-	    ordered="{"..ord..trnsfrm.."}"
-	    text=text:gsub(esc(orig),ordered)
-	  end
+		text=text:gsub("\\a6","\\an8") :gsub("\\1c","\\c")
+		-- run for each set of tags
+		for tags in text:gmatch(ATAG) do
+			orig=tags
+			tags=tags:gsub("{.-\\r","{\\r")
+			-- save & nuke transforms
+			trnsfrm=""
+			for t in tags:gmatch("\\t%b()") do trnsfrm=trnsfrm..t end
+			tags=tags:gsub("\\t%b()","")
+			ord=""
+			-- go through tags, save them in order, and delete from tags
+			for tg in order:gmatch("\\[%a%d]+") do
+				tag=tags:match("("..tg.."[^\\}]-)[\\}]")
+				if tg=="\\fs" then tag=tags:match("(\\fs%d[^\\}]-)[\\}]") end
+				if tg=="\\fad" then tag=tags:match("(\\fad%([^\\}]-)[\\}]") end
+				if tg=="\\c" then tag=tags:match("(\\c&[^\\}]-)[\\}]") end
+				if tg=="\\i" then tag=tags:match("(\\i[^%a\\}]-)[\\}]") end
+				if tg=="\\s" then tag=tags:match("(\\s[^%a\\}]-)[\\}]") end
+				if tg=="\\p" then tag=tags:match("(\\p[^%a\\}]-)[\\}]") end
+				if tag then ord=ord..tag etag=esc(tag) tags=tags:gsub(etag,"") end
+			end
+			-- attach whatever got left
+			if tags~="{}" then ord=ord..tags:match("{(.-)}") end
+			ordered="{"..ord..trnsfrm.."}"
+			text=text:gsub(esc(orig),ordered)
+		end
 	end
 	
 	-- CLIP TO DRAWING
 	if res.spec=="convert clip to drawing" and text:match("\\i?clip%(m [%d%a%s%-]+") then
-	  text=text:gsub("\\(i?)clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(ii,a,b,c,d) 
-		return string.format("\\"..ii.."clip(m %d %d l %d %d %d %d %d %d)",round(a),round(b),round(c),round(b),round(c),round(d),round(a),round(d)) end) -- rect.2vector
-	  text=text:gsub("^({\\[^}]-}).*","%1")
-	  text=text:gsub("^({[^}]*)\\i?clip%(m(.-)%)([^}]*)}","%1%3\\p1}m%2")
-	  if text:match("\\pos") or text:match("\\move") then
-		ctext=text:match("}m ([%d%a%s%-]+)")
-		local xx,yy=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)")
-		if not xx then xx,yy=text:match("\\move%(([%d%.%-]+),([%d%.%-]+)") end
-		xx=round(xx) yy=round(yy)
-		ctext2=ctext:gsub("([%d%-]+)%s([%d%-]+)",function(a,b) return a-xx.." "..b-yy end)
-		ctext=ctext:gsub("%-","%%-")
-		text=text:gsub(ctext,ctext2)
-	  end
-	  if not text:match("\\pos") and not text:match("\\move") then text=text:gsub("^{","{\\pos(0,0)") end
-	  text=text:gsub("\\fsc[xy][%d%.]+",""):gsub("\\f[ar][xyz][^\\}]*",""):gsub("\\p1","\\fscx100\\fscy100%1"):gsub("\\an%d",""):gsub("^{","{\\an7")
+		text=text:gsub("\\(i?)clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(ii,a,b,c,d) 
+			return string.format("\\"..ii.."clip(m %d %d l %d %d %d %d %d %d)",round(a),round(b),round(c),round(b),round(c),round(d),round(a),round(d)) end) -- rect.2vector
+		text=text:gsub("^({\\[^}]-}).*","%1")
+		text=text:gsub("^({[^}]*)\\i?clip%(m(.-)%)([^}]*)}","%1%3\\p1}m%2")
+		if text:match("\\pos") or text:match("\\move") then
+			ctext=text:match("}m ([%d%a%s%-]+)")
+			local xx,yy=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)")
+			if not xx then xx,yy=text:match("\\move%(([%d%.%-]+),([%d%.%-]+)") end
+			xx=round(xx) yy=round(yy)
+			ctext2=ctext:gsub("([%d%-]+)%s([%d%-]+)",function(a,b) return a-xx.." "..b-yy end)
+			ctext=ctext:gsub("%-","%%-")
+			text=text:gsub(ctext,ctext2)
+		end
+		if not text:match("\\pos") and not text:match("\\move") then text=text:gsub("^{","{\\pos(0,0)") end
+		text=text:gsub("\\fsc[xy][%d%.]+",""):gsub("\\f[ar][xyz][^\\}]*",""):gsub("\\p1","\\fscx100\\fscy100%1"):gsub("\\an%d",""):gsub("^{","{\\an7")
 	end
 	
 	-- DRAWING TO CLIP
 	if res.spec=="convert drawing to clip" and text:match("\\p1") then
-	  text=text:gsub("^({[^}]*)\\p1([^}]-})(m [^{]*)","%1\\clip(%3)%2")
-	  scx=text:match("\\fscx([%d%.]+)") or 100
-	  scy=text:match("\\fscy([%d%.]+)") or 100
-	  if text:match("\\pos") or text:match("\\move") then
-		local xx,yy=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)")
-		if not xx then xx,yy=text:match("\\move%(([%d%.%-]+),([%d%.%-]+)") end
-		xx=round(xx) yy=round(yy)
-		ctext=text:match("\\clip%(m ([^%)]+)%)")
-		ctext2=ctext:gsub("([%d%-]+)%s([%d%-]+)",function(a,b) return round(a*scx/100+xx).." "..round(b*scy/100+yy) end)
-		ctext=ctext:gsub("%-","%%-")
-		text=text:gsub(ctext,ctext2)
-	  end
-	  if not text:match("\\pos") and not text:match("\\move") then text=text:gsub("^{","{\\pos(0,0)") end
+		draw=text:match("}m ([^{]+)")
+		rota=text:match("^{[^}]-\\frz([-%d.]+)")
+		if rota then sr=stylechk(line.style) text=frz_redraw(text,rota,draw,sr) end
+		text=text:gsub("^({[^}]*)\\p1([^}]-})(m [^{]*)","%1\\clip(%3)%2")
+		scx=text:match("\\fscx([%d%.]+)") or 100
+		scy=text:match("\\fscy([%d%.]+)") or 100
+		if text:match("\\pos") or text:match("\\move") then
+			local xx,yy=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)")
+			if not xx then xx,yy=text:match("\\move%(([%d%.%-]+),([%d%.%-]+)") end
+			xx=round(xx) yy=round(yy)
+			ctext=text:match("\\clip%(m ([^%)]+)%)")
+			ctext2=ctext:gsub("([%d%-]+) ([%d%-]+)",function(a,b) return round(a*scx/100+xx).." "..round(b*scy/100+yy) end)
+			text=text:gsub(esc(ctext),ctext2)
+		end
+		if not text:match("\\pos") and not text:match("\\move") then text=text:gsub("^{","{\\pos(0,0)") end
 	end
 	
 	-- STRIKEOUT TO SELECTED
@@ -929,6 +932,56 @@ function special(subs,sel)
   return sel
 end
 
+function frz_redraw(t,rota,draw,sr)
+	local X,Y,x,y,width,height
+	local ox,oy,xmx,xmn,ymx,ymn,addx,addy=0,0,0,999999,0,999999,0,0
+	draw1=draw
+	-- deal with align other than 7
+	if align~=7 then
+		for px,py in draw:gmatch("([-%d.]+) ([-%d.]+)") do
+			px=tonumber(px)
+			py=tonumber(py)
+			if px>xmx then xmx=px end
+			if px<xmn then xmn=px end
+			if py>ymx then ymx=py end
+			if py<ymn then ymn=py end
+		end
+		width=xmx-xmn
+		height=ymx-ymn
+		align=tonumber(t:match'\\an(%d)') or sr.align
+		hal=align%3
+		val=math.ceil(align/3)
+		if hal==2 then addx=width/2 elseif hal==0 then addx=width end
+		if val==2 then addy=height/2 elseif val==1 then addy=height end
+		-- change to an7 + adjust coordinates
+		draw1=draw1:gsub("([-%d.]+) ([-%d.]+)",function(px,py)
+			return px-addx..' '..py-addy
+			end)
+		t,c=t:gsub("\\an%d","\\an7")
+		if c==0 then t=t:gsub("^{","{\\an7") end
+	end
+	
+	-- recalculate coordinates without frz
+	draw2=draw1:gsub("([-%d.]+) ([-%d.]+)",function(px,py)
+		h=math.sqrt((ox-px)^2+(oy-py)^2)
+		pox=ox-px
+		poy=oy-py
+		tang=poy/pox
+		ang1=math.deg(math.atan(tang))
+		ang=ang1-rota
+		X=math.cos(math.rad(ang))*h
+		Y=math.sin(math.rad(ang))*h
+		if pox<0 then X=0-X Y=0-Y end
+		x=round(ox-X)
+		y=round(oy-Y)
+		return x..' '..y
+		end)
+	
+	-- replace drawing
+	t=t:gsub(esc(draw),draw2):gsub("\\frz[-%d.]+","")
+	return t
+end
+
 function selover(subs,sel)
 	local dialogue={}
 	for i,line in ipairs(subs) do
@@ -950,7 +1003,7 @@ function selover(subs,sel)
 end
 
 
---	reanimatools	-----------------------------------------------
+--	reanimatools	-----------------------------------------------------------------------
 function addtag3(tg,txt)
 	no_tf=txt:gsub("\\t%b()","")
 	tgt=tg:match("(\\%d?%a+)[%d%-&]") val="[%d%-&]"
@@ -972,6 +1025,7 @@ function wrap(str) return "{"..str.."}" end
 function logg(m) m=tf(m) or "nil" aegisub.log("\n "..m) end
 function loggtab(m) m=tf(m) or "nil" aegisub.log("\n {"..table.concat(m,', ').."}") end
 function tagmerge(t) repeat t,r=t:gsub("({\\[^}]-)}{(\\[^}]-})","%1%2") until r==0 return t end
+function detra(t) return t:gsub("\\t%b()","") end
 function nobra(t) return t:gsub("%b{}","") end
 function nobrea(t) return t:gsub("%b{}",""):gsub("\\[Nh]","") end
 function nobrea1(t) return t:gsub("%b{}",""):gsub(" *\\[Nh] *"," ") end
@@ -1453,6 +1507,7 @@ file=io.open(hydrakonfig)
 	      if v.name=="gtype" and res.gtype then v.value=hydralast.gtype end
 	      if v.name=="accel" and res.accel then v.value=hydralast.accel end
 	      if v.name=="stripe" and res.stripe then v.value=hydralast.stripe end
+	      if v.name=="spec" and res.spec then v.value=hydralast.spec end
 	      if v.name=="middle" and tf(res.middle) then v.value=hydralast.middle end
 	      if v.name=="short" and tf(res.short) then v.value=hydralast.short end
 	      if v.name=="hsl" and tf(res.hsl) then v.value=hydralast.hsl end
@@ -1635,9 +1690,9 @@ hh1={
 	
 	{x=0,y=1,class="checkbox",name="k1",label="Primary:"},
 	{x=1,y=1,class="coloralpha",name="c1"},
-	{x=0,y=2,class="checkbox",name="k3",label="Border:"},
+	{x=0,y=2,class="checkbox",name="k3",label="Bor&der:"},
 	{x=1,y=2,class="coloralpha",name="c3"},
-	{x=0,y=3,class="checkbox",name="k4",label="Shadow:"},
+	{x=0,y=3,class="checkbox",name="k4",label="Shado&w:"},
 	{x=1,y=3,class="coloralpha",name="c4"},
 	{x=0,y=4,class="checkbox",name="k2",label="useless... (2c):"},
 	{x=1,y=4,class="coloralpha",name="c2"},
@@ -1655,9 +1710,9 @@ hh1={
 	{x=3,y=1,width=2,class="floatedit",name="shad2",value=0},
 	{x=2,y=2,class="checkbox",name="fs1",label="\\fs"},
 	{x=3,y=2,width=2,class="floatedit",name="fs2",value=50},
-	{x=2,y=3,class="checkbox",name="spac1",label="\\fsp"},
+	{x=2,y=3,class="checkbox",name="spac1",label="\\f&sp"},
 	{x=3,y=3,width=2,class="floatedit",name="spac2",value=1},
-	{x=2,y=4,class="checkbox",name="blur1",label="\\blur"},
+	{x=2,y=4,class="checkbox",name="blur1",label="\\&blur"},
 	{x=3,y=4,width=2,class="floatedit",name="blur2",value=0.5},
 	{x=2,y=5,class="checkbox",name="be1",label="\\be"},
 	{x=3,y=5,width=2,class="floatedit",name="be2",value=1},
@@ -1665,16 +1720,16 @@ hh1={
 	{x=3,y=6,width=2,class="floatedit",name="fscx2",value=100},
 	{x=2,y=7,class="checkbox",name="fscy1",label="\\fscy"},
 	{x=3,y=7,width=2,class="floatedit",name="fscy2",value=100},
-	{x=2,y=8,class="checkbox",name="fsc1",label="\\fsc",hint="both fscx and fscy"},
+	{x=2,y=8,class="checkbox",name="fsc1",label="\\&fsc",hint="both fscx and fscy"},
 	{x=3,y=8,width=2,class="floatedit",name="fsc2",value=100},
 	
 	{x=5,y=0,class="checkbox",name="xbord1",label="\\xbord"},
 	{x=6,y=0,width=2,class="floatedit",name="xbord2"},
 	{x=5,y=1,class="checkbox",name="ybord1",label="\\ybord"},
 	{x=6,y=1,width=2,class="floatedit",name="ybord2"},
-	{x=5,y=2,class="checkbox",name="xshad1",label="\\xshad"},
+	{x=5,y=2,class="checkbox",name="xshad1",label="\\&xshad"},
 	{x=6,y=2,width=2,class="floatedit",name="xshad2"},
-	{x=5,y=3,class="checkbox",name="yshad1",label="\\yshad"},
+	{x=5,y=3,class="checkbox",name="yshad1",label="\\&yshad"},
 	{x=6,y=3,width=2,class="floatedit",name="yshad2"},
 	{x=5,y=4,class="checkbox",name="fax1",label="\\fax"},
 	{x=6,y=4,width=2,class="floatedit",name="fax2",value=0.05},
@@ -1684,10 +1739,10 @@ hh1={
 	{x=6,y=6,width=2,class="floatedit",name="frx2"},
 	{x=5,y=7,class="checkbox",name="fry1",label="\\fry"},
 	{x=6,y=7,width=2,class="floatedit",name="fry2"},
-	{x=5,y=8,class="checkbox",name="frz1",label="\\frz"},
+	{x=5,y=8,class="checkbox",name="frz1",label="\\fr&z"},
 	{x=6,y=8,width=2,class="floatedit",name="frz2"},
 	
-	{x=1,y=8,class="checkbox",name="q2",label="\\q2"},
+	{x=1,y=8,class="checkbox",name="q2",label="\\&q2"},
 	{x=0,y=8,class="checkbox",name="glo",label="Global fade",hint="global fade - IN on first line, OUT on last line"},
 	{x=0,y=9,class="checkbox",name="fade",label="\\fad (in,out)"},
 	{x=1,y=9,width=2,class="floatedit",name="fadin",min=0,hint="fade in"},
@@ -1696,7 +1751,7 @@ hh1={
 	{x=0,y=10,class="label",label="Additional tags:"},
 	{x=1,y=10,width=5,class="edit",name="moretags",value="\\"},
 	{x=6,y=10,class="checkbox",name="show",label="show  ",hint="Show the tags being applied.\nNote: only transformable tags."},
-	{x=7,y=10,class="checkbox",name="reuse",label="reuse  ",hint="Reuse the (transformable) tags from last run.\nCan be used with a different button\nor 'apply to' restriction."},
+	{x=7,y=10,class="checkbox",name="reuse",label="&reuse  ",hint="Reuse the (transformable) tags from last run.\nCan be used with a different button\nor 'apply to' restriction."},
 	{x=1,y=0,class="checkbox",name="rem",label="rem",hint="Remember last"},
 	{x=5,y=9,width=3,class="edit",name="lastags",value=ortags or "",hint="last used tags will appear here"},
 }
@@ -1704,7 +1759,7 @@ hh1={
 hh2={
 	{x=8,y=0,class="label",name="startmode",label="Start mode"},
 	{x=9,y=0,class="dropdown",name="smode",items={"1","2","3"},value="1"},
-	{x=8,y=1,class="checkbox",name="arfa",label="\\alpha"},
+	{x=8,y=1,class="checkbox",name="arfa",label="\\&alpha"},
 	{x=9,y=1,class="dropdown",name="alpha",items=alfas,value="00"},
 	{x=8,y=2,class="checkbox",name="arf1",label="\\1a"},
 	{x=9,y=2,class="dropdown",name="alph1",items=alfas,value="00"},
@@ -1723,7 +1778,7 @@ hh2={
 hh2b={
 	{x=8,y=0,class="label",name="startmode",label="Start mode"},
 	{x=9,y=0,class="dropdown",name="smode",items={"1","2","3"},value="1"},
-	{x=8,y=1,class="checkbox",name="arfa",label="\\alpha"},
+	{x=8,y=1,class="checkbox",name="arfa",label="\\&alpha"},
 	{x=9,y=1,class="dropdown",name="alpha",items=alfas,value="00"},
 	{x=8,y=7,width=2,class="label",label="Add with each line:"},
 	{x=8,y=8,width=2,class="floatedit",name="add",hint="add with each line\nworks with regular tags,\ni.e. the middle two columns"},
@@ -1771,8 +1826,10 @@ hh3={
 	{x=8,y=14,width=2,class="edit",name="appltx",value="Text..."},
 }
 	B3={"Apply","Transform","Gradient","Repeat Last","Special","Save Config","Help","Cancel"}
+	B4={"Apply","Transform","Gradient","Repeat Last","Special","Save Config","Switch","Cancel"}
+	B5={"Apply","Transform","Gradient","clip2size","shad2xyshad","clip2shad","strike2tags","Cancel"}
 	buttons={{"Apply","Transform","Repeat Last","Load Medium","Load Full","Cancel"},
-	{"Apply","Transform","Repeat Last","Load Full","Cancel"},B3,B3}
+	{"Apply","Transform","Repeat Last","Load Full","Cancel"},B3,B4}
 	loadconfig()
 	local heads=sm*2+1
 	hh_gui=hh1	loaded=sm
@@ -1784,42 +1841,51 @@ hh3={
 	P,res=ADD(hh_gui,hh_buttons,{ok='Apply',cancel='Cancel'})
 	
 	if P=="Load Medium" then progress("Loading Heads 4-5")
-	    for key,val in ipairs(hh_gui) do val.value=res[val.name] end
-	    for i=1,#hh2 do l=hh2[i] table.insert(hh_gui,l) end loaded=2
-	    P,res=ADD(hh_gui,buttons[2],{ok='Apply',cancel='Cancel'})
+		for key,val in ipairs(hh_gui) do val.value=res[val.name] end
+		for i=1,#hh2 do l=hh2[i] table.insert(hh_gui,l) end loaded=2
+		P,res=ADD(hh_gui,buttons[2],{ok='Apply',cancel='Cancel'})
 	end
 	
 	if P=="Load Full" then progress("Loading Heads "..(loaded+1)*2 .."-7")
-	    for key,val in ipairs(hh_gui) do val.value=res[val.name] end
-	    if loaded<2 then  for i=1,#hh2 do l=hh2[i] table.insert(hh_gui,l) end  end
-	    for i=1,#hh3 do l=hh3[i] table.insert(hh_gui,l) end loaded=3
-	    P,res=ADD(hh_gui,buttons[3],{ok='Apply',cancel='Cancel'})
+		for key,val in ipairs(hh_gui) do val.value=res[val.name] end
+		if loaded<2 then  for i=1,#hh2 do l=hh2[i] table.insert(hh_gui,l) end  end
+		for i=1,#hh3 do l=hh3[i] table.insert(hh_gui,l) end loaded=3
+		P,res=ADD(hh_gui,buttons[3],{ok='Apply',cancel='Cancel'})
 	end
 	
 	if P=="Help" then progress("Loading Head 8")
-	for key,val in ipairs(hh_gui) do val.value=res[val.name] end
-	hhh={x=0,y=16,width=10,class="dropdown",name="herp",items={"HELP (scroll/click to read)",
-	"Standard mode: check tags, set values, click on 'Apply'.",
-	"Transform mode normal: check tags, set values, set t1/t2/accel if needed, click on 'Transform'.",
-	"Transform mode add2first: the transforms will be added to the first existing transform in the line.",
-	"Transform mode add2all: the transforms will be added to all existing transforms in the line.",
-	"Transform mode 'all tag blocks': the transforms will be added to all tag blocks, whether they have transforms or not.",
-	"Shift times/interval: 'normal' tf - shift \\t times each line; 'all tag blocks' - shift \\t times each tag block.",
-	"Relative transform: If you have frz30 and set transform to frz60, you get \\t(\\frz90), or transform BY 60.",
-	"Relative transform: This allows you to keep layers with different frz in sync. (No effect on alpha/colours.)",
-	"Additional tags: type any extra tags you want to add.",
-	"Add with each line: '2' means that for each line, the value of all checked applicable tags is increased by an extra 2.",
-	"Tag position: This shows the text of your first line. Type * where you want your tags to go.",
-	"Tag position presets: This places tags in specified positions, proportionally for each selected line.",
-	"Gradient: Current state is the start. Given tags are the end. Accel works with this. Vertical/horizontal need a clip.",
-	"Centred gradient: 'There and back.' Given state will be in the middle. Last line/character will be the same as the first.",
-	"Special functions: select a function, click on 'Special'.",
-	"Special functions - back and forth transform: select tags, set 'interval'. Missing initial tags are taken from style.",
-	"Special functions - create 3D effect from shadow: creates a 3D effect using layers. Requires xshad/yshad.",
-	"Special functions - split line in 3 parts: uses t1 and t2 as time markers.",
-	},value="HELP (scroll/click to read)"}
-	table.insert(hh_gui,hhh)
-	P,res=ADD(hh_gui,{"Apply","Transform","Gradient","Repeat Last","Special","Save Config","More Help","Cancel"},{ok='Apply',cancel='Cancel'})
+		for key,val in ipairs(hh_gui) do val.value=res[val.name] end
+		hhh={x=0,y=16,width=10,class="dropdown",name="herp",items={"HELP (scroll/click to read)",
+		"Standard mode: check tags, set values, click on 'Apply'.",
+		"Transform mode normal: check tags, set values, set t1/t2/accel if needed, click on 'Transform'.",
+		"Transform mode add2first: the transforms will be added to the first existing transform in the line.",
+		"Transform mode add2all: the transforms will be added to all existing transforms in the line.",
+		"Transform mode 'all tag blocks': the transforms will be added to all tag blocks, whether they have transforms or not.",
+		"Shift times/interval: 'normal' tf - shift \\t times each line; 'all tag blocks' - shift \\t times each tag block.",
+		"Relative transform: If you have frz30 and set transform to frz60, you get \\t(\\frz90), or transform BY 60.",
+		"Relative transform: This allows you to keep layers with different frz in sync. (No effect on alpha/colours.)",
+		"Additional tags: type any extra tags you want to add.",
+		"Add with each line: '2' means that for each line, the value of all checked applicable tags is increased by an extra 2.",
+		"Tag position: This shows the text of your first line. Type * where you want your tags to go.",
+		"Tag position presets: This places tags in specified positions, proportionally for each selected line.",
+		"Gradient: Current state is the start. Given tags are the end. Accel works with this. Vertical/horizontal need a clip.",
+		"Centred gradient: 'There and back.' Given state will be in the middle. Last line/character will be the same as the first.",
+		"Special functions: select a function, click on 'Special'.",
+		"Special functions - back and forth transform: select tags, set 'interval'. Missing initial tags are taken from style.",
+		"Special functions - create 3D effect from shadow: creates a 3D effect using layers. Requires xshad/yshad.",
+		"Special functions - split line in 3 parts: uses t1 and t2 as time markers.",
+		},value="HELP (scroll/click to read)"}
+		table.insert(hh_gui,hhh)
+		P,res=ADD(hh_gui,{"Apply","Transform","Gradient","Repeat Last","Special","Save Config","More Help","Cancel"},{ok='Apply',cancel='Cancel'})
+	end
+	
+	if P=="Switch" then
+		for key,val in ipairs(hh_gui) do val.value=res[val.name] end
+		P,res=ADD(hh_gui,B5,{ok='Apply',cancel='Cancel'})
+		if P=="clip2size" then res.spec="size transform from clip" P="Special" end
+		if P=="shad2xyshad" then res.spec="shad -> xshad+yshad" P="Special" end
+		if P=="clip2shad" then res.spec="create shadow from clip" P="Special" end
+		if P=="strike2tags" then res.spec="convert strikeout to selected" P="Special" end
 	end
 	
 	if res.tmode=="normal" then tmode=1 end
@@ -1881,6 +1947,12 @@ end
 function clip2mask(subs,sel)
 res=res or {}
 res.spec="convert clip to drawing"
+spec_macros(subs,sel)
+end
+
+function mask2clip(subs,sel)
+res=res or {}
+res.spec="convert drawing to clip"
 spec_macros(subs,sel)
 end
 
@@ -1969,6 +2041,7 @@ if haveDepCtrl then
 	{": Non-GUI macros :/HYDRA: shad -> xshad+yshad","shad -> xshad+yshad",shad2xy},
 	{": Non-GUI macros :/HYDRA: Create shadow from clip","Create shadow from clip",clip2shad},
 	{": Non-GUI macros :/HYDRA: Convert clip to drawing","Convert clip to drawing",clip2mask},
+	{": Non-GUI macros :/HYDRA: Convert drawing to clip","Convert drawing to clip",mask2clip},
 	{": Non-GUI macros :/HYDRA: Bell Shifter","Shifts Bell",bellshift},
 	{": Non-GUI macros :/HYDRA: Wave Shifter","Shifts Tilde",waveshift},
 	{": Non-GUI macros :/HYDRA: Arrow Shifter","Shifts '>'",arrowshift},
@@ -1983,6 +2056,7 @@ else
 	aegisub.register_macro(": Non-GUI macros :/HYDRA: shad -> xshad+yshad","shad -> xshad+yshad",shad2xy)
 	aegisub.register_macro(": Non-GUI macros :/HYDRA: Create shadow from clip","Create shadow from clip",clip2shad)
 	aegisub.register_macro(": Non-GUI macros :/HYDRA: Convert clip to drawing","Convert clip to drawing",clip2mask)
+	aegisub.register_macro(": Non-GUI macros :/HYDRA: Convert drawing to clip","Convert drawing to clip",mask2clip)
 	aegisub.register_macro(": Non-GUI macros :/HYDRA: Bell Shifter","Shifts Bell",bellshift)
 	aegisub.register_macro(": Non-GUI macros :/HYDRA: Wave Shifter","Shifts Tilde",waveshift)
 	aegisub.register_macro(": Non-GUI macros :/HYDRA: Arrow Shifter","Shifts '>'",arrowshift)
