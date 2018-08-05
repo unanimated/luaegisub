@@ -5,12 +5,12 @@ script_name="Hyperdimensional Relocator"
 script_description="Advanced metamorphosis of multidimensional coordinates"
 script_author="reanimated"
 script_url="http://unanimated.hostfree.pw/ts/relocator.lua"
-script_version="4.4"
+script_version="4.5"
 script_namespace="ua.Relocator"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-	script_version="4.4.0"
+	script_version="4.5.0"
 	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
@@ -33,8 +33,8 @@ end
 
 function relocator(subs,sel,act)
 	cuts(subs,sel)
-	Repositioning={"Align X","Align Y","org to fax","clip to fax","clip to frz","clip to reposition","clip2pos fbf","frz+org2pos","horizontal mirror","vertical mirror","numbers","shake","shadow layer","shadow repos.","space out letters","warp text","fbf X <--> Y","replicate","fbf retrack","track by clip"}
-	Bilocator={"transmove","horizontal","vertical","multimove","clip2move","rvrs. move","shiftstart","shiftmove","move to","move clip","randomove","kill times","full times","set times"}
+	Repositioning={"Align X","Align Y","org to fax","clip to fax","clip to frz","clip to reposition","clip2pos fbf","frz+org2pos","horizontal mirror","vertical mirror","numbers","shake","fbf retrack","trampoline","sine loop","shadow layer","shadow repos.","space out letters","warp text","replicate","fbf X <--> Y","track by clip"}
+	Bilocator={"transmove","horizontal","vertical","multimove","clip2move","rvrs. move","shiftstart","shiftmove","move to","move clip","randomove","kill times","full times","set times","zig-zag"}
 	Morphing={"round numbers","line2fbf","join fbf lines","move v. clip","set origin","calculate origin","transform clip","set rotation","rotate 180","negative rot","spin doctor","vector2rect.","rect.2vector","clip scale","clip2scale fbf","find centre","extend mask","flip mask","adjust drawing","randomask","randomise...","letterbreak","wordbreak","clip info","[un]hide clip"}
 	Rounding={"all","pos","move","org","clip","mask"}
 	Freezing={"0","5","10","20","45","70","110","135","160","-5","-10","-20","-45","-70","-110","-135","-160"}
@@ -45,7 +45,7 @@ function relocator(subs,sel,act)
 	{x=12,y=1,width=4,class="floatedit",name="eks",hint="X"},
 	{x=12,y=2,width=4,class="floatedit",name="wai",hint="Y"},
 
-	{x=0,y=0,width=3,class="label",label="Repositioning Field"},
+	{x=0,y=0,width=3,class="label",label="&Repositioning Field"},
 	{x=0,y=1,width=2,class="dropdown",name="posi",value="clip to frz",items=Repositioning},
 	{x=0,y=2,width=2,class="floatedit",name="post",value=0,hint="disPosition\nAlign X/Y; Shake radius; Mirrors centre point;\nShadow layer: shad; Space Out Letters distance; Warp Text distance; fbf retrack accel"},
 	{x=0,y=3,class="checkbox",name="first",label="by first",value=true,hint="reference point = first line\n(Align X/Y; fbf X <--> Y, track by clip)"},
@@ -53,18 +53,18 @@ function relocator(subs,sel,act)
 	{x=0,y=4,class="checkbox",name="layers",label="layers",value=true,hint="synchronise for layers\n(shake; fbf retrack)"},
 	{x=1,y=4,class="checkbox",name="smo",label="smooth",hint="smoothen shaking/retrack"},
 	{x=1,y=5,class="checkbox",name="sca",label="scaling",hint="add scaling to shake"},
-	{x=0,y=6,class="label",label="      Force:"},
+	{x=0,y=6,class="label",label="      &Force:"},
 	{x=1,y=6,width=3,class="floatedit",name="force",value=0,hint="shake: scaling value\nfbf retrack: smoothening force\njoin fbf lines: # of lines\nclip scale: scale factor\nrandomask: randomness factor"},
 
-	{x=3,y=0,width=3,class="label",label="Soul Bilocator"},
+	{x=3,y=0,width=3,class="label",label="Soul &Bilocator"},
 	{x=3,y=1,width=2,class="dropdown",name="move",value="transmove",items=Bilocator},
 	{x=3,y=2,width=2,class="checkbox",name="keep",label="keep both",hint="keeps both lines for transmove/mirrors"},
 	{x=3,y=3,width=4,class="checkbox",name="rotac",label="rotation acceleration",value=true,hint="transmove option"},
 	{x=3,y=4,class="checkbox",name="times",label="times",hint="set \\move times\n(transmove; clip2move; shiftmove; move to)"},
-	{x=4,y=4,class="checkbox",name="tra",label="\\t",hint=""},
+	{x=4,y=4,class="checkbox",name="tra",label="\\&t",hint=""},
 	{x=3,y=5,width=3,class="checkbox",name="videofr",label="current frame",hint="set relevant timecode\nto current frame\n(shiftstart, shiftmove)"},
 
-	{x=6,y=0,width=2,class="label",label="Morphing Grounds"},
+	{x=6,y=0,width=2,class="label",label="&Morphing Grounds"},
 	{x=6,y=1,width=2,class="dropdown",name="mod",value="round numbers",items=Morphing},
 	{x=6,y=2,class="label",label="round:"},
 	{x=7,y=2,class="dropdown",name="rnd",items=Rounding,value="all"},
@@ -81,10 +81,10 @@ function relocator(subs,sel,act)
 	{x=6,y=7,class="checkbox",name="Y",label="Y",hint="Apply to Y coordinates\n(fbf retrack, track by clip, clip2move)",value=true},
 
 	{x=8,y=0,width=3,class="label",label="Cloning Laboratory"},
-	{x=8,y=1,width=2,class="checkbox",name="cpos",label="\\posimove",value=true},
-	{x=10,y=1,class="checkbox",name="corg",label="\\org",value=true},
-	{x=8,y=2,class="checkbox",name="cclip",label="\\[i]clip",value=true},
-	{x=9,y=2,width=2,class="checkbox",name="ctclip",label="\\t(\\[i]clip)",value=true},
+	{x=8,y=1,width=2,class="checkbox",name="cpos",label="\\&posimove",value=true},
+	{x=10,y=1,class="checkbox",name="corg",label="\\&org",value=true},
+	{x=8,y=2,class="checkbox",name="cclip",label="\\[&i]clip",value=true},
+	{x=9,y=2,width=2,class="checkbox",name="ctclip",label="\\t(\\[i]c&lip)",value=true},
 	{x=8,y=6,width=4,class="checkbox",name="cre",label="replicate missing tags",value=true,hint="creates tags if they're not present"},
 	{x=8,y=3,width=2,class="checkbox",name="stack",label="stack clips",hint="allows stacking of 1 normal\nand 1 vector clip in one line"},
 	{x=8,y=5,width=3,class="checkbox",name="copyrot",label="copy rotations",hint="copies frz, frx, and fry"},
@@ -99,10 +99,10 @@ function relocator(subs,sel,act)
 	{x=12,y=5,class="checkbox",name="tpc2",label="c2",value=true,hint="affect bottom right corner of rectangular clip"},
 	{x=15,y=5,class="checkbox",name="tpexp",label="exp",hint="expand rectangular clip in opposite directions"},
 	{x=13,y=5,width=2,class="checkbox",name="tpmask",label="mask"},
-	{x=14,y=0,width=2,class="checkbox",name="warp",label="Warp",hint="Warped Teleport"},
+	{x=14,y=0,width=2,class="checkbox",name="warp",label="&Warp",hint="Warped Teleport"},
 	{x=12,y=6,width=4,class="checkbox",name="autopos",label="pos with tags missing",value=true,hint="Teleport position when \\pos tags missing"},
 
-	{x=0,y=7,width=3,class="checkbox",name="space",label="SpaceTravel Guide",
+	{x=0,y=7,width=3,class="checkbox",name="space",label="SpaceTravel &Guide",
 	hint="The Typesetter's Guide to the Hyperdimensional Relocator."},
 	{x=8,y=7,width=2,class="checkbox",name="rpt",label="Repeat",hint="Repeat with last settings (any function)"},
 	{x=10,y=7,width=3,class="checkbox",name="save",label="Save config",hint="Save current configuration"},
@@ -117,7 +117,7 @@ function relocator(subs,sel,act)
 	  end
 	end
 	P,res=ADD(hyperconfig,
-	{"Positron Cannon","Hyperspace Travel","Metamorphosis","Cloning Sequence","Teleportation","Disintegrate"},{close='Disintegrate'})
+	{"Po&sitron Cannon","Hyperspace Tra&vel","Met&amorphosis","&Cloning Sequence","Tel&eportation","Disintegrate"},{close='Disintegrate'})
 	if P=="Disintegrate" then ak() end
 	
 	if imprint and res.rpt then res=imprint end
@@ -125,13 +125,13 @@ function relocator(subs,sel,act)
 	lastpos=res.posi	lastmove=res.move	lastmod=res.mod
 	if res.save then saveconfig() ak() end
 	
-	if P=="Positron Cannon" then if res.space then guide(subs,sel) else sel=positron(subs,sel) end end
-	if P=="Hyperspace Travel" then
+	if P=="Po&sitron Cannon" then if res.space then guide(subs,sel) else sel=positron(subs,sel) end end
+	if P=="Hyperspace Tra&vel" then
 		if res.move=="multimove" then multimove (subs,sel)
 		elseif res.move=="randomove" then randomove (subs,sel)
 		else bilocator(subs,sel) end
 	end
-	if P=="Metamorphosis" then
+	if P=="Met&amorphosis" then
 		aegisub.progress.title(string.format("Morphing..."))
 		if res.mod=="line2fbf" then sel=movetofbf(subs,sel)
 		elseif res.mod=="transform clip" then transclip(subs,sel,act)
@@ -139,8 +139,8 @@ function relocator(subs,sel,act)
 		elseif res.mod=="spin doctor" then spindoc(subs,sel)
 		else modifier(subs,sel,act) end
 	end
-	if P=="Cloning Sequence" then clone(subs,sel) end
-	if P=="Teleportation" then teleport(subs,sel) end
+	if P=="&Cloning Sequence" then clone(subs,sel) end
+	if P=="Tel&eportation" then teleport(subs,sel) end
 	summary()
 	return sel
 end
@@ -240,13 +240,14 @@ function positron(subs,sel)
 	table.sort(retrack)
 	-- posref tab
 	if res.smo then
-	    for z,i in ipairs(sel) do
-		l=subs[i] frame=ms2fr(l.start_time)
-		fpos,total=detrack(z,sel,retrack,frame)
-		posix,posiy=l.text:match("\\pos%(([%d.-]+),([%d.-]+)%)")
-		if not posix then t_error("Error: Missing \\pos in line #"..i-line0..".",1) end
-		if not posref[fpos] then posref[fpos]={x=posix,y=posiy} end
-	    end
+		if res.force==0 then t_error("Smoothening strength is 0, i.e. this won't do anything.\nUse the Force field for strength.",1) end
+		for z,i in ipairs(sel) do
+			l=subs[i] frame=ms2fr(l.start_time)
+			fpos,total=detrack(z,sel,retrack,frame)
+			posix,posiy=l.text:match("\\pos%(([%d.-]+),([%d.-]+)%)")
+			if not posix then t_error("Error: Missing \\pos in line #"..i-line0..".",1) end
+			if not posref[fpos] then posref[fpos]={x=posix,y=posiy} end
+		end
 	end
 	if res.layers and #retrack==1 then t_error("Error: All lines start on the same frame.\nIf you want to change position of signs\non the same frame, uncheck layers.",1) end
 	if res.layers then total=#retrack else total=#sel end
@@ -258,7 +259,7 @@ function positron(subs,sel)
     end
 	
 	-- Warp Text initial calculations
-	local total,M1,M2,fac,l1,l2,p1,p2,x1,x2,y1,y2,xx,yy,tang,ang,MX,MY
+	local total,M1,M2,fac,l1,l2,p1,p2,x1,x2,y1,y2,xx,yy,tang,ang,MX,MY,mid
 	if res.posi=="warp text" then
 		l1=subs[sel[1]]
 		l2=subs[sel[#sel]]
@@ -275,9 +276,22 @@ function positron(subs,sel)
 		MY=math.sin(math.rad(ang))*ps
 		MD=dist/2
 	end
+	
+	-- Sine Loop / Trampoline
+	local X,Y,Z,fr,loop,acc
+	if res.posi=="sine loop" or res.posi=="trampoline" then
+		X=res.eks
+		Y=res.wai
+		fr=round(res.force)
+		if fr<=0 then fr=10 end
+		acc=ps
+		if acc<=0 then acc=2 end
+		loop=fr+1
+		tot=fr*2
+	end
 
     -- Positron Cannon Lines --
-    if res.posi=="space out letters" or res.posi=="track by clip" then table.sort(sel,function(a,b) return a>b end) end
+    if res.posi=="space out letters" or res.posi=="track by clip" or res.posi=="sine loop" or res.posi=="trampoline" then table.sort(sel,function(a,b) return a>b end) end
     for z,i in ipairs(sel) do
 	progress("Depositing line #"..i-line0.." ["..z.."/"..#sel.."]")
 	line=subs[i]
@@ -554,6 +568,58 @@ function positron(subs,sel)
 			if not nontra:match("^{[^}]-\\fscy") then text=addtag3("\\fscy"..shsy+100,text) end
 		end
 		text=text:gsub("([%d.-]+%d)([\\}%),])",function(a,b) return round(a,2)..b end)
+	end
+
+	if res.posi=="sine loop" or res.posi=="trampoline" then
+		local frames,poses,px,py,mx,my,NX,NY
+		if nopos then text=getpos(subs,text) end
+		px,py=text:match("\\pos%((.-),(.-)%)")
+		px2=px+X
+		py2=py+Y
+		mx=px+(X/2)
+		my=py+(Y/2)
+		start=line.start_time
+		endt=line.end_time
+		sfr=ms2fr(start)
+		efr=ms2fr(endt)
+		frames=efr-sfr
+		poses={}
+		for f=2,frames do
+			Z=f%tot
+			if Z==0 then Z=2 end
+			if Z>loop then Z=2*loop-Z end
+			table.insert(poses,Z)
+			
+			if res.posi=="trampoline" then
+				AF=(Z-1)^acc/(fr)^acc
+				NX=round(AF*(px2-px)+px,2)
+				NY=round(AF*(py2-py)+py,2)
+			end
+			if res.posi=="sine loop" then
+				mid=(loop+1)/2
+				if Z==mid then NX=mx NY=my
+				elseif Z<mid then
+					AF=(Z-1)^acc/(mid-1)^acc
+					NX=round(AF*(mx-px)+px,2)
+					NY=round(AF*(my-py)+py,2)
+				else
+					Z2=loop+1-Z
+					AF=(Z2-1)^acc/(mid-1)^acc
+					NX=round(px2-AF*(px2-mx),2)
+					NY=round(py2-AF*(py2-my),2)
+				end
+			end
+			
+			-- logg(NX..','..NY)
+			t2=text:gsub("\\pos%(.-,.-%)","\\pos("..NX..","..NY..")")
+			line.text=t2
+			line.start_time=fr2ms(sfr+f-1)
+			line.end_time=fr2ms(sfr+f)
+			subs.insert(i+f-1,line)
+			nsel=shiftsel(nsel,i,1)
+		end
+		line.start_time=fr2ms(sfr)
+		line.end_time=fr2ms(sfr+1)
 	end
 
 	-- shadow layer
@@ -965,6 +1031,7 @@ function bilocator(subs,sel)
 			ii=i
 		end
 	end
+	local mid
     for z=#sel,1,-1 do
         i=sel[z]
 	progress("Moving through hyperspace... #"..i-line0.." ["..#sel+1-z.."/"..#sel.."]")
@@ -1133,6 +1200,7 @@ function bilocator(subs,sel)
 		if res.tra then text=text:gsub("\\t%([%d.-]-,[%d.-]-,","\\t(")
 		else text=text:gsub("\\move%(([^,]+,[^,]+,[^,]+,[^,]+),[^,]+,[^,%)]+","\\move(%1") end
 	end
+
 	if rM=="full times" or rM=="set times" then
 		if res.tra then text=text
 		:gsub("\\t%([%d.-]-,[%d.-]-,([%d%.]-,)\\","\\t("..movt..",%1\\")
@@ -1141,6 +1209,131 @@ function bilocator(subs,sel)
 		:gsub("\\t%(\\","\\t("..movt..",\\")
 		else text=text:gsub("\\move%(([^,]+,[^,]+,[^,]+,[^,%)]+)[^%)]-%)","\\move(%1,"..movt..")") end
 	end
+
+	if rM=="zig-zag" then
+		local px,py,dur,poses,tim,X1,Y1,X2,Y2,XX,YY,tid,first,rest,moov,endpos
+		if z==#sel then
+			rezz=rezz or {}
+			local G={
+			{x=0,y=0,width=2,class="label",label="Pos A (X,Y):"},
+			{x=2,y=0,class="floatedit",name="AX",value=rezz.AX},
+			{x=3,y=0,class="floatedit",name="AY",value=rezz.AY},
+			{x=0,y=1,width=2,class="label",label="Pos B (X,Y):"},
+			{x=2,y=1,class="floatedit",name="BX",value=rezz.BX},
+			{x=3,y=1,class="floatedit",name="BY",value=rezz.BY},
+			{x=0,y=2,width=2,class="label",label="Interval (ms):"},
+			{x=2,y=2,class="floatedit",name="int",value=rezz.int or 500},
+			{x=3,y=2,class="label",label="Starting position:"},
+			{x=4,y=2,class="dropdown",name="st",items={"A","B","middle"},value="A"},
+			
+			{x=0,y=3,width=2,class="label",label="Shift A (X,Y):"},
+			{x=2,y=3,class="floatedit",name="addAX",value=rezz.addAX},
+			{x=3,y=3,class="floatedit",name="addAY",value=rezz.addAY},
+			{x=0,y=4,width=2,class="label",label="Shift B (X,Y):"},
+			{x=2,y=4,class="floatedit",name="addBX",value=rezz.addBX},
+			{x=3,y=4,class="floatedit",name="addBY",value=rezz.addBY},
+			
+			{x=4,y=0,class="checkbox",name="line",label="Line's position",value=rezz.line},
+			{x=4,y=1,class="checkbox",name="rel",label="Relative to A",value=rezz.rel},
+			
+			{x=0,y=5,width=5,height=8,class="textbox",value="This will split a line into several that will move back and forth between given points A and B over the duration of the current line.\nEach move between A and B has the duration of the given interval.\nShifting means that with each round, the point (A/B) moves by the given distance.\nIf you start at top left (A) and top right (B) and set 0,10 for both shifts, the text will move left-right and go (10 pixels) lower with each round, ending up at the bottom of the screen if given enough time.\nYou can choose starting position, but with shifting, probably only A will work well.\nWith 'middle', the second point is always A, and the move, being half the distance, will only last half the given interval, so the speed is the same.\n'Line's position' means Pos A will be the current position of the line.\n'Relative to A', if set for example to '0,100', means Pos B will be 100 pixels below Pos A.\nUsing both these options at the same time allows for several selected lines to move in unison. If A is line's position and B is absolute, all lines will meet at point B and then go back to where they started."},
+			}
+			ZZ,rezz=ADD(G,{"Zig-Zag Movement","Cancel"},{ok='Zig-Zag Movement',close='Cancel'})
+			if ZZ=="Cancel" then ak() end
+			inter=rezz.int
+			ST=rezz.st
+			AX=rezz.AX AY=rezz.AY BX=rezz.BX BY=rezz.BY
+			if rezz.rel then BX=AX+rezz.BX BY=AY+rezz.BY end
+			if ST=='middle' then mid=true end
+			addAX=rezz.addAX
+			addAY=rezz.addAY
+			addBX=rezz.addBX
+			addBY=rezz.addBY
+		end
+		dur=endt-start
+		if dur<=inter then t_error("Line #"..i-line0..": Line duration must be longer than given interval.",1) end
+		poses={}
+		if nopos then
+			moov=text:match("\\move%(([%d.-]+,[%d.-]+)")
+			if not moov then text=getpos(subs,text) end
+		end
+		px,py=text:match("\\pos%(([%d.-]+),([%d.-]+)")
+		if not px then px,py=moov:match("([%d.-]+),([%d.-]+)") end
+		if rezz.line then AX=px AY=py end
+		if rezz.rel then BX=AX+rezz.BX BY=AY+rezz.BY end
+		if ST=='A' then X1=AX Y1=AY X2=BX Y2=BY
+		elseif ST=='B' then X1=BX Y1=BY X2=AX Y2=AY
+		elseif mid then X1=(BX+AX)/2 Y1=(BY+AY)/2
+		end
+		table.insert(poses,{X1,Y1})
+		first=inter
+		rest=dur-inter
+		if mid then X1=BX Y1=BY X2=AX Y2=AY first=inter/2 rest=dur-(inter/2) end
+		seg=math.ceil(rest/inter)
+		
+		for q=1,seg+1 do
+			if q%2==0 then
+				-- A [mid/B: B]
+				if ST=='A' then
+					X1=X1+addAX
+					Y1=Y1+addAY
+				else
+					X1=X1+addBX
+					Y1=Y1+addBY
+				end
+				XX=X1 YY=Y1
+				if q==seg+1 then endpos={XX,YY}
+				else table.insert(poses,{XX,YY}) end
+			else
+				-- B [mid/B: A]
+				XX=X2 YY=Y2
+				if q==seg+1 then endpos={XX,YY}
+				else table.insert(poses,{XX,YY}) end
+				if ST=='A' then
+					X2=X2+addBX
+					Y2=Y2+addBY
+				else
+					X2=X2+addAX
+					Y2=Y2+addAY
+				end
+			end
+		end
+		tim=fr2ms(1)
+		for l=1,#poses do
+			-- logg(l)
+			if l==1 then tid=first else tid=inter end
+			t2=text:gsub("\\pos%b()",""):gsub("\\move%b()","")
+			m1=poses[l][1]
+			m2=poses[l][2]
+			if l==#poses then
+				m3=endpos[1]
+				m4=endpos[2]
+			else
+				m3=poses[l+1][1]
+				m4=poses[l+1][2]	
+			end
+			start1=start
+			if l>1 then
+				start1=start+first+(l-2)*inter
+			end
+			endt1=start1+tid
+			if l==#poses then endt1=endt end
+			start2=fr2ms(ms2fr(start1))
+			endt2=fr2ms(ms2fr(endt1)-1)
+			movt1=start2-start1+tim
+			movt2=endt2-start1+tim
+			mov="\\move("..m1..","..m2..","..m3..","..m4..",0,"..tid..")"
+			t2=addtag(mov,t2)
+			line.text=t2
+			line.start_time=start1
+			line.end_time=endt1
+			-- logg(t2)
+			if l>1 then subs.insert(i+l-1,line) else text=t2  end
+		end
+		line.start_time=start
+		line.end_time=start+first
+	end
+
 	if text~=line.text then relocated=relocated+1 end
 	text=roundpar(text,2)
 	line.text=text
@@ -1857,6 +2050,7 @@ function movetofbf(subs,sel)
 		    :gsub("^({[^}]-)\\alpha&H%x%x&","%1")
 		    :gsub("{(.-)\\fad%b()(.-)}","{\\alpha&HFF&%1%2\\t(0,"..f1..",\\alpha"..linealfa..")\\t("..RD-f2..",0,\\alpha&HFF&)}")
 		    :gsub("(.){(.-)(\\alpha&H%x%x&)(.-)}","%1{%2\\alpha&HFF&\\t(0,"..f1..",%3)\\t("..RD-f2..",0,\\alpha&HFF&)%4}")
+		    if f1=='0' then l2.text=l2.text:gsub("{\\alpha&HFF&","{") end
 		    for c=1,4 do
 		    l2.text,c=l2.text:gsub("{(.-)(\\"..c.."a)(&H%x%x&)(.-)}","{%1%2&HFF&\\t(0,"..f1..",%2%3)\\t("..RD-f2..",0,%2&HFF&)%4}")
 		    end
@@ -2273,7 +2467,7 @@ function teleport(subs,sel)
 	{x=2,y=2,class="floatedit",name="why",hint="Y"},
 	{x=2,y=3,class="checkbox",name="fram",label="by frame, not by line",hint="by frame instead of by line - for layered signs"}
 	}
-	tP,rez=ADD(telemod,{"Warped Teleport","Disintegrate"},{close='Disintegrate'})
+	tP,rez=ADD(telemod,{"Warped Teleport","Disintegrate"},{ok='Warped Teleport',close='Disintegrate'})
 	if tP=="Disintegrate" then ak() end
 	tpfx=rez.eggs	tpfy=rez.why	fram=rez.fram
 	if fram then
@@ -2357,7 +2551,7 @@ function teleport(subs,sel)
 end
 
 
---	reanimatools	----------------------------------------------------------------
+--	reanimatools	----------------------------------------------------------
 function esc(str) str=str:gsub("[%%%(%)%[%]%.%-%+%*%?%^%$]","%%%1") return str end
 function round(n,dec) dec=dec or 0 n=math.floor(n*10^dec+0.5)/10^dec return n end
 function rnd3(n) n=math.floor(n*10^3+0.5)/10^3 return n end
@@ -2771,6 +2965,8 @@ Shake: Apply to fbf lines with \pos tags to create a shaking effect.
    'rotate' adds shaking to \frz (pos input, degrees). 'smooth' will make shaking smoother.
    'layers' will keep position/rotations the same for all layers. (Same value for same start time.)
 
+Trampoline / Sine Loop: Creates fbf movement between point A and point B. Check online manual for details.
+
 Shadow Layer: Creates shadow as a new layer. For offset, it uses in this order of priority:
    1. value from Positron or Teleport (xshad, yshad). 2. shadow value from the line. 3. shadow from style.
 
@@ -3069,7 +3265,7 @@ stg_topseq={x=1,y=0,class="label",label="   Cloning Laboratory"}
 stg_toport={x=1,y=0,class="label",label="                   Teleport"}
 
 stg_intro={x=0,y=1,width=2,height=10,class="textbox",name="gd",value=intro}
-stg_cannon={x=0,y=1,width=2,height=19,class="textbox",name="gd",value=cannon}
+stg_cannon={x=0,y=1,width=2,height=20,class="textbox",name="gd",value=cannon}
 stg_can_to_things={x=0,y=1,width=2,height=16,class="textbox",name="gd",value=clipthings}
 stg_replicate={x=0,y=1,width=2,height=14,class="textbox",name="gd",value=replika}
 stg_retrack={x=0,y=1,width=2,height=12,class="textbox",name="gd",value=fbfretrack}
