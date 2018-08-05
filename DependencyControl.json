@@ -185,20 +185,20 @@
       "description": "A multi-headed typesetting tool",
       "channels": {
         "master": {
-          "version": "6.0.0",
-          "released": "2018-06-10",
+          "version": "6.1.0",
+          "released": "2018-08-05",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "90ccc82658f0eada18d6c22db142952e39c030f8"
+              "sha1": "60adc9eda4c235afa7fae3a19be48fa1d2246b60"
             }
           ]
         }
       },
       "changelog": {
-        "6.0.0": ["Check the Updates page"]
+        "6.1.0": ["Check the Updates page"]
       }
     },
     
@@ -209,20 +209,20 @@
       "description": "Advanced metamorphosis of multidimensional coordinates",
       "channels": {
         "master": {
-          "version": "4.4.0",
-          "released": "2018-06-30",
+          "version": "4.5.0",
+          "released": "2018-08-05",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "7e282184fe1bc62e69e0866390437ff5f63f6099"
+              "sha1": "c1aa30d3af93c7f33f05841a37cd4f9e13c84951"
             }
           ]
         }
       },
       "changelog": {
-        "4.4.0": ["Check the Updates page"]
+        "4.5.0": ["Check the Updates page"]
       }
     },
     
@@ -281,20 +281,20 @@
       "description": "Selectricks and Sortricks",
       "channels": {
         "master": {
-          "version": "3.3.3",
-          "released": "2018-05-13",
+          "version": "3.4.0",
+          "released": "2018-08-05",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "495c74418bb3e547708c25f3ebe0d11f8bea9ef1"
+              "sha1": "ab007be53835586317f779874b1d5f3af1c3f107"
             }
           ]
         }
       },
       "changelog": {
-        "3.3.3": ["Check the Updates page"]
+        "3.4.0": ["Check the Updates page"]
       }
     },
     
@@ -401,20 +401,20 @@
       "description": "Import stuff, number stuff, chapter stuff, replace stuff, do a significant amount of other stuff to stuff.",
       "channels": {
         "master": {
-          "version": "3.2.0",
-          "released": "2018-06-10",
+          "version": "3.3.0",
+          "released": "2018-08-05",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "b2d7557f9ba1c6880a37124b86404cfd47833bee"
+              "sha1": "5e8a31f536e6bd4147c40d21b6f8550aec024a2b"
             }
           ]
         }
       },
       "changelog": {
-        "3.2.0": ["Check the Updates page"]
+        "3.3.0": ["Check the Updates page"]
       }
     },
     
