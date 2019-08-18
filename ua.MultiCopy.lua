@@ -4,12 +4,12 @@
 script_name="MultiCopy"
 script_description="Lossless transfer of data between compatible storage units"
 script_author="unanimated"
-script_version="3.5"
+script_version="4.0"
 script_namespace="ua.MultiCopy"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-	script_version="3.5.0"
+	script_version="4.0.0"
 	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
@@ -63,6 +63,44 @@ end
 function copyc(subs,sel)	-- any tags; layeractoreffectetc.
     cc=""
     tagg=res.dat:gsub("\n","")
+    local Y=4
+    if CM=="combo" then
+	rez=rez or {}
+	local fields={"text","style","actor","effect","layer","start_time","end_time","margin_l","margin_r","margin_v"}
+	local G={
+	{x=0,y=0,width=2,class="label",label="Add to beginning:"},
+	{x=2,y=0,width=2,class="edit",name="st",hint="Add this to the beginning of the string for each line"},
+	{x=0,y=1,width=2,class="label",label="Add to end:"},
+	{x=2,y=1,width=2,class="edit",name="ed",hint="Add this to the end of the string for each line"},
+	{x=0,y=2,width=2,class="label",label="Separator:"},
+	{x=2,y=2,width=2,class="edit",name="sep",hint="Separator between fields"},
+	{x=0,y=3,class="label",label="Copy:"},
+	{x=1,y=3,width=2,class="dropdown",name='f3',items=fields,value="text"},
+	}
+	repeat
+	if P2=="Add line" or Y==4 then
+		table.insert(G,{x=0,y=Y,class="checkbox",name='c'..Y,label="+",value=true})
+		table.insert(G,{x=1,y=Y,width=2,class="dropdown",name='f'..Y,items=fields,value="text"})
+		Y=Y+1
+	end
+	for k,v in ipairs(G) do
+		if (v.class=="checkbox" or v.class=="dropdown" or v.class:match"edit") and rez[v.name]~=nil then v.value=rez[v.name] end
+	end
+	P2,rez=ADD(G,{"Copy","Add line","Esc"},{ok='Copy',close='Esc'})
+	until P2~="Add line"
+	if P2=="Esc" then ak() end
+	rez.c3=true
+	comb={}
+	for a=3,Y-1 do
+		for k,v in ipairs(G) do
+			if v.y==a and v.class=="dropdown" then
+				nam='c'..a
+				nom=rez[v.name]:gsub('_v','_t')
+				if rez[nam] then table.insert(comb,nom) end
+			end
+		end
+	end
+    end
     for z,i in ipairs(sel) do
 	progress("Copying from line: "..z.."/"..#sel)
 	line=subs[i]
@@ -78,10 +116,22 @@ function copyc(subs,sel)	-- any tags; layeractoreffectetc.
 	tagst=text:match(STAG) or ""
 	tags=tagst:gsub("\\t%b()","")
 	
+	if CM=="combo" then
+		local l=line[comb[1]]
+		if #comb>1 then
+			for c=2,#comb do
+				local txt=line[comb[c]]
+				if comb[c]:match("time") then txt=time2string(line[comb[c]]):gsub('^0:',''):gsub('%.00$','') end
+				l=l..rez.sep..txt
+			end
+		end
+		l=rez.st..l..rez.ed
+		kopi(l)
+	end
+	
 	if CM=="clip" then kopi(tags:match("\\i?clip%b()")) end
-	if CM=="position" then kopi(tags:match("\\pos%b()")) end
-	if CM=="blur" then kopi(tags:match("\\blur[%d%.]+")) end
-	if CM=="border" then kopi(tags:match("\\bord[%d%.]+")) end
+	if CM=="pos x" then kopi(tags:match("\\pos%(([^,]+)")) end
+	if CM=="pos y" then kopi(tags:match("\\pos%([^,]+,([^)]+)")) end
 	if CM=="colour(s)" and res.c1 then kopi(tags:match("\\1?c&H%x+&")) end
 	if CM=="colour(s)" and res.c2 then kopi(tags:match("\\2c&H%x+&")) end
 	if CM=="colour(s)" and res.c3 then kopi(tags:match("\\3c&H%x+&")) end
@@ -91,25 +141,25 @@ function copyc(subs,sel)	-- any tags; layeractoreffectetc.
 	if CM=="alpha" and res.a2 then kopi(tags:match("\\2a&H%x+&")) end
 	if CM=="alpha" and res.a3 then kopi(tags:match("\\3a&H%x+&")) end
 	if CM=="alpha" and res.a4 then kopi(tags:match("\\4a&H%x+&")) end
-	if CM=="fscx" then kopi(tags:match("\\fscx[%d%.]+")) end
-	if CM=="fscy" then kopi(tags:match("\\fscy[%d%.]+")) end
 	
-	if CM=="any tag" then for tag in tagg:gmatch("[^,]+") do
-	 tag=tag:gsub(" ",""):gsub("\\","")
-	 tak=nil
-	 if tag=="t" then
-	  if tagst:match("\\t") then tak=""
-	    for t in tagst:gmatch("\\t%b()") do tak=tak..t end
-	  end
-	 elseif tag:match("^[abikps]$") then tak=tags:match("(\\"..tag.."%d*)[\\}]")
-	 elseif tag=="fs" then tak=tags:match("(\\fs%d*)[\\}]")
-	 elseif tag=="c" then tak=tags:match("(\\c&[^\\}]*)")
-	 elseif tag=="fad" then tak=tags:match("\\fad%b()")
-	 else
-	  tak=tags:match("(\\"..tag.."[^\\}]*)")
-	 end
-	 kopi(tak)
-	end end
+	if CM=="any tag" then
+	    for tag in tagg:gmatch("[^,]+") do
+		tag=tag:gsub(" ",""):gsub("\\","")
+		tak=nil
+		if tag=="t" then
+			if tagst:match("\\t") then tak=""
+				for t in tagst:gmatch("\\t%b()") do tak=tak..t end
+			end
+		elseif tag:match("^[abikps]$") then tak=tags:match("(\\"..tag.."%d*)[\\}]")
+		elseif tag=="fs" then tak=tags:match("(\\fs%d*)[\\}]")
+		elseif tag=="c" then tak=tags:match("(\\c&[^\\}]*)")
+		elseif tag=="fad" then tak=tags:match("\\fad%b()")
+		else
+			tak=tags:match("(\\"..tag.."[^\\}]*)")
+		end
+		kopi(tak)
+	    end
+	end
 	
 	if CM=="layer" then cc=cc..line.layer end
 	if CM=="margin l" then cc=cc..line.margin_l end
@@ -164,7 +214,7 @@ function crmod(subs,sel)
 	style=style:gsub("[Ii]nternal","Italics")
 	if style:match("[Ii]talics") and not style:match("[Ff]lashback") and not text:match("\\i1") then text="{\\i1}"..text end
 	if style:match("[Mm]ain") or style:match("[Oo]verlap") or style:match("[Ii]talics")
-	or style:match("[Ii]nternal") or style:match("[Ff]lashback") or style:match("[Nn]arrat")
+	or style:match("[Ii]nternal") or style:match("[Ff]lashback") or style:match("[Nn]arrat") or style:match("^[Tt]op$")
 	then style="Default" end
 
 	-- nuke tags from signs, set actor to "Sign", add timecode
@@ -196,11 +246,11 @@ function crmod(subs,sel)
     while i<=(#subs-moved) do
 	line=subs[i]
 	if line.class=="dialogue" and line.style=="Default" then
-	  subs.delete(i)
-	  moved=moved+1
-	  subs.append(line)
+		subs.delete(i)
+		moved=moved+1
+		subs.append(line)
 	else
-	   i=i+1
+		i=i+1
 	end
     end
     -- copy text from all lines
@@ -224,17 +274,23 @@ end
 
 -- COPY BETWEEN COLUMNS --
 function copycol(subs,sel)
+    l="" r=""
     if res.attach then
 	atgui={
 	{x=1,y=1,width=2,class="edit",name="merge",hint="Something to place between the two attached strings.\nA space or ' - ' may be useful."},
 	{x=0,y=0,class="label",label="Before / "},
-	{x=1,y=0,class="checkbox",name="after",label="After",hint="Attach '"..res.copyfrom.."' to the end of '"..res.copyto.."'.\n\n(Default is to the beginning.)"},
-	{x=2,y=0,class="checkbox",name="delor",label="Delete orig.",hint="Delete content of the 'copy from' column."},
+	{x=1,y=0,class="checkbox",name="after",label="&After",hint="Attach '"..res.copyfrom.."' to the end of '"..res.copyto.."'.\n\n(Default is to the beginning.)"},
+	{x=2,y=0,class="checkbox",name="delor",label="&Delete orig.",hint="Delete content of the 'copy from' column."},
 	{x=0,y=1,class="label",label="Link: "}
 	}
+	if res.copyto=='text' then table.insert(atgui,{x=0,y=2,width=3,class="checkbox",name="kom",label="Attach <"..res.copyfrom.."> as {a &comment}"}) end
+	for key,val in ipairs(atgui) do
+		if rez and val.name then val.value=rez[val.name] end
+	end
 	CBC,rez=ADD(atgui,{"OK","Cancel"},{ok='OK',close='Cancel'})
 	if CBC=="Cancel" then ak() end
 	merge=rez.merge
+	if rez.kom then l="{" r="}" end
     end
     for z,i in ipairs(sel) do
 	line=subs[i]
@@ -243,8 +299,8 @@ function copycol(subs,sel)
 	if type(target)=="number" then data=tonumber(source) else data=source end
 	if data then
 	  if res.attach then
-	    if rez.after then data=target..merge..data
-	    else data=data..merge..target
+	    if rez.after then data=target..l..merge..data..r
+	    else data=l..data..merge..r..target
 	    end
 	  end
 	  line[res.copyto]=data
@@ -677,17 +733,17 @@ function pastec(subs,sel)
 	ADD({{class="label",label="»"..dtext.."\nNot a valid/complete dialogue line."}},{"OK"},{close='OK'}) ak() end
 	dline=string2line(dtext) table.insert(lines,dline) end
 	for d=1,spg do
-	  dtext=data[d]  dline=lines[d]
-	  table.insert(spgui,{x=0,y=d,class="label",name="lay"..d,label=dline.layer})
-	  table.insert(spgui,{x=1,y=d,class="label",name="start"..d,label=dline.start_time})
-	  table.insert(spgui,{x=2,y=d,class="label",name="endt"..d,label=dline.end_time})
-	  table.insert(spgui,{x=3,y=d,class="label",name="style"..d,label=dline.style})
-	  table.insert(spgui,{x=4,y=d,class="label",name="actor"..d,label=dline.actor})
-	  table.insert(spgui,{x=5,y=d,class="label",name="effect"..d,label=dline.effect})
-	  table.insert(spgui,{x=6,y=d,class="label",name="margl"..d,label=dline.margin_l})
-	  table.insert(spgui,{x=7,y=d,class="label",name="margr"..d,label=dline.margin_r})
-	  table.insert(spgui,{x=8,y=d,class="label",name="margt"..d,label=dline.margin_t})
-	  table.insert(spgui,{x=9,y=d,width=25,class="edit",name="text"..d,value=dline.text})
+		dtext=data[d]  dline=lines[d]
+		table.insert(spgui,{x=0,y=d,class="label",name="lay"..d,label=dline.layer})
+		table.insert(spgui,{x=1,y=d,class="label",name="start"..d,label=dline.start_time})
+		table.insert(spgui,{x=2,y=d,class="label",name="endt"..d,label=dline.end_time})
+		table.insert(spgui,{x=3,y=d,class="label",name="style"..d,label=dline.style})
+		table.insert(spgui,{x=4,y=d,class="label",name="actor"..d,label=dline.actor})
+		table.insert(spgui,{x=5,y=d,class="label",name="effect"..d,label=dline.effect})
+		table.insert(spgui,{x=6,y=d,class="label",name="margl"..d,label=dline.margin_l})
+		table.insert(spgui,{x=7,y=d,class="label",name="margr"..d,label=dline.margin_r})
+		table.insert(spgui,{x=8,y=d,class="label",name="margt"..d,label=dline.margin_t})
+		table.insert(spgui,{x=9,y=d,width=25,class="edit",name="text"..d,value=dline.text})
 	end
 	-- run gui
 	repeat
@@ -707,20 +763,20 @@ function pastec(subs,sel)
 	
 	-- Apply pasteover
 	for z,i in ipairs(sel) do
-          line=subs[i]
-	  if lines[z]~=nil then
-	    if rez.clay then target=rez.dlay source=lines[z].layer line=shoot(line) end
-	    if rez.cstart then target=rez.dstart source=lines[z].start_time line=shoot(line) end
-	    if rez.cendt then target=rez.dendt source=lines[z].end_time line=shoot(line) end
-	    if rez.cstyle then target=rez.dstyle source=lines[z].style line=shoot(line) end
-	    if rez.cactor then target=rez.dactor source=lines[z].actor line=shoot(line) end
-	    if rez.ceffect then target=rez.deffect source=lines[z].effect line=shoot(line) end
-	    if rez.cL then target=rez.dL source=lines[z].margin_l line=shoot(line) end
-	    if rez.cR then target=rez.dR source=lines[z].margin_r line=shoot(line) end
-	    if rez.cV then target=rez.dV source=lines[z].margin_t line=shoot(line) end
-	    if rez.ctext then target=rez.dtext source=lines[z].text line=shoot(line) end
-	  end
-	  subs[i]=line
+            line=subs[i]
+	    if lines[z]~=nil then
+		if rez.clay then target=rez.dlay source=lines[z].layer line=shoot(line) end
+		if rez.cstart then target=rez.dstart source=lines[z].start_time line=shoot(line) end
+		if rez.cendt then target=rez.dendt source=lines[z].end_time line=shoot(line) end
+		if rez.cstyle then target=rez.dstyle source=lines[z].style line=shoot(line) end
+		if rez.cactor then target=rez.dactor source=lines[z].actor line=shoot(line) end
+		if rez.ceffect then target=rez.deffect source=lines[z].effect line=shoot(line) end
+		if rez.cL then target=rez.dL source=lines[z].margin_l line=shoot(line) end
+		if rez.cR then target=rez.dR source=lines[z].margin_r line=shoot(line) end
+		if rez.cV then target=rez.dV source=lines[z].margin_t line=shoot(line) end
+		if rez.ctext then target=rez.dtext source=lines[z].text line=shoot(line) end
+	    end
+	    subs[i]=line
 	end
     end -- of superpasta
     
@@ -739,6 +795,8 @@ function pastec(subs,sel)
 	  if text:match("^{[^}]-\\t") then text=text:gsub("^({[^}]-)\\t","%1"..text2.."\\t")
 	  else text=text:gsub("^({\\[^}]-)}","%1"..text2.."}") end
 	end
+	if PM=="pos x" then text=text:gsub("(\\pos%()[^,]+","%1"..text2) end
+	if PM=="pos y" then text=text:gsub("(\\pos%([^,]+,)[^,)]+","%1"..text2) end
 	if PM=="layer" and text2:match('^%d+$') then line.layer=text2 end
 	if PM=="margin l" and text2:match('^%d+$') then line.margin_l=text2 end
 	if PM=="margin r" and text2:match('^%d+$') then line.margin_r=text2 end
@@ -753,13 +811,14 @@ function pastec(subs,sel)
 	  line.style=text2
 	end
 	if PM=="duration" then line.end_time=line.start_time+text2 end
-	if PM=="comments" then text2=text2:gsub("^([^{])(.*)([^}])$","{%1%2%3}") text=text..text2 end
+	if PM=="comments" then text2=text2:gsub("^([^{]-)(.*)([^}]-)$","{%1%2%3}") text=text..text2 end
 	if PM=="text mod." then text=textmod2(text2) end
 	if PM=="gbc text" then styleref=stylechk(subs,line.style) text=gbctext(text,text2) end
 	if PM=="de-irc" then
 	  line=string2line(text2)
 	  text=line.text
 	end
+	if PM=="attach2text" then text=text..' '..text2 end
 	 
 	text=text
 	:gsub(ATAG,function(tg) tg=duplikill(tg) tg=extrakill(tg,2) return tg end)
@@ -788,22 +847,22 @@ function pastec(subs,sel)
 end
 
 function shoot(line)
-    if target=="layer" then line.layer=source end
-    if target=="start time" then line.start_time=source end
-    if target=="end time" then line.end_time=source end
-    if target=="style" then line.style=source
-	if source=="" then source="[unnamed style]" end
-	if not styles:match(","..esc(source)..",") and not warningstyles:match(","..esc(source)..",") then
-	warningstyles=warningstyles..","..source..","
+	if target=="layer" then line.layer=source end
+	if target=="start time" then line.start_time=source end
+	if target=="end time" then line.end_time=source end
+	if target=="style" then line.style=source
+		if source=="" then source="[unnamed style]" end
+		if not styles:match(","..esc(source)..",") and not warningstyles:match(","..esc(source)..",") then
+		warningstyles=warningstyles..","..source..","
+		end
 	end
-    end
-    if target=="actor" then line.actor=source end
-    if target=="effect" then line.effect=source end
-    if target=="L" then line.margin_l=source end
-    if target=="R" then line.margin_r=source end
-    if target=="V" then line.margin_t=source end
-    if target=="text" then line.text=source end
-    return line
+	if target=="actor" then line.actor=source end
+	if target=="effect" then line.effect=source end
+	if target=="L" then line.margin_l=source end
+	if target=="R" then line.margin_r=source end
+	if target=="V" then line.margin_t=source end
+	if target=="text" then line.text=source end
+	return line
 end
 
 -- paste text over while keeping tags --
@@ -842,7 +901,7 @@ function textmod2(text2)
     return text
 end
 
---	reanimatools	------
+--	reanimatools	---------------------------------------------------------------------------
 function esc(str) str=str:gsub("[%%%(%)%[%]%.%-%+%*%?%^%$]","%%%1") return str end
 function round(n,dec) dec=dec or 0 n=math.floor(n*10^dec+0.5)/10^dec return n end
 function tagmerge(t) repeat t,r=t:gsub("({\\[^}]-)}{(\\[^}]-})","%1%2") until r==0 return t end
@@ -886,6 +945,27 @@ function string2time(timecode)
 	if timecode==nil then t_error("Invalid timecode.",123) end
 	timecode=timecode:gsub("(%d):(%d%d):(%d%d)%.(%d%d)",function(a,b,c,d) return d*10+c*1000+b*60000+a*3600000 end)
 	return timecode
+end
+
+function time2string(num)
+	timecode=math.floor(num/1000)
+	tc0=0
+	tc1=math.floor(timecode/60)
+	tc2=timecode%60
+	numstr="00"..num
+	tc3=numstr:match("(%d%d)%d$")
+	repeat
+	if tc2>=60 then tc2=tc2-60 tc1=tc1+1 end
+	if tc1>=60 then tc1=tc1-60 tc0=tc0+1 end
+	until tc2<60 and tc1<60
+	if res and res.mega=="export" and tc0==1 and tc1<30 then tc0=0 tc1=tc1+60 end
+	if tc1<10 then tc1="0"..tc1 end
+	if tc2<10 then tc2="0"..tc2 end
+	tc0=tostring(tc0)
+	tc1=tostring(tc1)
+	tc2=tostring(tc2)
+	timestring=tc0..":"..tc1..":"..tc2.."."..tc3
+	return timestring
 end
 
 function duplikill(tagz)
@@ -1027,8 +1107,8 @@ ADP=aegisub.decode_path
 ak=aegisub.cancel
 ATAG="{%*?\\[^}]-}"
 STAG="^{\\[^}]-}"
-copytab={"tags","text","visible text","all","text pattern","------","export CR for pad","------","any tag","clip","position","blur","border","colour(s)","alpha","fscx","fscy","------","actor","effect","style","comments","layer","margin l","margin r","margin v","duration","# of characters","# of chars (no space)"}
-pastab={"all","pasteover+","any tag","superpasta","gbc text","text mod.","de-irc","------","actor","effect","style","comments","layer","margin l","margin r","margin v","duration"}
+copytab={"tags","text","visible text","all","text pattern","------","export CR for pad","------","any tag","pos x","pos y","colour(s)","alpha","clip","------","actor","effect","style","comments","layer","margin l","margin r","margin v","duration","# of characters","# of chars (no space)","combo"}
+pastab={"all","pasteover+","any tag","pos x","pos y","superpasta","gbc text","text mod.","de-irc","attach2text","------","actor","effect","style","comments","layer","margin l","margin r","margin v","duration"}
 fields={"style","actor","effect","text","layer","start_time","end_time","margin_l","margin_r","margin_t"}
 	gui={
 	{x=0,y=19,class="label",label="Copy:"},
@@ -1037,12 +1117,12 @@ fields={"style","actor","effect","text","layer","start_time","end_time","margin_
 	{x=5,y=19,width=2,class="dropdown",name="pastemode",value=PM or "all",items=pastab},
 	{x=0,y=0,width=13,height=17,class="textbox",name="dat"},
 	
-	{x=0,y=17,width=2,class="checkbox",name="col",label="Copy from",hint="Copy from one column to another"},
+	{x=0,y=17,width=2,class="checkbox",name="col",label="Copy &from",hint="Copy from one column to another"},
 	{x=2,y=17,width=2,class="dropdown",name="copyfrom",value=CF or "actor",items=fields},
 	{x=4,y=17,class="label",label="       to"},
 	{x=5,y=17,width=2,class="dropdown",name="copyto",value=CT or "effect",items=fields},
-	{x=7,y=17,width=2,class="checkbox",name="switch",label="Switch",hint="Switch the content of selected columns"},
-	{x=9,y=17,width=2,class="checkbox",name="attach",label="Attach",hint="Attach content from one column to that of another"},
+	{x=7,y=17,width=2,class="checkbox",name="switch",label="&Switch",hint="Switch the content of selected columns"},
+	{x=9,y=17,width=2,class="checkbox",name="attach",label="&Attach",hint="Attach content from one column to that of another"},
 	
 	{x=0,y=18,class="checkbox",name="c1",label="\\c",value=true},
 	{x=1,y=18,class="checkbox",name="c2",label="\\2c"},
@@ -1059,15 +1139,16 @@ fields={"style","actor","effect","text","layer","start_time","end_time","margin_
 	{x=8,y=19,width=2,class="label",label="Replacer:"},
 	{x=10,y=19,width=2,class="edit",name="rep1",value=lastrep1 or "",hint="Replace this..."},
 	{x=12,y=19,class="edit",name="rep2",value=lastrep2 or "",hint="...with this."},
+	{x=10,y=18,width=2,class="checkbox",name="add",label="Add",hint="Replacer will instead add to the beginning/end of lines"},
 	{x=12,y=17,class="label",label="MultiCopy version "..script_version}
 	}
-	buttons={"Copy","Paste tags","Paste text","Paste extra","Paste from clipboard","Replace","Help","Escape"}
+	buttons={"&Copy","Paste ta&gs","Paste &text","Paste e&xtra","Paste from clipboard","&Replace","Help","Escape"}
 	repeat
 	if P=="Paste from clipboard" then
 		klipboard=clipboard.get()
 		for key,val in ipairs(gui) do
-		  if val.name=="dat" then val.value=klipboard
-		  else val.value=res[val.name] end
+			if val.name=="dat" then val.value=klipboard
+			else val.value=res[val.name] end
 		end
 	end
 	if P=="Help" then
@@ -1076,21 +1157,26 @@ fields={"style","actor","effect","text","layer","start_time","end_time","margin_
 		else v.value=res[v.name] end
 	    end
 	end
-	if P=="Replace" then
+	if P=="&Replace" then
 	    for k,v in ipairs(gui) do
-		if v.name=="dat" then v.value=res[v.name]:gsub(esc(res.rep1),res.rep2)
+		if v.name=="dat" then
+			if res.add then
+				v.value=res.dat:gsub("([^\n]+)",res.rep1.."%1"..res.rep2)
+			else
+				v.value=res.dat:gsub(esc(res.rep1),res.rep2)
+			end
 		else v.value=res[v.name] end
 	    end
 	end
 	if res and res.save then saveconfig() res.save=false P="" break end
 	P,res=ADD(gui,buttons,{close='Escape'})
-	until P~="Paste from clipboard" and P~="Help" and P~="Replace"
+	until P~="Paste from clipboard" and P~="Help" and P~="&Replace"
 	if P=="Escape" then ak() end
 	
 	if res.rpt and lastres then res=lastres end
 	CM=res.copymode	PM=res.pastemode CF=res.copyfrom CT=res.copyto
 	lastres=res
-	if P=="Copy" then
+	if P=="&Copy" then
 	  if res.col or res.attach or res.switch then copycol(subs,sel)
 	  else
 	    if res.copymode=="tags" then copy(subs,sel)
@@ -1100,9 +1186,9 @@ fields={"style","actor","effect","text","layer","start_time","end_time","margin_
 	    else copyc(subs,sel) end
 	  end
 	end
-	if P=="Paste tags" then paste(subs,sel) end
-	if P=="Paste text" then pastet(subs,sel) end
-	if P=="Paste extra" then pastec(subs,sel) end
+	if P=="Paste ta&gs" then paste(subs,sel) end
+	if P=="Paste &text" then pastet(subs,sel) end
+	if P=="Paste e&xtra" then pastec(subs,sel) end
 	aegisub.set_undo_point(script_name.." - "..P)
 	return sel
 end
