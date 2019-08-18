@@ -3,12 +3,14 @@
 script_name="ShiftCut"
 script_description="Time Machine. finish sentences before they started. Travels back in time to"
 script_author="unanimated"
-script_version="3.0"
+script_version="3.1"
 script_namespace="ua.ShiftCut"
+
+re=require'aegisub.re'
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-	script_version="3.0.0"
+	script_version="3.1.0"
 	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
@@ -30,14 +32,14 @@ kf_snap_presets={"1,1,1,1","2,2,2,2","6,6,6,10","6,6,8,12","6,6,10,12","6,10,8,1
 	{x=0,y=0,width=2,class="label",label="ShiftCut v"..script_version},
 	{x=2,y=0,width=2,class="dropdown",name="slct",items={"Apply to selected","Apply to all lines","Sel. + onward"},value="Apply to selected"},
 	
-	{x=0,y=1,width=2,class="label",label="Styles to aply to:"},
+	{x=0,y=1,width=2,class="label",label="S&tyles to aply to:"},
 	{x=2,y=1,width=2,class="dropdown",name="stail",items=styles,value="All Default",hint="limit what styles will be affected"},
 	{x=4,y=1,width=3,class="edit",name="plustyle",value="",hint="Additional style"},
 	
-	{x=4,y=0,width=2,class="checkbox",name="info",label="Info",hint="show info about linked/snapped lines"},
-	{x=6,y=0,width=3,class="checkbox",name="mark",label="Mark changed lines",hint="linking/snapping - mark changed lines in effect"},
-	{x=9,y=0,class="checkbox",name="herp",label="H.E.L.P.",hint="Use with anything not Cancel."},
-	{x=9,y=1,class="checkbox",name="rem",label="Remember last"},
+	{x=4,y=0,width=2,class="checkbox",name="info",label="I&nfo",hint="show info about linked/snapped lines"},
+	{x=6,y=0,width=3,class="checkbox",name="mark",label="&Mark changed lines",hint="linking/snapping - mark changed lines in effect"},
+	{x=9,y=0,class="checkbox",name="herp",label="&H.E.L.P.",hint="Use with anything not Cancel."},
+	{x=9,y=1,class="checkbox",name="rem",label="&Remember last"},
 
 	-- shift
 	{x=0,y=2,class="label",label="SHIFT"},
@@ -46,20 +48,20 @@ kf_snap_presets={"1,1,1,1","2,2,2,2","6,6,6,10","6,6,8,12","6,6,10,12","6,10,8,1
 	{x=4,y=2,class="label",label="ms /"},
 	{x=5,y=2,class="checkbox",name="fshift",label="fr",hint="frames instead of ms"},
 	{x=6,y=2,class="checkbox",name="endshit",label="by end ",hint="Shift sel. lines by end of active line\nto current video frame"},
-
+	
 	{x=0,y=3,width=2,class="checkbox",name="byframe",label="by frames per lines",hint="shift more each line\n(this disables the line above)"},
 	{x=2,y=3,width=2,class="floatedit",name="frshift",value=1,min=1,hint="shift by __ frames..."},
 	{x=4,y=3,width=3,class="floatedit",name="shiftlines",value=1,min=1,hint="...each __ lines"},
 
 
 	-- add/cut
-	{x=0,y=4,width=2,class="checkbox",name="IN",label="Add lead in"},
+	{x=0,y=4,width=2,class="checkbox",name="IN",label="Add lead &in"},
 	{x=2,y=4,width=2,class="floatedit",name="inn",value=0},
 	{x=4,y=4,class="label",label="ms /"},
 	{x=5,y=4,class="checkbox",name="fin",label="fr",hint="frames instead of ms"},
 	{x=6,y=4,class="checkbox",name="cutin",label="Cut in",hint="cut (make shorter) lead in"},
 	
-	{x=0,y=5,width=2,class="checkbox",name="OUT",label="Add lead out"},
+	{x=0,y=5,width=2,class="checkbox",name="OUT",label="Add lead &out"},
 	{x=2,y=5,width=2,class="floatedit",name="utt",value=0},
 	{x=4,y=5,class="label",label="ms /"},
 	{x=5,y=5,class="checkbox",name="fout",label="fr",hint="frames instead of ms"},
@@ -76,7 +78,7 @@ kf_snap_presets={"1,1,1,1","2,2,2,2","6,6,6,10","6,6,8,12","6,6,10,12","6,10,8,1
 	{x=6,y=7,class="dropdown",name="bias",items=BIAS,value="0.8",hint="higher number=closer to 2nd line"},
 
 	-- overlaps
-	{x=0,y=8,width=2,class="checkbox",name="over",label="Fix overlaps up to:",
+	{x=0,y=8,width=2,class="checkbox",name="over",label="&Fix overlaps up to:",
 		hint="This is part of line linking.\nIf you want only overlaps, set linking gap to 0."},
 	{x=2,y=8,width=2,class="floatedit",name="overlap",value=500,min=0 },
 	{x=4,y=8,class="label",label="ms   "},
@@ -97,7 +99,7 @@ kf_snap_presets={"1,1,1,1","2,2,2,2","6,6,6,10","6,6,8,12","6,6,10,12","6,10,8,1
 	{x=9,y=5,class="floatedit",name="sa",value=0,min=0,max=250,hint="frames, not ms"},
 	{x=9,y=6,class="floatedit",name="ea",value=0,min=0,max=250,hint="frames, not ms"},
 	
-	{x=8,y=7,class="checkbox",name="pres",label="Preset:",value=true},
+	{x=8,y=7,class="checkbox",name="pres",label="&Preset:",value=true},
 	{x=9,y=7,class="dropdown",name="preset",items=kf_snap_presets,value="6,10,8,12"},
 	
 	{x=8,y=8,class="label",label="Max CPS:"},
@@ -110,7 +112,7 @@ kf_snap_presets={"1,1,1,1","2,2,2,2","6,6,6,10","6,6,8,12","6,6,10,12","6,10,8,1
 	    if val.name then val.value=res[val.name] end
 	  end
 	end
-	P,res=ADD(GUI,{"Lead in/out","Link lines","Shift times","Keyframe snap","All","Save config","Cancel"},{cancel='Cancel'})
+	P,res=ADD(GUI,{"Lea&d in/out","&Link lines","&Shift times","&Keyframe snap","&All","Save &config","Cancel"},{cancel='Cancel'})
 	if P=="Cancel" then ak() end
 	if res.herp then P=1 herpderp() end
 	if res.slct=="Apply to all lines" then sel=selectall(subs,sel) end
@@ -122,37 +124,30 @@ kf_snap_presets={"1,1,1,1","2,2,2,2","6,6,6,10","6,6,8,12","6,6,10,12","6,10,8,1
 	ms2fr=aegisub.frame_from_ms
 	fr2ms=aegisub.ms_from_frame
 	
-	if P=="Lead in/out" or P=="All" then 
+	if P=="Lea&d in/out" or P=="&All" then 
 	    if res.IN or res.cutin then cutin(subs,sel) end
 	    if res.OUT or res.cutout then cutout(subs,sel) end
 	end
-	if P=="Shift times" then if res.endshit then endshift(subs,sel,act) else shiift(subs,sel) end end
-	if P=="Link lines" or P=="All" then linklines(subs,sel) end
-	if P=="Keyframe snap" or P=="All" then keyframesnap(subs,sel) end
+	if P=="&Shift times" then if res.endshit then endshift(subs,sel,act) else shiift(subs,sel) end end
+	if P=="&Link lines" or P=="&All" then linklines(subs,sel) end
+	if P=="&Keyframe snap" or P=="&All" then keyframesnap(subs,sel) end
 	
 	if res.info then
-	    if P=="Link lines" or P=="All" then alog("\n Linked lines: "..linx) end
-	    if P=="Link lines" and res.over or P=="All" and res.over then alog("\n Overlaps fixed: "..overl) end
-	    if P=="Keyframe snap" or P=="All" then alog("\n Lines snapped to keyframes: "..snapd) end
+	    if P=="&Link lines" or P=="&All" then alog("\n Linked lines: "..linx) end
+	    if P=="&Link lines" and res.over or P=="&All" and res.over then alog("\n Overlaps fixed: "..overl) end
+	    if P=="&Keyframe snap" or P=="&All" then alog("\n Lines snapped to keyframes: "..snapd) end
 	end
-	if P=="Save config" then saveconfig() end
-	-- if res.slct=="3" then return sel2 end
-	-- return sel
+	if P=="Save &config" then saveconfig() end
 end
 
 function style(subs,sel)
-styles={"All","All Default","Default+Alt","----------------"}
-  stchk='/'
-  for z,i in ipairs(sel) do
-	st=subs[i].style
-	if not stchk:match('/'..esc(st)..'/') then stchk=stchk..st..'/' table.insert(styles,st) end
-  end
-  -- this is an earlier alternative that collects ALL styles, in case anybody wants it back, but it makes little sense:
-  -- for i=1,#subs do
-    -- if subs[i].class=="style" then table.insert(styles,subs[i].name) end
-    -- if subs[i].class=="dialogue" then break end
-  -- end
-  return styles
+	styles={"All","All Default","Default+Alt","----------------"}
+	stchk='/'
+	for z,i in ipairs(sel) do
+		st=subs[i].style
+		if not stchk:match('/'..esc(st)..'/') then stchk=stchk..st..'/' table.insert(styles,st) end
+	end
+	return styles
 end
 
 function runcheck()
@@ -296,11 +291,11 @@ function endshift(subs,sel,act)
 end
 
 function vfcheck()
-    if aegisub.project_properties==nil then
-	t_error("Current frame unknown.\nProbably your Aegisub is too old.\nMinimum required: r8374.",true)
-    end
-    vframe=aegisub.project_properties().video_position
-    if vframe==nil or fr2ms(1)==nil then t_error("Current frame unknown. Probably no video loaded.",true) end
+	if aegisub.project_properties==nil then
+		t_error("Current frame unknown.\nProbably your Aegisub is too old.\nMinimum required: r8374.",true)
+	end
+	vframe=aegisub.project_properties().video_position
+	if vframe==nil or fr2ms(1)==nil then t_error("Current frame unknown. Probably no video loaded.",true) end
 end
 
 --	Linking		--
@@ -311,7 +306,8 @@ function linklines(subs,sel)
 		lnk=res.link
 		start=line.start_time
 		endt=line.end_time
-		s1=start e1=endt
+		s1=fr2ms(ms2fr(start)) or start
+		e1=fr2ms(ms2fr(endt)) or endt
 		if i<#subs then nextline=subs[i+1] nextart=nextline.start_time nextf=ms2fr(nextart) end
 		if marker==1 then start=start-diff2 end	-- link line 2
 		if markover==1 then start=start+diffo end	-- overlap line 2
@@ -342,8 +338,8 @@ function linklines(subs,sel)
 		endt=nextart+diffo
 		markover=1
 		end
-		start=fr2ms(ms2fr(start))
-		endt=fr2ms(ms2fr(endt))
+		start=fr2ms(ms2fr(start)) or start
+		endt=fr2ms(ms2fr(endt)) or endt
 		line.start_time=start
 		line.end_time=endt
 		if res.mark then if line.start_time~=s1 or line.end_time~=e1 then line.effect=line.effect.."[linked]" end end
@@ -420,17 +416,17 @@ snapd=0
 		startok=true
 		endok=true
 		if res.cps>0 then
-		  char=line.text:gsub("{[^}]-}","")	:gsub("\\[Nn]","*")	:gsub("%s?%*+%s?"," ")	:gsub("[%s%p]","")
-		  linelen=char:len()
-		  startf2=ms2fr(start)
-		  endf2=ms2fr(endt)
-		  dura1=(line.end_time-start)/1000
-		  cps1=math.ceil(linelen/dura1)
-		  dura2=(endt-start)/1000
-		  if startf2-startf>3 and line.start_time>=prevend and cps1>res.cps then
-		    startok=false line.effect=line.effect.."[cps1]" dura2=(endt-line.start_time)/1000 end
-		  cps2=math.ceil(linelen/dura2)
-		  if endf-endf2>3 and cps2>res.cps then endok=false line.effect=line.effect.."[cps2]" end
+			char=line.text:gsub("{[^}]-}",""):gsub("\\[Nn]","*"):gsub("%s?%*+%s?"," "):gsub("[%s%p]","")
+			letrz=re.find(char,".")
+			if letrz then linelen=#letrz else linelen=0 end
+			startf2=ms2fr(start)
+			endf2=ms2fr(endt)
+			dura1=(line.end_time-start)/1000
+			cps1=math.ceil(linelen/dura1)
+			dura2=(endt-start)/1000
+			if startf2-startf>3 and line.start_time>=prevend and cps1>res.cps then startok=false line.effect=line.effect.."[cps1]" dura2=(endt-line.start_time)/1000 end
+			cps2=math.ceil(linelen/dura2)
+			if endf-endf2>3 and cps2>res.cps then endok=false line.effect=line.effect.."[cps2]" end
 		end
 		
 		if startok then line.start_time=start end
@@ -444,14 +440,14 @@ snapd=0
 end
 
 function selectall(subs,sel)
-sel={}
-    for i=1,#subs do
-	if subs[i].class=="dialogue" then table.insert(sel,i) end
-    end
-    return sel
+	sel={}
+	for i=1,#subs do
+		if subs[i].class=="dialogue" then table.insert(sel,i) end
+	end
+	return sel
 end
 
---	reanimatools	---------
+--	reanimatools	---------------------------------------------------------------------------
 function esc(str) str=str:gsub("[%%%(%)%[%]%.%-%+%*%?%^%$]","%%%1") return str end
 function round(n,dec) dec=dec or 0 n=math.floor(n*10^dec+0.5)/10^dec return n end
 function logg(m) m=tf(m) or "nil" aegisub.log("\n "..m) end
@@ -593,34 +589,32 @@ file=io.open(sconfig)
     if file~=nil then
 	konf=file:read("*all")
 	io.close(file)
-	  for k,v in ipairs(GUI) do
+	for k,v in ipairs(GUI) do
 	    if v.class=="floatedit" or v.class=="checkbox" or v.class=="dropdown" then
 	      if konf:match(v.name) then v.value=detf(konf:match(v.name..":(.-)\n")) end
 	    end
 	    if v.name=="preset" then ite=konf:match("keyframe presets:(.-)\n")
 	      if ite~=nil then
 	        v.items={}
-	        for it in ite:gmatch("[^:]+") do
-		  table.insert(v.items,it)
-	        end
+	        for it in ite:gmatch("[^:]+") do table.insert(v.items,it) end
 	      end
 	    end
-	  end
+	end
     end
 end
 
 function tf(val)
-    if val==true then ret="true"
-    elseif val==false then ret="false"
-    else ret=val end
-    return ret
+	if val==true then ret="true"
+	elseif val==false then ret="false"
+	else ret=val end
+	return ret
 end
 
 function detf(txt)
-    if txt=="true" then ret=true
-    elseif txt=="false" then ret=false
-    else ret=txt end
-    return ret
+	if txt=="true" then ret=true
+	elseif txt=="false" then ret=false
+	else ret=txt end
+	return ret
 end
 
 
