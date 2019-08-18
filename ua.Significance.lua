@@ -1,19 +1,19 @@
 script_name="Significance"
 script_description="Import stuff, number stuff, chapter stuff, replace stuff, do a significant amount of other stuff to stuff."
 script_author="unanimated"
-script_version="3.3"
+script_version="3.5"
 script_namespace="ua.Significance"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-	script_version="3.3.0"
+	script_version="3.5.0"
 	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
 clipboard=require("aegisub.clipboard")
 re=require'aegisub.re'
 
---	Significance GUI		--------------------------------------------------------------------------------------
+--	Significance GUI		------------------------------------------------------------------------------------------
 function significance(subs,sel,act)
 	ADD=aegisub.dialog.display
 	ADP=aegisub.decode_path
@@ -34,7 +34,7 @@ function significance(subs,sel,act)
 	if lastimp then dropstuff=lastuff lok=lastlog zerozz=lastzeros fld=lastfield mod0=lastmod0
 	else dropstuff="replacer" lok=false zerozz="01" fld="effect" mod0="number lines" end
 	g_impex={"import OP","import ED","import sign","import signs","export sign","import chptrs","update lyrics"}
-	g_stuff={"save/load","replacer","lua calc","split text to actor/effect","reverse text","reverse words","reverse transforms","fake capitals","format dates","split into letters (alpha)","explode","dissolve text","randomised transforms","what is the Matrix?","clone clip","duplicate and shift lines","time by frames","convert framerate","transform \\k to \\t\\alpha","fix kara tags for fbf lines","make style from act. line","make comments visible","switch commented/visible","honorificslaughterhouse"}
+	g_stuff={"save/load","replacer","lua calc","split text to actor/effect","reverse text","reverse words","reverse transforms","fake capitals","format dates","fill columns","split into letters (alpha)","explode","dissolve text","randomised transforms","what is the Matrix?","clone clip","clip2margins","duplicate and shift lines","extrapolate tracking","time by frames","convert framerate","transform \\k to \\t\\alpha","fix kara tags for fbf lines","make style from act. line","make comments visible","switch commented/visible","honorificslaughterhouse"}
 	LN1=sel[1]-line0
 	LN2=sel[#sel]-line0
 	lin=LN1.."-"..LN2
@@ -71,7 +71,7 @@ function significance(subs,sel,act)
 	
 	-- numbers
 	{x=9,y=13,width=2,class="label",label="Numbers"},
-	{x=9,y=14,width=2,class="dropdown",name="modzero",items={"number lines","add to marker","zero fill","random"},value=mod0},
+	{x=9,y=14,width=2,class="dropdown",name="modzero",items={"number lines","number 12321","add to marker","zero fill","random"},value=mod0},
 	{x=11,y=14,class="dropdown",name="zeros",items={"1","01","001","0001"},value=zerozz},
 	{x=9,y=15,width=2,class="dropdown",name="field",items={"actor","effect","layer","style","text","left","right","vert","comment"},value=fld},
 	{x=11,y=15,class="checkbox",name="intxt",label="in text",hint="numbers found in text"},
@@ -130,6 +130,9 @@ function significance(subs,sel,act)
 
 	return sel
 end
+
+
+
 
 
 --	IMPORT/EXPORT	--------------------------------------------------------------------------------------------
@@ -413,19 +416,38 @@ end
 
 
 
+
 --	 NUMBERS	-------------------------------------------------------------------------------------------
 function numbers(subs,sel)
 	zl=zer:len()
-	if sub3:match("[,/;]") then startn,int=sub3:match("(%d+)[,/;](%d+)") else startn=sub3:gsub("%[.-%]","") int=1 end
+	if sub3:match("[,/;]") then startn,int=sub3:match("(%d+)[,/;](%d+)") int=tonumber(int) else startn=sub3:gsub("%[.-%]","") int=1 end
 	if sub3:match("%[") then numcycle=tonumber(sub3:match("%[(%d+)%]")) else numcycle=0 end
 	if sub3=="" then startn=1 end
 	startn=tonumber(startn)
+	mark=res.field:gsub("left","margin_l"):gsub("right","margin_r"):gsub("vert","margin_t")
 	if res.modzero=="number lines" and res.intxt then res.field='nope' end
+	if res.modzero=="number 12321" then
+		NB={}
+		if numcycle==0 then t_error("You must set a counting limit 'Y': X[Y]",1) end
+		for q=startn,numcycle do
+			qq=0
+			repeat
+				table.insert(NB,q)
+				qq=qq+1
+			until qq>=int
+		end
+		for q=numcycle-1,startn+1,-1 do
+			qq=0
+			repeat
+				table.insert(NB,q)
+				qq=qq+1
+			until qq>=int
+		end
+	end
 	if res.modzero=="random" then
 		if not tonumber(sub1) or not tonumber(sub2) then t_error("No valid input. \nUse Left and Right fields to set limits \nfor random number generation.",1) end
 		if not tonumber(sub3) or tonumber(sub3)<1 then t_error("Error. Mod must be 1 or higher.",1) end
 		if string.match("layer style text",res.field) then t_error("Invalid marker. \nOnly actor, effect, comment, and margins.",1)  end
-		mark=res.field:gsub("left","margin_l"):gsub("right","margin_r"):gsub("vert","margin_t")
 		
 		ranTab={}
 		local R=math.ceil(#sel/sub3)
@@ -441,25 +463,30 @@ function numbers(subs,sel)
 		line=subs[i]
 		text=line.text
 		
-		if res.modzero=="number lines" then
+		if res.modzero:match"number" then
 		progress("Numbering... "..round(z/#sel)*100 .."%")
 			if startn==nil or numcycle>0 and startn>numcycle then t_error("Wrong parameters. Syntax: start/repeat[limit]\nExamples:\n5    (5 6 7 8...)\n5/3    (5 5 5 6 6 6 7 7 7...)\n5/3[6]    (5 5 5 6 6 6 5 5 5 6 6 6...)\n5[6]    (5 6 5 6 5 6...)",1) end
-			index=z
-			count=math.ceil(index/int)+(startn-1)
-			  if numcycle>0 and count>numcycle then repeat count=count-(numcycle-startn+1) until count<=numcycle end
+			local Z=z
+			if res.modzero=="number lines" then
+				-- regular numbering
+				count=math.ceil(Z/int)+(startn-1)
+				if numcycle>0 and count>numcycle then
+					repeat count=count-(numcycle-startn+1) until count<=numcycle
+				end
+			else	-- 1 2 3 4 5 4 3 2 1
+				if Z>#NB then repeat Z=Z-#NB until Z<=#NB end
+				count=NB[Z]
+			end
+			
 			count=tostring(count)
 			if zl>count:len() then repeat count="0"..count until zl==count:len() end
-			number=sub1..count..sub2
+			if not mark:match'margin' and mark~='layer' then number=sub1..count..sub2 else number=count end
 			
-			if res.intxt then text=text:gsub("%d+",number) end
-			if res.field=="actor" then line.actor=number end 
-			if res.field=="effect" then line.effect=number end
-			if res.field=="layer" then line.layer=count end
-			if res.field=="text" then text=number end
-			if res.field=="left" then line.margin_l=number end
-			if res.field=="right" then line.margin_r=number end
-			if res.field=="vert" then line.margin_t=number end
-			if res.field=="comment" then text=text..wrap(number) end
+			if res.intxt then text=text:gsub("%d+",number)
+			elseif mark=="comment" then text=text..wrap(number) 
+			elseif mark=="text" then text=number
+			else line[mark]=number
+			end
 		end
 		
 		if res.modzero=="add to marker" then
@@ -519,6 +546,7 @@ end
 
 
 
+
 --	CHAPTERS	------------------------------------------------------------------------------------------------
 function chopters(subs,sel)
     if res.marker=="effect" and res.nam=="effect" then t_error("Error. Both marker and name cannot be 'effect'.",1) end
@@ -531,7 +559,7 @@ function chopters(subs,sel)
 		if res.marker=="effect" then line.effect="chptr" end
 		if res.marker=="comment" then text=text.."{chptr}" end
 		if res.nam=="effect" then line.effect=kap end
-		if res.nam=="comment" then text=wrap(kap)..text end
+		if res.nam=="comment" then text=nobra(text) text=wrap(kap)..text end
 		line.text=text
 		subs[i]=line
 	end
@@ -568,7 +596,7 @@ function chopters(subs,sel)
 				else sub=0
 				end
 				
-				lineid=start+2013
+				lineid=start+2013+i
 				
 				timecode=math.floor(start/1000)
 				tc1=math.floor(timecode/60)
@@ -616,7 +644,7 @@ function chopters(subs,sel)
 		insert_chapters="    <ChapterAtom>\n      <ChapterUID>"..#subs.."</ChapterUID>\n      <ChapterFlagHidden>0</ChapterFlagHidden>\n      <ChapterFlagEnabled>1</ChapterFlagEnabled>\n      <ChapterDisplay>\n        <ChapterString>Intro</ChapterString>\n        <ChapterLanguage>"..clang.."</ChapterLanguage>\n      </ChapterDisplay>\n      <ChapterTimeStart>00:00:00.033</ChapterTimeStart>\n    </ChapterAtom>\n"
 	end
 	
-	table.sort(chptrs,function(a,b) return a.tim<b.tim end)
+	table.sort(chptrs,function(a,b) return a.tim<b.tim or (a.tim==b.tim and a.id<b.id) end)
 
 	for c=1,#chptrs do
 		local ch=chptrs[c]
@@ -639,16 +667,34 @@ function chopters(subs,sel)
 	scriptname=scriptname:gsub("%.ass","")
 	if ch_script_path=="relative" then path=scriptpath.."\\"..ch_relative_path end
 	if ch_script_path=="absolute" then path=ch_absolute_path end
-	path=path.."\\"
-	repeat path,r=path:gsub("\\[^\\]+\\%.%.\\","\\") until r==0
+	path=path:gsub("([^\\])$","%1/"):gsub("\\$","/")
+	repeat path,r=path:gsub("\\[^\\]+\\%.%.[\\/]","/") until r==0
+	if not videoname then videoname=aegisub.project_properties().video_file:gsub("^.*\\",""):gsub("%.mkv","") end
 	if res.sav=="script" then filename=scriptname else filename=videoname end
 
 	chdialog={
-	{x=0,y=0,width=35,class="label",label="Text to export:"},
+	{x=0,y=0,width=35,class="label",label="Text to export (You can edit it before saving/copying):"},
 	{x=0,y=1,width=35,height=20,class="textbox",name="copytext",value=chapters},
 	{x=0,y=21,width=35,class="label",label='File "'..filename..'.xml" will be saved in "'..path..'"\nIf you want to change the path, use Save Config.'},
+	{x=35,y=0,width=12,class="label",label="You can also edit this && refresh"},	-- #4
 	}
-	pressed,reslt=ADD(chdialog,{"Save xml file","mp4-compatible chapters","Cancel","Copy to clipboard"},{cancel='Cancel'})
+	q=1
+	for chn in chapters:gmatch("<ChapterString>(.-)</ChapterString>") do
+		table.insert(chdialog,{x=35,y=q,width=12,name='ch_'..q,class="edit",value=chn})
+		q=q+1
+	end
+	repeat
+		if pressed=="Refresh" then
+			q=0
+			reslt.copytext=reslt.copytext:gsub("(<ChapterString>).-(</ChapterString>)",function(a,b) q=q+1 return a..reslt["ch_"..q]..b end)
+			for k,v in ipairs(chdialog) do
+				if v.class=='edit' then v.value=reslt[v.name] end
+				if v.name=='copytext' then v.value=reslt.copytext end
+			end
+		end
+	pressed,reslt=ADD(chdialog,{"Save xml file","mp4-compatible chapters","Cancel","Copy to clipboard","Refresh"},{cancel='Cancel'})
+	until pressed~="Refresh"
+	chapters=reslt.copytext
 	if pressed=="Copy to clipboard" then clipboard.set(chapters) end
 	if pressed=="Save xml file" then
 		local file=io.open(path..filename..".xml","w")
@@ -672,7 +718,9 @@ function chopters(subs,sel)
 		chapters=mp4chap:gsub("\n\n$","")
 		chdialog[2].value=chapters
 		chdialog[3].label=chdialog[3].label:gsub('%.xml','_chapters.txt')
+		for c=#chdialog,4,-1 do table.remove(chdialog,c) end
 		pressed,reslt=ADD(chdialog,{"Save txt file","Cancel","Copy to clipboard"},{cancel='Cancel'})
+		chapters=reslt.copytext
 		if pressed=="Copy to clipboard" then clipboard.set(chapters) end
 		if pressed=="Save txt file" then
 			local file=io.open(path..filename.."_chapters.txt","w")
@@ -683,6 +731,7 @@ function chopters(subs,sel)
 	end
     end
 end
+
 
 
 
@@ -996,69 +1045,69 @@ function stuff(subs,sel,act)
 	
 	-- DISSOLVE create lines if only one selected ------------------------
 	if #sel==1 then
-	    rine=subs[sel[1]]
-	    rine.text=rine.text:gsub("\\fad%(.-%)","")
-	    start=rine.start_time	    endt=rine.end_time
-	    startf=ms2fr(start)		    endf=ms2fr(endt)
-	    lframes=ms2fr(endt-start)
-	      if lframes<linez then t_error("Line must be at least "..linez.." frames long.",1) end
-	    if disin then
-	      for l=1,linez do
-		rine.start_time=fr2ms(startf+l-1)
-		rine.end_time=fr2ms(startf+l)
-		subs.insert(sel[1],rine)
-		sel[1]=sel[1]+1
-	      end
-	      for s=1,linez do   table.insert(sel,sel[1]-s)   end
-	      table.sort(sel)
-	      rine.start_time=fr2ms(startf+linez)
-	      rine.end_time=endt
-	      subs[sel[#sel]]=rine
-	      table.remove(sel,#sel)
-	    else
-	      for l=1,linez do
-		rine.start_time=fr2ms(endf-l)
-		rine.end_time=fr2ms(endf-l+1)
-		subs.insert(sel[1]+1,rine)
-	      end
-	      for s=1,linez do   table.insert(sel,sel[1]+s)   end
-	      rine.start_time=start
-	      rine.end_time=fr2ms(endf-linez)
-	      subs[sel[1]]=rine
-	      table.remove(sel,1)
-	    end
+		rine=subs[sel[1]]
+		rine.text=rine.text:gsub("\\fad%(.-%)","")
+		start=rine.start_time	    endt=rine.end_time
+		startf=ms2fr(start)		    endf=ms2fr(endt)
+		lframes=ms2fr(endt-start)
+		if lframes<linez then t_error("Line must be at least "..linez.." frames long.",1) end
+		if disin then
+			for l=1,linez do
+				rine.start_time=fr2ms(startf+l-1)
+				rine.end_time=fr2ms(startf+l)
+				subs.insert(sel[1],rine)
+				sel[1]=sel[1]+1
+			end
+			for s=1,linez do   table.insert(sel,sel[1]-s)   end
+			table.sort(sel)
+			rine.start_time=fr2ms(startf+linez)
+			rine.end_time=endt
+			subs[sel[#sel]]=rine
+			table.remove(sel,#sel)
+		else
+			for l=1,linez do
+				rine.start_time=fr2ms(endf-l)
+				rine.end_time=fr2ms(endf-l+1)
+				subs.insert(sel[1]+1,rine)
+			end
+			for s=1,linez do   table.insert(sel,sel[1]+s)   end
+			rine.start_time=start
+			rine.end_time=fr2ms(endf-linez)
+			subs[sel[1]]=rine
+			table.remove(sel,1)
+		end
 	end
     if disin then table.sort(sel,function(a,b) return a>b end) end
     
     -- DISSOLVE Initial Calculations -----------------------------------------------------------------
     line=subs[sel[1]]
     text=line.text
-	text=text:gsub("\\clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c,d) 
+	text=text:gsub("\\clip%(([%d.-]+),([%d.-]+),([%d.-]+),([%d.-]+)%)",function(a,b,c,d) 
 		a=math.floor(a) b=math.floor(b) c=math.ceil(c) d=math.ceil(d) 
 		return string.format("\\clip(m %d %d l %d %d %d %d %d %d)",a,b,c,b,c,d,a,d) end)
 	-- draw clip when no clip present
 	if not text:match("\\clip") then
-	    styleref=stylechk(subs,line.style)
-	    vis=text:gsub("%b{}","")
-	    width,height,descent,ext_lead=aegisub.text_extents(styleref,vis)
-	    bord=text:match("\\bord([%d%.]+)")	if bord==nil then bord=styleref.outline end
-	    bord=math.ceil(bord)
-	    scx=text:match("\\fscx([%d%.]+)")	if scx==nil then scx=styleref.scale_x end	scx=scx/100
-	    scy=text:match("\\fscy([%d%.]+)")	if scy==nil then scy=styleref.scale_y end	scy=scy/100
-	    wi=round(width)
-	    he=round(height)
-	    text2=getpos(subs,text)
-	    if not text:match("\\pos") then text=text2 end
-	    xx,yy=text:match("\\pos%(([%d%.%-]+),([%d%.%-]+)%)")
-	    if h_al=="left" then	cx1=xx			cx2=xx+wi*scx end
-	    if h_al=="right" then	cx1=xx-wi*scx		cx2=xx end
-	    if h_al=="mid" then	cx1=xx-wi/2*scx		cx2=xx+wi/2*scx end
-	    if v_al=="top" then	cy1=yy			cy2=yy+he*scy end
-	    if v_al=="bottom" then	cy1=yy-he*scy		cy2=yy end
-	    if v_al=="mid" then	cy1=yy-he/2*scy		cy2=yy+he/2*scy end
-	    cx1=math.floor(cx1-bord)   cx2=math.ceil(cx2+bord)
-	    cy1=math.floor(cy1-bord)   cy2=math.ceil(cy2+bord)
-	    text=addtag("\\clip(m "..cx1.." "..cy1.." l "..cx2.." "..cy1.." "..cx2.." "..cy2.." "..cx1.." "..cy2..")",text)
+		styleref=stylechk(subs,line.style)
+		vis=text:gsub("%b{}","")
+		width,height,descent,ext_lead=aegisub.text_extents(styleref,vis)
+		bord=text:match("\\bord([%d%.]+)")	if bord==nil then bord=styleref.outline end
+		bord=math.ceil(bord)
+		scx=text:match("\\fscx([%d%.]+)")	if scx==nil then scx=styleref.scale_x end	scx=scx/100
+		scy=text:match("\\fscy([%d%.]+)")	if scy==nil then scy=styleref.scale_y end	scy=scy/100
+		wi=round(width)
+		he=round(height)
+		text2=getpos(subs,text)
+		if not text:match("\\pos") then text=text2 end
+		xx,yy=text:match("\\pos%(([%d.-]+),([%d.-]+)%)")
+		if h_al=="left" then	cx1=xx			cx2=xx+wi*scx end
+		if h_al=="right" then	cx1=xx-wi*scx		cx2=xx end
+		if h_al=="mid" then	cx1=xx-wi/2*scx		cx2=xx+wi/2*scx end
+		if v_al=="top" then	cy1=yy			cy2=yy+he*scy end
+		if v_al=="bottom" then	cy1=yy-he*scy		cy2=yy end
+		if v_al=="mid" then	cy1=yy-he/2*scy		cy2=yy+he/2*scy end
+		cx1=math.floor(cx1-bord)   cx2=math.ceil(cx2+bord)
+		cy1=math.floor(cy1-bord)   cy2=math.ceil(cy2+bord)
+		text=addtag("\\clip(m "..cx1.." "..cy1.." l "..cx2.." "..cy1.." "..cx2.." "..cy2.." "..cx1.." "..cy2..")",text)
 	end
 	-- get outermost clip points even if it's irregular (though it should be fucking regular)
 	exes={} wais={}
@@ -1133,24 +1182,24 @@ function stuff(subs,sel,act)
 	-- DISSOLVE v2 Calculations ------------------------------------------
 	if dis2 then d2c=0 fullclip="" dis2tab={} rnd=1 ppl=#allpoints/linez
 	    for w=1,#allpoints do
-	      pt=allpoints[w]
-	      vd=v_dist
-	      
-	      if shape=="square" then
-	      krip="m "..pt[1]-vd.." "..pt[2]-vd.." l "..pt[1]+vd.." "..pt[2]-vd.." "..pt[1]+vd.." "..pt[2]+vd.." "..pt[1]-vd.." "..pt[2]+vd.." "
-	      end
-	      
-	      if shape=="diamond" then
+		pt=allpoints[w]
+		vd=v_dist
+
+		if shape=="square" then
+		krip="m "..pt[1]-vd.." "..pt[2]-vd.." l "..pt[1]+vd.." "..pt[2]-vd.." "..pt[1]+vd.." "..pt[2]+vd.." "..pt[1]-vd.." "..pt[2]+vd.." "
+		end
+
+		if shape=="diamond" then
 		krip="m "..pt[1].." "..pt[2]-vd.." l "..pt[1]+vd.." "..pt[2].." "..pt[1].." "..pt[2]+vd.." "..pt[1]-vd.." "..pt[2].." "
-	      end
-	      
-	      if shape=="vertical lines" then
-		krip="m "..pt[1]-v_dist.." "..y1.." l "..pt[1]+v_dist.." "..y1.." "..pt[1]+v_dist.." "..y2.." "..pt[1]-v_dist.." "..y2.." "
-	      end
-	      
-	      fullclip=fullclip..krip
-	      d2c=d2c+1
-	      if d2c>=math.floor(ppl) and w>=ppl*rnd then d2c=0 rnd=rnd+1 table.insert(dis2tab,fullclip) end
+		end
+
+		if shape=="vertical lines" then
+		krip="m "..pt[1]-vd.." "..y1.." l "..pt[1]+vd.." "..y1.." "..pt[1]+vd.." "..y2.." "..pt[1]-vd.." "..y2.." "
+		end
+
+		fullclip=fullclip..krip
+		d2c=d2c+1
+		if d2c>=math.floor(ppl) and w>=ppl*rnd then d2c=0 rnd=rnd+1 table.insert(dis2tab,fullclip) end
 	  end
 	end
     -- DISSOLVE END --------------------------------------------------------------------
@@ -1209,7 +1258,7 @@ function stuff(subs,sel,act)
 	FALL=FA+FB+1
 	FB1=FB+1
     end
-    
+
 	if res.stuff=="split text to actor/effect" then
 		sep1=esc(res.rep1)
 		sep2=esc(res.rep2)
@@ -1220,14 +1269,90 @@ function stuff(subs,sel,act)
 			if target1=="actor" then target2="effect" else target2="actor" end
 		end
 	end
-    
+	
+	if res.stuff=="clip2margins" then
+		resx,resy=nil,nil
+		for i=1,#subs do
+			if subs[i].class=="info" then
+				local k=subs[i].key
+				local v=subs[i].value
+				if k=="PlayResX" then resx=v end
+				if k=="PlayResY" then resy=v end
+			end
+			if resx and resy then break end
+		end
+		local G={
+		{x=0,y=0,width=2,class="checkbox",name="l",label="Set left margin"},
+		{x=0,y=1,width=2,class="checkbox",name="r",label="Set right margin"},
+		{x=0,y=2,width=2,class="checkbox",name="v",label="Set vertical margin"},
+		{x=0,y=3,class="label",label="Vertical:"},
+		{x=1,y=3,class="dropdown",name="tb",items={"from top","from bottom"},value='from top'},
+		{x=0,y=4,width=2,class="checkbox",name="a",label="Set all"},
+		}
+		P2,rez=ADD(G,{"+","-"},{ok='+',close='-'})
+		if rez.a then rez.l=true rez.r=true rez.v=true end
+	end
+	
+	if res.stuff=="extrapolate tracking" then
+		l01=subs[sel[1]]
+		l02=subs[sel[#sel]]
+		e01=l01.effect:lower()
+		e02=l02.effect:lower()
+		if e01~='x' and e02~='x' or e01=='x' and e02=='x' then t_error("The first OR last line of the selection must be marked with 'x' in Effect.",1) end
+		if e01=='x' then fade='in' else fade='out' end
+		if fade=='in' then table.sort(sel,function(a,b) return a>b end) end
+		for z,i in ipairs(sel) do
+			l=subs[i]
+			t=l.text
+			if l.effect=='x' then break end
+			tags=t:match(STAG) or ''
+			tags=tags:gsub('\\t%b()','')
+			posx,posy=tags:match('\\pos%((.-),(.-)%)')
+			fscx=tags:match('\\fscx([%d.]+)') or '100'
+			fscy=tags:match('\\fscy([%d.]+)') or '100'
+			if z==1 then r1tags={posx,posy,fscx,fscy} end
+			r2tags={posx,posy,fscx,fscy}
+			refl=z-1
+		end
+		-- loggtab(r1tags)
+		-- loggtab(r2tags)
+		PX=(r2tags[1]-r1tags[1])/refl
+		PY=(r2tags[2]-r1tags[2])/refl
+		SX=(r2tags[3]-r1tags[3])/refl
+		SY=(r2tags[4]-r1tags[4])/refl
+		-- logg(PX)
+		-- logg(PY)
+		-- logg(SX)
+		-- logg(SY)
+		c=0
+		for z,i in ipairs(sel) do
+			l=subs[i]
+			t=l.text
+			if l.effect=='x' then
+				c=c+1
+				CPX=round(r2tags[1]+PX*c,2)
+				CPY=round(r2tags[2]+PY*c,2)
+				t=t:gsub('\\pos%(.-,.-%)','\\pos('..CPX..','..CPY..')')
+				if SX~=0 or SY~=0 then
+					t=t:gsub('\\fscx([%d.]+)',function(a) return '\\fscx'..round(a+SX*c,2) end)
+					t=t:gsub('\\fscy([%d.]+)',function(a) return '\\fscy'..round(a+SY*c,2) end)
+				end
+			end
+			l.text=t
+			subs[i]=l
+		end
+		
+		
+	end
+
     KO1=subs[sel[1]].start_time
     
-    if res.stuff:match("replacer") or res.stuff=="fix kara tags for fbf lines" then table.sort(sel,function(a,b) return a>b end) end
+    if res.stuff:match("replacer") or res.stuff=="fix kara tags for fbf lines" or res.stuff=="fill columns" then table.sort(sel,function(a,b) return a>b end) end
 
 
 
-    -- LINES START HERE ----------------------------------------------------------------------
+	-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	-- LINES START HERE ---------------------------------------------------------------------------------------------------------------------------------------------------------
     for z=#sel,1,-1 do
 	i=sel[z]
         progress("Processing line #"..i-line0.." ["..#sel+1-z.."/"..#sel.."]")
@@ -1476,6 +1601,45 @@ function stuff(subs,sel,act)
 		if text~=orig then repl=repl+1 else nope=1 end
 	end
 	
+	if res.stuff=="fill columns" and #sel>1 then
+		local G={
+		{x=0,y=0,class="checkbox",name="layer",label="Layer"},
+		{x=0,y=1,class="checkbox",name="start_time",label="Start Time"},
+		{x=0,y=2,class="checkbox",name="end_time",label="End Time"},
+		{x=0,y=3,class="checkbox",name="margin_l",label="Left Margin"},
+		{x=0,y=4,class="checkbox",name="margin_r",label="Right Margin"},
+		{x=0,y=5,class="checkbox",name="margin_t",label="Vertical Margin"},
+		{x=0,y=6,class="checkbox",name="style",label="Style"},
+		{x=0,y=7,class="checkbox",name="actor",label="Actor"},
+		{x=0,y=8,class="checkbox",name="effect",label="Effect"},
+		{x=0,y=9,class="checkbox",name="text",label="Text"},
+		}
+		if z==#sel then
+			local buttons={'Fill','All/None','Fail'}
+			fcr=fcr or {}
+			repeat
+				if FCP=='All/None' then
+					local Q=0
+					for k,v in ipairs(G) do
+						if fcr[v.name]==false then Q=1 end
+					end
+					for k,v in ipairs(G) do
+						if Q==1 then v.value=true else v.value=false end
+					end
+				end
+				FCP,fcr=ADD(G,buttons,{ok='Fill',close='Fail'})
+				if FCP=='Fail' then ak() end
+			until FCP~='All/None'
+			rrine=line
+		else
+			for k,v in ipairs(G) do
+				if (line[v.name]=='' or line[v.name]==0) and fcr[v.name] then line[v.name]=rrine[v.name] end
+			end
+			text=line.text
+			rrine=line
+		end
+	end
+	
 	-- REVERSE TRANSFORMS ------------------
 	if res.stuff=="reverse transforms" then
 	    styleref=stylechk(subs,line.style)
@@ -1637,13 +1801,13 @@ function stuff(subs,sel,act)
 		    end
 		    xt2=dur
 		    if implode and exseq then xt2=dur-xt1 xt1=0 end
-		    txt2=txt2:gsub("\\move%(([%d%.%-]+),([%d%.%-]+).-%)","\\pos(%1,%2)")
+		    txt2=txt2:gsub("\\move%(([%d.-]+),([%d.-]+).-%)","\\pos(%1,%2)")
 		    txt2=txt2:gsub("\\fad%(.-%)","")
 		    if implode then
-			txt2=txt2:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)%)",
+			txt2=txt2:gsub("\\pos%(([%d.-]+),([%d.-]+)%)",
 		        function(a,b) return EFO.."\\move("..a+ex1..","..b+ex2..","..a..","..b..","..xt1..","..xt2..")" end)
 		    else
-			txt2=txt2:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)%)",
+			txt2=txt2:gsub("\\pos%(([%d.-]+),([%d.-]+)%)",
 		        function(a,b) return EFO.."\\move("..a..","..b..","..a+ex1..","..b+ex2..","..xt1..","..xt2..")" end)
 		    end
 		    txt2=txt2:gsub("{\\[^}]-}$","")
@@ -1667,7 +1831,7 @@ function stuff(subs,sel,act)
 	
 	-- Clone Clip
 	if res.stuff=="clone clip" and text:match("\\clip%((.-)%)") then
-	    text=text:gsub("\\clip%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)%)",function(a,b,c,d) 
+	    text=text:gsub("\\clip%(([%d.-]+),([%d.-]+),([%d.-]+),([%d.-]+)%)",function(a,b,c,d) 
 		a=math.floor(a) b=math.floor(b) c=math.ceil(c) d=math.ceil(d) 
 		return string.format("\\clip(m %d %d l %d %d %d %d %d %d)",a,b,c,b,c,d,a,d) end)
 	    clip=text:match("\\clip%((.-)%)")
@@ -1688,6 +1852,14 @@ function stuff(subs,sel,act)
 	    if text~=orig then repl=repl+1 else nope=1 end
 	end
 	
+	if res.stuff=="clip2margins" and text:match("\\clip%(([%d.,-]-)%)") then
+		local l,t,r,b=text:match("\\clip%(([%d.-]+),([%d.-]+),([%d.-]+),([%d.-]+)%)")
+		if rez.l then line.margin_l=round(l) end
+		if rez.r then line.margin_r=round(resx-r) end
+		if rez.v and rez.tb=="from top" then line.margin_t=round(t) end
+		if rez.v and rez.tb=="from bottom" then line.margin_t=round(resy-b) end
+	end
+
 	-- DISSOLVE Individual Lines --------------------------------------------------------------------------------------
 	if res.stuff=="dissolve text" then
 	  
@@ -1824,10 +1996,10 @@ function stuff(subs,sel,act)
 	    -- Move X
 	    if rez.rtmx then
 	      MMX=math.random(MnX,MxX)
-	      text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
+	      text=text:gsub("\\move%(([%d.-]+),([%d.-]+),([%d.-]+),([%d.-]+)",
 		function(a,b,c,d) if RTin then a=a+MMX else c=c+MMX end
 		return "\\move("..a..","..b..","..c..","..d..m_times end)
-	      text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)",
+	      text=text:gsub("\\pos%(([%d.-]+),([%d.-]+)",
 		function(a,b) a2=a if RTin then a=a+MMX else a2=a2+MMX end
 		return "\\move("..a..","..b..","..a2..","..b..m_times end)
 	    end
@@ -1835,10 +2007,10 @@ function stuff(subs,sel,act)
 	    -- Move Y
 	    if rez.rtmy then
 	      MMY=math.random(MnY,MxY)
-	      text=text:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+)",
+	      text=text:gsub("\\move%(([%d.-]+),([%d.-]+),([%d.-]+),([%d.-]+)",
 		function(a,b,c,d) if RTin then b=b+MMY else d=d+MMY end
 		return "\\move("..a..","..b..","..c..","..d..m_times end)
-	      text=text:gsub("\\pos%(([%d%.%-]+),([%d%.%-]+)",
+	      text=text:gsub("\\pos%(([%d.-]+),([%d.-]+)",
 		function(a,b) b2=b if RTin then b=b+MMY else b2=b2+MMY end
 		return "\\move("..a..","..b..","..a..","..b2..m_times end)
 	    end
@@ -1889,7 +2061,7 @@ function stuff(subs,sel,act)
 		l2.end_time=fr2ms(SF+F+1)
 		l2.effect=effect.."["..F.."]"
 		l2.text=text
-		:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+).-%)","\\pos(%1,%2)")
+		:gsub("\\move%(([%d.-]+),([%d.-]+),([%d.-]+),([%d.-]+).-%)","\\pos(%1,%2)")
 		:gsub("\\t%b()","")
 		:gsub("\\fad%b()","")
 	    end
@@ -1899,7 +2071,7 @@ function stuff(subs,sel,act)
 		l2.end_time=fr2ms(EF+F)
 		l2.effect=effect.."["..F.."]"
 		l2.text=text
-		:gsub("\\move%(([%d%.%-]+),([%d%.%-]+),([%d%.%-]+),([%d%.%-]+).-%)","\\pos(%3,%4)")
+		:gsub("\\move%(([%d.-]+),([%d.-]+),([%d.-]+),([%d.-]+).-%)","\\pos(%3,%4)")
 		:gsub("\\t%b()",function(t) return t:gsub("\\t%([^\\]*",""):gsub("%)$","") end)
 		:gsub("\\fad%b()","")
 		l2.text=l2.text:gsub("({%*?\\[^}]-})",function(tg) return duplikill(tg) end)
@@ -2149,7 +2321,11 @@ function framerate(subs)
 	end
 end
 
---	reanimatools 	------------
+
+
+
+
+--	reanimatools 	---------------------------------------------------
 function esc(str) str=str:gsub("[%%%(%)%[%]%.%-%+%*%?%^%$]","%%%1") return str end
 function wrap(str) return "{"..str.."}" end
 function nobra(t) return t:gsub("%b{}","") end
@@ -2223,8 +2399,8 @@ function duplikill(tagz)
 	tagz=tagz:gsub("\\t%b()",function(t) return t:gsub("\\","|") end)
 	for i=1,#tags1 do
 	    tag=tags1[i]
-	    repeat tagz,c=tagz:gsub("|"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%1%2") until c==0
-	    repeat tagz,c=tagz:gsub("\\"..tag.."[%d%.%-]+([^}]-)(\\"..tag.."[%d%.%-]+)","%2%1") until c==0
+	    repeat tagz,c=tagz:gsub("|"..tag.."[%d.-]+([^}]-)(\\"..tag.."[%d.-]+)","%1%2") until c==0
+	    repeat tagz,c=tagz:gsub("\\"..tag.."[%d.-]+([^}]-)(\\"..tag.."[%d.-]+)","%2%1") until c==0
 	end
 	tagz=tagz:gsub("\\1c&","\\c&")
 	for i=1,#tags2 do
@@ -2564,7 +2740,7 @@ function info(subs,sel,act)
 		sdur=sdur+dur
 	end
 	seldur=sdur/1000
-	for i=1, #subs do
+	for i=1,#subs do
 		if subs[i].class=="info" then
 			local k=subs[i].key
 			local v=subs[i].value
@@ -2581,8 +2757,8 @@ function info(subs,sel,act)
 		if colorspace==nil then cols="" else cols="Colorspace: "..colorspace.."\n" end
 		nfo=sct..vf..reso..cols
 		if subs[i].class=="style" then
-		    local s=subs[i]
-		    table.insert(styletab,s)
+			local s=subs[i]
+			table.insert(styletab,s)
 		end
 		if subs[i].class=="dialogue" then
 			dc=dc+1
@@ -2776,6 +2952,10 @@ Additionally, you can set a limit in [], for example 1/3[2], which will start fr
 and only go up to 2 and then start again, so: 1 1 1 2 2 2 1 1 1 2 2 2
 2/3[4] would give you 2 2 2 3 3 3 4 4 4 2 2 2 3 3 3 4 4 4 ...
 
+"number 12321" works the same, but...
+1. requires the limit in [] because...
+2. numbers up and back, so 1[5] gives 1 2 3 4 5 4 3 2 1 2 3 4 5 4 3 2 ...
+
 "add to marker" uses the Left and Right fields to add stuff to the current content of actor/effect/text.
 If you number lines for the OP, you can set "OP-" in Left and "-eng" in Right to get "OP-01-eng".
 (Mod does nothing when adding markers.)
@@ -2837,6 +3017,9 @@ Reverses text (character by character). Nukes comments and inline tags.
 - Reverse Words -
 Reverses text (word by word). Nukes comments and inline tags.
 
+- Fill Columns -
+For selected columns, each line with an empty entry for that column (empty string or zero) will inherit the value from the previous selected line.
+
 - Reverse Transforms -
 \blur1\t(\blur3) becomes \blur3\t(\blur1). Only for initial tags. Only one transform for each tag.
 
@@ -2866,12 +3049,31 @@ Various modes of randomly transforming text. Has its own Help.
 Clones/replicates a clip you draw.
 Set how many rows/columns and distances between them, and you can make large patterns.
 
+- Clip2Margins -
+Sets margins for the line from a rectangular clip if present. You can choose which margins to set.
+Margins are set around the clip.
+
 - Duplicate and Shift Lines -
 Duplicates selected lines as many times you want before and/or after the current line.
 Use Left/Right fields to set how many frames should be duplicated before/after the line.
 \move and \t --> lines before get \pos with start coordinates and state before transforms;
 lines after get end coordinates and state after transforms.
 Lines are automatically numbered in Effect field. You can disable that by typing 0 in Mod field.
+
+- Extrapolate Tracking -
+Extrapolates position and scaling for beginning/end of a mocha-tracked line that didn't track,
+usually because of a fade. Only works for linear movement/zoom.
+If mocha doesn't track the first/last few frames, apply the data without those frames.
+Mark the untracked frames with 'x' in Effect. Select those plus a few frames before or after, and use this.
+How many frames to select will depend on how exactly "linear" the movement is.
+With perfectly linear, you can select all the tracked lines to get a more accurate per-frame average.
+If there seems to be a little bit of an acceleration, use only about 4-6 reference frames.
+Requirements:
+	- All selected lines must be 1 frame long! (Use line2fbf if they aren't.)
+	- Lines to apply extrapolation to must be marked with 'x' in effect. The rest are reference lines.
+	- Selection must be consecutive, lines sorted by time, etc. Not fool-proofed for stupid shit.
+	- If you have several signs and/or layers, each must be done separately.
+	  (Since layers will have the same values, you can use MultiCopy to copy from one to another.)
 
 - Time by Frames -
 Left = frames to shift start time by, each line (2 = each new line starts 2 frames later than previous)
