@@ -1,12 +1,12 @@
 script_name="FadeWorkS"
 script_description="Makes pictograph overlays fade in and out of existence"
 script_author="unanimated"
-script_version="4.0"
+script_version="5.0"
 script_namespace="ua.Fadeworks"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-	script_version="4.0.0"
+	script_version="5.0.0"
 	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
@@ -24,16 +24,17 @@ function fadeconfig(subs,sel)
 	{x=1,y=2,width=3,class="floatedit",name="fadeout",value=0},
 	{x=1,y=3,width=3,class="floatedit",name="inn",value=1,min=0,hint="accel in - <1 starts fast, >1 starts slow"},
 	{x=4,y=3,width=2,class="floatedit",name="utt",value=1,min=0,hint="accel out - <1 starts fast, >1 starts slow"},
-	{x=4,y=0,width=2,class="checkbox",name="alf",label="Alpha/Colour"},
-	{x=4,y=1,class="checkbox",name="crl",label="From:"},
-	{x=4,y=2,class="checkbox",name="clr",label="To:"},
+	{x=4,y=0,width=2,class="checkbox",name="alf",label="Alpha/&Colour"},
+	{x=4,y=1,class="checkbox",name="crl",label="&From:"},
+	{x=4,y=2,class="checkbox",name="clr",label="&To:"},
 	{x=5,y=1,class="color",name="c1"},
 	{x=5,y=2,class="color",name="c2"},
 	{x=0,y=3,class="label",label="Accel:"},
-	{x=0,y=4,width=5,class="checkbox",name="keepthefade",label="Keep fade along with colour transforms"},
-	{x=0,y=5,width=4,class="checkbox",name="mult",label="Fade across multiple lines"},
-	{x=4,y=5,width=2,class="checkbox",name="time",label="Global time"},
-	
+	{x=0,y=4,width=5,class="checkbox",name="keepthefade",label="&Keep fade along with colour transforms"},
+	{x=0,y=5,width=4,class="checkbox",name="mult",label="Fade &across multiple lines"},
+	{x=4,y=5,width=2,class="checkbox",name="time",label="&Global time"},
+	{x=6,y=5,class="checkbox",name="ex",label="Clip &+",hint='Expand clip 3px in each direction'},
+
 	{x=0,y=6,width=7,class="label",label="\nFades from/to tags will be applied if valid tags && fade in or out are present",},
 	{x=0,y=7,class="label",label="Tags:",},
 	{x=1,y=7,width=5,class="edit",name="tags",value="\\blur3",
@@ -52,20 +53,20 @@ function fadeconfig(subs,sel)
 	{x=0,y=10,class="label",label="By letter:"},
 	{x=1,y=10,class="dropdown",name="letterfade",items={"40","80","120","160","200","250","300","350","400","450","500","750","1000","1250","1500"},value="120"},
 	{x=2,y=10,width=2,class="label",label="ms/letter"},
-	{x=4,y=10,class="checkbox",name="rtl",label="RTL",hint="right to left"},
-	{x=5,y=10,class="checkbox",name="del",label="Delete",hint="delete letter-by-letter"},
+	{x=4,y=10,class="checkbox",name="rtl",label="&RTL",hint="right to left"},
+	{x=5,y=10,class="checkbox",name="del",label="&Delete",hint="delete letter-by-letter"},
 
-	{x=0,y=11,width=4,class="checkbox",name="ko",label="Letter by letter using \\ko"},
-	{x=4,y=11,width=2,class="checkbox",name="word",label="\\ko by word"},
-	{x=6,y=11,class="checkbox",name="mir",label="Mirror tags",hint="fade out to negative value (0-x)\nfor frz, fry, fax, xshad"},
+	{x=0,y=11,width=4,class="checkbox",name="ko",label="Letter by letter using \\&ko"},
+	{x=4,y=11,width=2,class="checkbox",name="word",label="\\ko b&y word"},
+	{x=6,y=11,class="checkbox",name="mir",label="&Mirror tags",hint="fade out to negative value (0-x)\nfor frz, fry, fax, xshad"},
 
-	{x=0,y=12,width=3,class="checkbox",name="vin",label="Fade in to current frame"},
-	{x=4,y=12,width=3,class="checkbox",name="vout",label="Fade out from current frame"},
+	{x=0,y=12,width=3,class="checkbox",name="vin",label="Fade &in to current frame"},
+	{x=4,y=12,width=3,class="checkbox",name="vout",label="Fade &out from current frame"},
 
-	{x=6,y=0,class="checkbox",name="hlp",label="[Help]",hint="Apply Help"},
-	{x=6,y=1,class="checkbox",name="rem",label="Remember last"},
-	{x=6,y=2,class="checkbox",name="rep",label="Repeat last"},
-	{x=6,y=3,class="checkbox",name="save",label="[Save config]"},
+	{x=6,y=0,class="checkbox",name="hlp",label="[&Help]",hint="Apply Help"},
+	{x=6,y=1,class="checkbox",name="rem",label="Remember &last"},
+	{x=6,y=2,class="checkbox",name="rep",label="Re&peat last"},
+	{x=6,y=3,class="checkbox",name="save",label="[&Save config]"},
 	}
 	loadconfig()
 	if faded and res.rem then
@@ -74,7 +75,7 @@ function fadeconfig(subs,sel)
 	    if val.name=='hlp' then val.value=false end
 	  end
 	end
-	P,res=ADD(GUI,{"Apply Fade","Letter by Letter",">Fadeworks<","Fade Away"},{ok='Apply Fade',cancel='Fade Away'})
+	P,res=ADD(GUI,{"Apply Fade","By L&etter","&By Clip","Fade&works","Fade Away"},{ok='Apply Fade',cancel='Fade Away'})
 	fr2ms=aegisub.ms_from_frame
 	ms2fr=aegisub.frame_from_ms
 	if rep and res.rep then res=rep end
@@ -86,15 +87,16 @@ function fadeconfig(subs,sel)
 	if TAGS and fadin>0 or TAGS and fadout>0 then res.alf=true end
 	if res.hlp then P="Apply Fade" end
 	if P=="Apply Fade" then
-	  if res.hlp then fadehelp(subs,sel)
-	  elseif res.save then saveconfig()
-	  elseif res.alf or TAGS or res.clr or res.crl then fadalpha(subs,sel)
-	  elseif res.mult then fadeacross(subs,sel)
-	  elseif res.vin or res.vout then vfade(subs,sel)
-	  else fade(subs,sel) end
+		if res.hlp then fadehelp(subs,sel)
+		elseif res.save then saveconfig()
+		elseif res.alf or TAGS or res.clr or res.crl then fadalpha(subs,sel)
+		elseif res.mult then fadeacross(subs,sel)
+		elseif res.vin or res.vout then vfade(subs,sel)
+		else fade(subs,sel) end
 	end
-	if P=="Letter by Letter" then if res.ko or res.word then koko_da(subs,sel) else fade(subs,sel) end end
-	if P==">Fadeworks<" then sel=fadeworks(subs,sel)  end
+	if P=="By L&etter" then if res.ko or res.word then koko_da(subs,sel) else fade(subs,sel) end end
+	if P=="Fade&works" then sel=fadeworks(subs,sel) end
+	if P=="&By Clip" then clipfade(subs,sel) end
 	rep=res
 	return sel
 end
@@ -145,7 +147,7 @@ function fade(subs,sel)
 	end
 
 	-- letter by letter
-	if P=="Letter by Letter" then
+	if P=="By L&etter" then
 
 		-- delete old letter-by-letter if present
 		if text:match("\\t%([%d,]+\\alpha[^%(%)]+%)}%S$") then
@@ -236,7 +238,7 @@ function fade(subs,sel)
 end
 
 
---	ALPHA / COLOURS / TAGS		--	###############################################
+--	ALPHA / COLOURS / TAGS		--	############################################
 function fadalpha(subs,sel)
 if res.clr or res.crl then res.alf=true end
 if res.vin or res.vout then vfcheck() vt=math.floor((fr2ms(vframe+1)+fr2ms(vframe))/2) end
@@ -480,22 +482,21 @@ function koko_da(subs,sel)
 	text=text:gsub("\\ko%d+","") :gsub("{}","")
 
 	-- save initial tags; remove other tags/comments
-	tags=text:match("^{\\[^}]-}") or ""
+	tags=text:match(STAG) or ""
 	orig=text:gsub("^({\\[^}]*})","")
 	text=text:gsub("{[^}]*}","") :gsub("%s*$","") :gsub("\\N","*")
 
 	--letter
 	if not res.word then
-	    matches=re.find(text,"[\\w[:punct:]][\\s\\\\*]*")
-	    len=#matches
-	    if fadin>=40 then ko=round(fadin/(len-1))/10 else ko=fadin end
-	    text=re.sub(text,"([\\w[:punct:]])","{\\\\ko"..ko.."}\\1")
-	else
-	--word
-	    matches=re.find(text,"[\\w[:punct:]]+[\\s\\\\*]*")
-	    len=#matches
-	    if fadin>=40 then ko=round(fadin/(len-1)/10) else ko=fadin end
-	    text=re.sub(text,"([\\w[:punct:]]+)","{\\\\ko"..ko.."}\\1")
+		matches=re.find(text,"[\\w[:punct:]][\\s\\\\*]*")
+		len=#matches
+		if fadin>=40 then ko=round(fadin/(len-1))/10 else ko=fadin end
+		text=re.sub(text,"([\\w[:punct:]])","{\\\\ko"..ko.."}\\1")
+	else	--word
+		matches=re.find(text,"[\\w[:punct:]]+[\\s\\\\*]*")
+		len=#matches
+		if fadin>=40 then ko=round(fadin/(len-1)/10) else ko=fadin end
+		text=re.sub(text,"([\\w[:punct:]]+)","{\\\\ko"..ko.."}\\1")
 	end
 
 	-- join saved tags + new text with transforms
@@ -516,11 +517,11 @@ function fadeacross(subs,sel)
 	E=subs[sel[#sel]].end_time
 	-- get total duration
 	for z,i in ipairs(sel) do
-	    line=subs[i]
-	    dur=line.end_time-line.start_time
-	    full=full+dur
-	    if line.start_time<S then S=line.start_time war=1 end
-	    if line.end_time>E then E=line.end_time war=1 end
+		line=subs[i]
+		dur=line.end_time-line.start_time
+		full=full+dur
+		if line.start_time<S then S=line.start_time war=1 end
+		if line.end_time>E then E=line.end_time war=1 end
 	end
 	-- Error if fades too long
 	if res.time and fadin+fadout>E-S or not res.time and fadin+fadout>full then
@@ -627,11 +628,84 @@ function vfade(subs,sel)
 end
 
 function vfcheck()
-    if aegisub.project_properties==nil then
-	t_error("Current frame unknown.\nProbably your Aegisub is too old.\nMinimum required: r8374.",true)
-    end
-    vframe=aegisub.project_properties().video_position
-    if vframe==nil or fr2ms(1)==nil then t_error("Current frame unknown. Probably no video loaded.",true) end
+	if aegisub.project_properties==nil then t_error("Current frame unknown.\nProbably your Aegisub is too old.\nMinimum required: r8374.",true) end
+	vframe=aegisub.project_properties().video_position
+	if vframe==nil or fr2ms(1)==nil then t_error("Current frame unknown. Probably no video loaded.",true) end
+end
+
+
+-- Fade with Clip	--
+function clipfade(subs,sel)
+	for z,i in ipairs(sel) do
+		line=subs[i]
+		text=line.text
+		dur=line.end_time-line.start_time
+		tags=text:match(STAG) or ""
+		vis=nobra(text)
+
+		_,poses=text:gsub("\\N","") poses=poses+1
+		sr=stylechk(subs,line.style)
+		notra=detra(tags)
+		if not text:match'\\pos%b()' and not text:match'\\move%b()' then text=getpos(subs,text) end
+		posX,posY=text:match("\\pos%(([%d.-]+),([%d.-]+)%)")
+		m1,m2,m3,m4=text:match("\\move%(([%d.-]+),([%d.-]+),([%d.-]+),([%d.-]+)")
+		if m1 and not posY then posX=m1 posY=m2 end
+		scx=notra:match("\\fscx([%d%.]+)")
+		scy=notra:match("\\fscy([%d%.]+)")
+		fsp=notra:match("\\fsp([%d%.]+)")
+		fsize=notra:match("\\fs([%d%.]+)")
+		phont=notra:match("\\fn([^\\}]+)")
+		bord=notra:match("\\bord([%d%.]+)") or sr.outline
+		shad=notra:match("\\shad([%d%.]+)") or sr.shadow
+		xshad=notra:match("\\xshad([%d%.]+)") or shad
+		yshad=notra:match("\\yshad([%d%.]+)") or shad
+		bold=notra:match("\\b([01])")
+		if scx then sr.scale_x=tonumber(scx) end
+		if scy then sr.scale_y=tonumber(scy) end
+		if fsp then sr.spacing=tonumber(fsp) end
+		if fsize then sr.fontsize=tonumber(fsize) end
+		if phont then sr.fontname=phont end
+		if bold=='1' then sr.bold=true end
+		if bold=='0' then sr.bold=false end
+
+		w,h,d,el=aegisub.text_extents(sr,vis)
+		if poses>1 then
+			vis2=vis:gsub(" *\\N *","\n")
+			w=0
+			for vt in vis2:gmatch('[^\n]+') do
+				w1=aegisub.text_extents(sr,vt)
+				if w1>w then w=w1 end
+			end
+			h=h*poses
+		end
+
+		align=text:match("\\an(%d)") or tostring(sr.align)
+		x_left=posX
+		if align:match("[258]") then x_left=round(posX-w/2,1) end
+		if align:match("[369]") then x_left=round(posX-w,1) end
+		y_top=posY
+		if align:match("[456]") then y_top=round(posY-h/2,1) end
+		if align:match("[123]") then y_top=round(posY-h,1) end
+		x_right=round(x_left+w,1)
+		y_bottom=round(y_top+h,1)
+		ex=0
+		if res.ex then ex=3 end
+		x_left=x_left-bord-ex
+		y_top=y_top-bord-ex
+		x_right=x_right+bord+xshad+ex
+		y_bottom=y_bottom+bord+yshad+ex
+
+		klip='\\clip'..par({x_left,y_top,x_right,y_bottom})
+		klip_s='\\clip'..par({x_left,y_top,x_left+2,y_bottom})
+		klip_e='\\clip'..par({x_right-2,y_top,x_right,y_bottom})
+		text=text:gsub('\\i?clip%b()','')
+		if fadin==0 then klip_f=klip else klip_f=klip_s..'\\t(0,'..fadin..','..res.inn..','..klip..')' end
+		if fadout~=0 then klip_f=klip_f..'\\t('..dur-fadout..','..dur..','..res.utt..','..klip_e..')' end
+		text=addtag1(klip_f,text)
+
+		line.text=text
+		subs[i]=line
+	end
 end
 
 
@@ -807,9 +881,7 @@ function fadeworks(subs,sel)
 	-- main line
 	line.start_time=fr2ms(startf)
 	line.end_time=fr2ms(endf)
-	if rez.LFad  or rez.RFad then
-		text=text:gsub("\\fad%b()",""):gsub("^{","{\\fad("..f1..","..f2..")")
-	end
+	if rez.LFad or rez.RFad then text=text:gsub("\\fad%b()",""):gsub("^{","{\\fad("..f1..","..f2..")") end
 	line.text=text
 	subs.insert(i+1,line)
 	
@@ -876,6 +948,21 @@ function fadeworks(subs,sel)
 	return sel
 end
 
+--	reanimatools	----------------------------------------
+function esc(str) str=str:gsub("[%%%(%)%[%]%.%-%+%*%?%^%$]","%%%1") return str end
+function round(n,dec) dec=dec or 0 n=math.floor(n*10^dec+0.5)/10^dec return n end
+function wrap(str) return "{"..str.."}" end
+function par(tab) return '('..table.concat(tab,',')..')' end
+function detra(t) return t:gsub("\\t%b()","") end
+function nobra(t) return t:gsub("%b{}","") end
+function nobrea(t) return t:gsub("%b{}",""):gsub("\\[Nh]","") end
+function nobrea1(t) return t:gsub("%b{}",""):gsub(" *\\[Nh] *"," ") end
+function tagmerge(t) repeat t,r=t:gsub("({\\[^}]-)}{(\\[^}]-})","%1%2") until r==0 return t end
+function logg(m) m=tf(m) or "nil" aegisub.log("\n "..m) end
+function loggtab(m) m=tf(m) or "nil" aegisub.log("\n {"..table.concat(m,';').."}") end
+function progress(msg) if aegisub.progress.is_cancelled() then ak() end aegisub.progress.title(msg) end
+function t_error(message,cancel) ADD({{class="label",label=message}},{"OK"},{close='OK'}) if cancel then ak() end end
+
 function retextmod(orig,text)
 	local v1,v2,c,t2
 	v1=nobrea(orig)
@@ -888,18 +975,6 @@ function retextmod(orig,text)
 	if v1~=v2 then logg("Something went wrong with the text...") logg(v1) logg(v2) end
 	return t2
 end
-
---	reanimatools	---------------------
-function esc(str) str=str:gsub("[%%%(%)%[%]%.%-%+%*%?%^%$]","%%%1") return str end
-function round(n,dec) dec=dec or 0 n=math.floor(n*10^dec+0.5)/10^dec return n end
-function wrap(str) return "{"..str.."}" end
-function nobra(t) return t:gsub("%b{}","") end
-function nobrea(t) return t:gsub("%b{}",""):gsub("\\[Nh]","") end
-function nobrea1(t) return t:gsub("%b{}",""):gsub(" *\\[Nh] *"," ") end
-function tagmerge(t) repeat t,r=t:gsub("({\\[^}]-)}{(\\[^}]-})","%1%2") until r==0 return t end
-function logg(m) m=tf(m) or "nil" aegisub.log("\n "..m) end
-function progress(msg) if aegisub.progress.is_cancelled() then ak() end aegisub.progress.title(msg) end
-function t_error(message,cancel) ADD({{class="label",label=message}},{"OK"},{close='OK'}) if cancel then ak() end end
 
 function textmod(orig,text)
 if text=="" then return orig end
@@ -950,6 +1025,13 @@ if text=="" then return orig end
     return text
 end
 
+function addtag1(tg,txt) 
+	if not txt:match("^{\\") then txt="{"..tg.."}"..txt
+	elseif txt:match("^{[^}]-\\t") then txt=txt:gsub("^({[^}]-)\\t","%1"..tg.."\\t")
+	else txt=txt:gsub("^({\\[^}]-)}","%1"..tg.."}") end
+	return txt
+end
+
 function addtag3(tg,txt)
 	no_tf=txt:gsub("\\t%b()","")
 	tgt=tg:match("(\\%d?%a+)[%d%-&]") val="[%d%-&]"
@@ -966,24 +1048,24 @@ return txt
 end
 
 function styleval(tag)
-    if tag=="\\bord" then s_val=styleref.outline
-    elseif tag=="\\shad" then s_val=styleref.shadow
-    elseif tag=="\\fscx" then s_val=styleref.scale_x
-    elseif tag=="\\fscy" then s_val=styleref.scale_y
-    elseif tag=="\\fs" then s_val=styleref.fontsize
-    elseif tag=="\\fsp" then s_val=styleref.spacing
-    elseif tag=="\\alpha" then s_val="&H00&"
-    elseif tag=="\\1a" then s_val="&"..styleref.color1:match("H%x%x").."&"
-    elseif tag=="\\2a" then s_val="&"..styleref.color2:match("H%x%x").."&"
-    elseif tag=="\\3a" then s_val="&"..styleref.color3:match("H%x%x").."&"
-    elseif tag=="\\4a" then s_val="&"..styleref.color4:match("H%x%x").."&"
-    elseif tag=="\\c" then s_val=styleref.color1:gsub("H%x%x","H")
-    elseif tag=="\\2c" then s_val=styleref.color2:gsub("H%x%x","H")
-    elseif tag=="\\3c" then s_val=styleref.color3:gsub("H%x%x","H")
-    elseif tag=="\\4c" then s_val=styleref.color4:gsub("H%x%x","H")
-    else s_val="0"
-    end
-    return s_val
+	if tag=="\\bord" then s_val=styleref.outline
+	elseif tag=="\\shad" then s_val=styleref.shadow
+	elseif tag=="\\fscx" then s_val=styleref.scale_x
+	elseif tag=="\\fscy" then s_val=styleref.scale_y
+	elseif tag=="\\fs" then s_val=styleref.fontsize
+	elseif tag=="\\fsp" then s_val=styleref.spacing
+	elseif tag=="\\alpha" then s_val="&H00&"
+	elseif tag=="\\1a" then s_val="&"..styleref.color1:match("H%x%x").."&"
+	elseif tag=="\\2a" then s_val="&"..styleref.color2:match("H%x%x").."&"
+	elseif tag=="\\3a" then s_val="&"..styleref.color3:match("H%x%x").."&"
+	elseif tag=="\\4a" then s_val="&"..styleref.color4:match("H%x%x").."&"
+	elseif tag=="\\c" then s_val=styleref.color1:gsub("H%x%x","H")
+	elseif tag=="\\2c" then s_val=styleref.color2:gsub("H%x%x","H")
+	elseif tag=="\\3c" then s_val=styleref.color3:gsub("H%x%x","H")
+	elseif tag=="\\4c" then s_val=styleref.color4:gsub("H%x%x","H")
+	else s_val="0"
+	end
+	return s_val
 end
 
 function duplikill(tagz)
@@ -1110,24 +1192,24 @@ function getpos(subs,text)
 end
 
 function fill_in(tags,tag)
-    if tag=="\\bord" then tags=tags:gsub("^{","{"..tag..styleref.outline)
-    elseif tag=="\\shad" then tags=tags:gsub("^{","{"..tag..styleref.shadow)
-    elseif tag=="\\fscx" then tags=tags:gsub("^{","{"..tag..styleref.scale_x)
-    elseif tag=="\\fscy" then tags=tags:gsub("^{","{"..tag..styleref.scale_y)
-    elseif tag=="\\fs" or tag=="\\fsize" then tags=tags:gsub("^{","{"..tag..styleref.fontsize)
-    elseif tag=="\\fsp" then tags=tags:gsub("^{","{"..tag..styleref.spacing)
-    elseif tag=="\\alpha" then tags=tags:gsub("^{","{"..tag.."&H00&")
-    elseif tag=="\\1a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color1:match("H%x%x").."&")
-    elseif tag=="\\2a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color2:match("H%x%x").."&")
-    elseif tag=="\\3a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color3:match("H%x%x").."&")
-    elseif tag=="\\4a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color4:match("H%x%x").."&")
-    elseif tag=="\\c" then tags=tags:gsub("^{","{"..tag..styleref.color1:gsub("H%x%x","H"))
-    elseif tag=="\\2c" then tags=tags:gsub("^{","{"..tag..styleref.color2:gsub("H%x%x","H"))
-    elseif tag=="\\3c" then tags=tags:gsub("^{","{"..tag..styleref.color3:gsub("H%x%x","H"))
-    elseif tag=="\\4c" then tags=tags:gsub("^{","{"..tag..styleref.color4:gsub("H%x%x","H"))
-    else tags=tags:gsub("^{","{"..tag.."0")
-    end
-    return tags
+	if tag=="\\bord" then tags=tags:gsub("^{","{"..tag..styleref.outline)
+	elseif tag=="\\shad" then tags=tags:gsub("^{","{"..tag..styleref.shadow)
+	elseif tag=="\\fscx" then tags=tags:gsub("^{","{"..tag..styleref.scale_x)
+	elseif tag=="\\fscy" then tags=tags:gsub("^{","{"..tag..styleref.scale_y)
+	elseif tag=="\\fs" or tag=="\\fsize" then tags=tags:gsub("^{","{"..tag..styleref.fontsize)
+	elseif tag=="\\fsp" then tags=tags:gsub("^{","{"..tag..styleref.spacing)
+	elseif tag=="\\alpha" then tags=tags:gsub("^{","{"..tag.."&H00&")
+	elseif tag=="\\1a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color1:match("H%x%x").."&")
+	elseif tag=="\\2a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color2:match("H%x%x").."&")
+	elseif tag=="\\3a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color3:match("H%x%x").."&")
+	elseif tag=="\\4a" then tags=tags:gsub("^{","{"..tag.."&"..styleref.color4:match("H%x%x").."&")
+	elseif tag=="\\c" then tags=tags:gsub("^{","{"..tag..styleref.color1:gsub("H%x%x","H"))
+	elseif tag=="\\2c" then tags=tags:gsub("^{","{"..tag..styleref.color2:gsub("H%x%x","H"))
+	elseif tag=="\\3c" then tags=tags:gsub("^{","{"..tag..styleref.color3:gsub("H%x%x","H"))
+	elseif tag=="\\4c" then tags=tags:gsub("^{","{"..tag..styleref.color4:gsub("H%x%x","H"))
+	else tags=tags:gsub("^{","{"..tag.."0")
+	end
+	return tags
 end
 
 function shiftsel2(sel,i,mode)
@@ -1164,7 +1246,7 @@ This nukes all present alpha tags. It supports shadow alpha (\4a).
 'Global time' will use times relative to video, rather the combined times of lines. This makes a difference with gaps between lines.
 
 
-Letter by Letter
+By Letter
 
 This fades each letter separately, in a sequence.
 The dropdown menu is the fading time for each letter, while Fade in/out are for the overall fades.
@@ -1185,6 +1267,15 @@ Also, \ko actually works with decimal values, like \ko4.6.)
 'Fade out from current frame' - sets fade out from current video frame.
 These are for setting fades very easily without requiring any numbers.
 The current frame will be the first/last fully visible, so for Fade in, set to the first frame after the fade, not the last frame of the fade.
+
+
+By Clip
+
+This is a simple clip transform, making text appear from the left and disappear to the right, based on fade in/out values.
+As a bonus, when the fades are both 0, it will just create a clip around the text. This supports font name, size, spacing, scaling, border, shadow, and weight, but not italics, rotations, fax & fay, and not inline tags. It can handle linebreaks. With \move, it's somewhat applicable, but it only considers the starting position, so not very useful in most cases.
+This is dealing with fonts, and fonts are a clusterfuck of uncertainty, so things aren't always 100% accurate. As a dirty workaround to make sure the clip isn't just a bit too small, you can check 'Clip +' to expand the clip by 3 pixels in each direction.
+The fades in and out may overlap, but the second transform is calculated from the ongoing first transform, so things get a bit unpredictable there. (Not like you would reasonably ever need this, though.)
+Only fade in/out and accel apply here from the other options.
 
 
 Tags
