@@ -353,20 +353,20 @@
       "description": "Copy and paste just about anything from/to multiple lines",
       "channels": {
         "master": {
-          "version": "3.5.0",
-          "released": "2018-05-13",
+          "version": "4.0.0",
+          "released": "2019-08-18",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "ee90f0e7b21ffaab410474ba6c6c23f4f171b026"
+              "sha1": "eba606e5893845ddc2a6065bc4c1d11fadea38c8"
             }
           ]
         }
       },
       "changelog": {
-        "3.5.0": ["Check the Updates page"]
+        "4.0.0": ["Check the Updates page"]
       }
     },
     
@@ -377,20 +377,20 @@
       "description": "Works with Fades",
       "channels": {
         "master": {
-          "version": "4.0.0",
-          "released": "2018-06-10",
+          "version": "5.0.0",
+          "released": "2019-08-18",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "7d92a54d3047f2d0d65eab0b23343fcb0b4f472f"
+              "sha1": "8eb5d146b2df485cc3fe211f07c25a9f02752d46"
             }
           ]
         }
       },
       "changelog": {
-        "4.0.0": ["Check the Updates page"]
+        "5.0.0": ["Check the Updates page"]
       }
     },
     
@@ -401,20 +401,20 @@
       "description": "Import stuff, number stuff, chapter stuff, replace stuff, do a significant amount of other stuff to stuff.",
       "channels": {
         "master": {
-          "version": "3.3.0",
-          "released": "2018-08-05",
+          "version": "3.5.0",
+          "released": "2019-08-18",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "5e8a31f536e6bd4147c40d21b6f8550aec024a2b"
+              "sha1": "9e79c895d1578db74cc1fb6816c05b80eb85e1d5"
             }
           ]
         }
       },
       "changelog": {
-        "3.3.0": ["Check the Updates page"]
+        "3.5.0": ["Check the Updates page"]
       }
     },
     
@@ -425,20 +425,20 @@
       "description": "Time Machine.",
       "channels": {
         "master": {
-          "version": "3.0.0",
-          "released": "2018-05-13",
+          "version": "3.1.0",
+          "released": "2019-08-18",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "7fa9a1a7278c0774b0e3a2895de09a4d23bff370"
+              "sha1": "a379c8f79b5db37e3eb3de5f505425b696621155"
             }
           ]
         }
       },
       "changelog": {
-        "3.0.0": ["Check the Updates page"]
+        "3.1.0": ["Check the Updates page"]
       }
     },
     
