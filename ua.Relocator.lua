@@ -422,7 +422,7 @@ function positron(subs,sel)
 			endcom=""
 			repeat text=text:gsub("({[^}]-})%s*$",function(ec) endcom=ec..endcom return "" end)
 			until not text:match("}$")
-			text=text:gsub("(.)$","{\\fax"..faks2.."}%1")
+			text=re.sub(text, "(.)$","{\\\\fax"..faks2.."}\\1")
 			vis=nobra(text)
 			orig=text:gsub(STAG,"")
 			tg=text:match(STAG)
