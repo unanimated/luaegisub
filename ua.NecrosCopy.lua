@@ -46,7 +46,7 @@ function fucks(subs,sel)
 			endcom=""
 			repeat t=t:gsub("({[^}]-})%s*$",function(ec) endcom=ec..endcom return "" end)
 			until not t:match("}$")
-			t=t:gsub("(.)$","{\\fax"..faks2.."}%1")
+			t=re.sub(t, "(.)$","{\\\\fax"..faks2.."}\\1")
 			
 			if res.grad then
 				vis=nobra(t)
