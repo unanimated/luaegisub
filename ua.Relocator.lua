@@ -10,7 +10,7 @@ script_namespace="ua.Relocator"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-	script_version="4.5.0"
+	script_version="4.5.1"
 	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
@@ -396,8 +396,8 @@ function positron(subs,sel)
 	-- clip to fax
 	if res.posi=="clip to fax" then
 		if not text:match("\\i?clip%(m") and not text:match("//i?clip%(m") then t_error("Missing \\clip on line #"..i-line0..".\nAborting.",1) end
-		cx1,cy1,cx2,cy2,cx3,cy3,cx4,cy4=text:match("clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+)")
-		if not cx1 then cx1,cy1,cx2,cy2=text:match("clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+)") end
+		cx1,cy1,cx2,cy2,cx3,cy3,cx4,cy4=text:match("clip%(m ([%d.-]+) ([%d.-]+) l ([%d.-]+) ([%d.-]+) ([%d.-]+) ([%d.-]+) ([%d.-]+) ([%d.-]+)")
+		if not cx1 then cx1,cy1,cx2,cy2=text:match("clip%(m ([%d.-]+) ([%d.-]+) l ([%d.-]+) ([%d.-]+)") end
 		if not cx1 then t_error("Line #"..i-line0..": Not enough clip points. 2 required.",1) end
 		sr=stylechk(subs,line.style)
 		rota=nontra:match("^{[^}]-\\frz([%d.-]+)") or sr.angle
@@ -446,8 +446,8 @@ function positron(subs,sel)
 	-- clip to frz
 	if res.posi=="clip to frz" then
 		if not text:match("\\i?clip%(m") and not text:match("//i?clip%(m") then t_error("Missing \\clip on line #"..i-line0..".\nAborting.",1) end
-		cx1,cy1,cx2,cy2,cx3,cy3,cx4,cy4=text:match("clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+)")
-		if not cx1 then cx1,cy1,cx2,cy2=text:match("clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+)") end
+		cx1,cy1,cx2,cy2,cx3,cy3,cx4,cy4=text:match("clip%(m ([%d.-]+) ([%d.-]+) l ([%d.-]+) ([%d.-]+) ([%d.-]+) ([%d.-]+) ([%d.-]+) ([%d.-]+)")
+		if not cx1 then cx1,cy1,cx2,cy2=text:match("clip%(m ([%d.-]+) ([%d.-]+) l ([%d.-]+) ([%d.-]+)") end
 		if not cx1 then t_error("Line #"..i-line0..": Not enough clip points. 2 required.",1) end
 		local ad,op,tang,ang1,rota,ad2,op2,tang2,ang2,rota2
 		ad=cx2-cx1
@@ -473,7 +473,7 @@ function positron(subs,sel)
 	-- clip to reposition
 	if res.posi=="clip to reposition" then
 		if not text:match("\\i?clip%(m") and not text:match("//i?clip%(m") then t_error("Missing \\clip on line #"..i-line0..".\nAborting.",1) end
-		cx1,cy1,cx2,cy2=text:match("clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+)")
+		cx1,cy1,cx2,cy2=text:match("clip%(m ([%d.-]+) ([%d.-]+) l ([%d.-]+) ([%d.-]+)")
 		if not cx1 then t_error("Line #"..i-line0..": Not enough clip points. 2 required.",1) end
 		repo1=cx2-cx1 repo2=cy2-cy1
 		text=text:gsub("\\i?clip%b()","")
@@ -1121,8 +1121,8 @@ function bilocator(subs,sel)
 		else movt1,movt2=gettimes(start,endt) end
 		if res.times then M=","..movt1..","..movt2 else M="" end
 		if not text:match("\\i?clip") and not text:match("//i?clip") then t_error("Missing \\clip on line #"..i-line0..". Aborting.",1) end
-		cx1,cy1,cx2,cy2,cx3,cy3,cx4,cy4=text:match("clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+)")
-		if not cx1 then cx1,cy1,cx2,cy2=text:match("clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+)") end
+		cx1,cy1,cx2,cy2,cx3,cy3,cx4,cy4=text:match("clip%(m ([%d.-]+) ([%d.-]+) l ([%d.-]+) ([%d.-]+) ([%d.-]+) ([%d.-]+) ([%d.-]+) ([%d.-]+)")
+		if not cx1 then cx1,cy1,cx2,cy2=text:match("clip%(m ([%d.-]+) ([%d.-]+) l ([%d.-]+) ([%d.-]+)") end
 		if not cx1 then t_error("Line #"..i-line0..": Not enough clip points. Min. 2 required.",1) end
 		if cx4 then
 			point1x=(cx2+cx1)/2
@@ -1499,7 +1499,7 @@ function modifier(subs,sel,act)
 	if res.mod=="calculate origin" then
 		local c={}
 		local c2={}
-		x1,y1,x2,y2,x3,y3,x4,y4=text:match("clip%(m ([%d%-]+) ([%d%-]+) l ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+) ([%d%-]+)")
+		x1,y1,x2,y2,x3,y3,x4,y4=text:match("clip%(m ([%d.-]+) ([%d.-]+) l ([%d.-]+) ([%d.-]+) ([%d.-]+) ([%d.-]+) ([%d.-]+) ([%d.-]+)")
 		if not x1 then t_error("Line #"..i-line0..": vectorial clip with 4 points required.\nAborting.",1) end
 		cor1={x=tonumber(x1),y=tonumber(y1)} table.insert(c,cor1) table.insert(c2,cor1)
 		cor2={x=tonumber(x2),y=tonumber(y2)} table.insert(c,cor2) table.insert(c2,cor2)
@@ -1672,7 +1672,7 @@ function modifier(subs,sel,act)
 				local xx,yy=text:match("\\pos%(([%d.-]+),([%d.-]+)%)")
 				xx=round(xx) yy=round(yy)
 				coord=klip:match("\\clip%(m ([^%)]+)%)")
-				coord2=coord:gsub("([%d%-]+) ([%d%-]+)",function(a,b) return round(a*scx/100+xx).." "..round(b*scy/100+yy) end)
+				coord2=coord:gsub("([%d.-]+) ([%d.-]+)",function(a,b) return round(a*scx/100+xx).." "..round(b*scy/100+yy) end)
 				klip=klip:gsub(esc(coord),coord2)
 			end
 			if nopos then text=text:gsub("^{","{\\pos(0,0)") end
@@ -1686,7 +1686,7 @@ function modifier(subs,sel,act)
 			local xx,yy=text:match("\\pos%(([%d.-]+),([%d.-]+)%)")
 				xx=round(xx) yy=round(yy)
 				coord=klip:match("m ([%d%a%s%-]+)")
-				coord2=coord:gsub("([%d%-]+)%s([%d%-]+)",function(a,b) return a-xx.." "..b-yy end)
+				coord2=coord:gsub("([%d.-]+)%s([%d.-]+)",function(a,b) return a-xx.." "..b-yy end)
 				coord=coord:gsub("%-","%%-")
 				klip=klip:gsub(coord,coord2)
 			end
@@ -2131,7 +2131,7 @@ lastags1=""
 		--logg("\n val1: "..val1.."  valf: "..valf.."  tpart: "..tpart.."  twhole: "..twhole)
 	end
 	-- clip
-	if tra:match("\\i?clip%([%d%-]") then
+	if tra:match("\\i?clip%([%d.-]") then
 	ctype,c1,c2,c3,c4=nontra:match("(\\i?clip%()([%d.-]+),([%d.-]+),([%d.-]+),([%d.-]+)")
 	if not ctype then t_error("Error. Looks like you're transforming a clip that's not set in the first place.\n> "..tags,1) end
 	ktype,k1,k2,k3,k4=tra:match("(\\i?clip%()([%d.-]+),([%d.-]+),([%d.-]+),([%d.-]+)")
