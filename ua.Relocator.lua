@@ -869,7 +869,7 @@ function positron(subs,sel)
 	-- Track by Clip
 	if res.posi=="track by clip" then
 		if not res.X and not res.Y then t_error("Neither X nor Y is checked. Nothing to track.",1) end
-		klip=text:match("clip%(m .+%)")
+		klip=text:match("clip%(m .-%)")
 		if not klip then t_error("Error: No clip in line #"..i-line0..".",1) end
 		if nopos then text=getpos(text,subs) end
 		local fr=1 -- how many frames per line
@@ -885,7 +885,7 @@ function positron(subs,sel)
 			if res.X then x6=kp.x else x6=0 end
 			if res.Y then y7=kp.y else y7=0 end
 			t2=text:gsub("\\i?clip%b()","")
-			:gsub("\\pos%(([^,]+),([^,]+)%)",function(a,b) return "\\pos("..a+x6..","..b+y7..")" end)
+			:gsub("\\pos%(([^,]-),([^,]-)%)",function(a,b) return "\\pos("..a+x6..","..b+y7..")" end)
 			local st=fr2ms(ms2fr(start)+(fr*(t-1)))
 			local et=fr2ms(ms2fr(start)+(fr*(t-1))+fr)
 			line.start_time=st
@@ -897,7 +897,7 @@ function positron(subs,sel)
 		line.start_time=fr2ms(ms2fr(start))
 		line.end_time=fr2ms(ms2fr(start)+fr)
 		text=text:gsub("\\i?clip%b()","")
-		if not res.first then text=text:gsub("\\pos%(([^,]+),([^,]+)%)",function(a,b) return "\\pos("..a+klips[1].x..","..b+klips[1].y..")" end) end
+		if not res.first then text=text:gsub("\\pos%(([^,]-),([^,]-)%)",function(a,b) return "\\pos("..a+klips[1].x..","..b+klips[1].y..")" end) end
 	end
 
 	-- Replicate
