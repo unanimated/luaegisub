@@ -222,7 +222,7 @@
         }
       },
       "changelog": {
-		"4.5.2": ["Follow user defined rounding for vector clips"],
+	"4.5.2": ["Follow user defined rounding for vector clips"],
         "4.5.1": ["Support for subpixel vector clips"],
         "4.5.0": ["Check the Updates page"]
       }
