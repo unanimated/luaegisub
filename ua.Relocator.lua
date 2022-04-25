@@ -5,12 +5,12 @@ script_name="Hyperdimensional Relocator"
 script_description="Advanced metamorphosis of multidimensional coordinates"
 script_author="reanimated"
 script_url="http://unanimated.hostfree.pw/ts/relocator.lua"
-script_version="4.5"
+script_version="4.5.2"
 script_namespace="ua.Relocator"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-	script_version="4.5.1"
+	script_version="4.5.2"
 	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
@@ -1450,8 +1450,7 @@ function modifier(subs,sel,act)
 		end
 		if text:match("\\i?clip") and res.rnd=="all" or text:match("\\i?clip") and res.rnd=="clip" then
 		  for klip in text:gmatch("\\i?clip%([^%)]+%)") do
-		    if klip:match("m") then rrr=0 else rrr=rr end
-		    klip2=klip:gsub("([%d.-]+)",function(c) return round(c,rrr) end)
+		    klip2=klip:gsub("([%d.-]+)",function(c) return round(c,rr) end)
 		    text=text:gsub(esc(klip),klip2)
 		  end
 		end
