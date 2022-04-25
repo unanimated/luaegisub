@@ -589,6 +589,7 @@ function splitbreak(subs,sel)
 				},{"Spaces","Tags","Marker","Skip","Cancel"},{close='Cancel'})
 			end
 			if P=="Cancel" then ak() end
+			breakit=false nmbr=rez.num mark=rez.mark
 			text=text:gsub("\\N","")
 			if P=="Spaces" then text=textreplace(text," "," \\N") end
 			if P=="Tags" then
@@ -602,7 +603,6 @@ function splitbreak(subs,sel)
 				text=stags..after
 			end
 			if rez.remember then applytoall=P end
-			breakit=false nmbr=rez.num mark=rez.mark
 			text=text:gsub("({\\[^}]*}) *\\N","\\N%1")
 		end
 	
