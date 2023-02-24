@@ -490,12 +490,12 @@ function koko_da(subs,sel)
 	if not res.word then
 		matches=re.find(text,"[\\w[:punct:]][\\s\\\\*]*")
 		len=#matches
-		if fadin>=40 then ko=round(fadin/(len-1))/10 else ko=fadin end
+		if fadin>=40 then ko=round(fadin/len)/10 else ko=fadin end
 		text=re.sub(text,"([\\w[:punct:]])","{\\\\ko"..ko.."}\\1")
 	else	--word
 		matches=re.find(text,"[\\w[:punct:]]+[\\s\\\\*]*")
 		len=#matches
-		if fadin>=40 then ko=round(fadin/(len-1)/10) else ko=fadin end
+		if fadin>=40 then ko=round(fadin/len/10) else ko=fadin end
 		text=re.sub(text,"([\\w[:punct:]]+)","{\\\\ko"..ko.."}\\1")
 	end
 
