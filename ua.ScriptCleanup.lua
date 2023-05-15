@@ -153,6 +153,11 @@ function cleanlines(subs,sel)
 	if res.ctrans then text=text:gsub(ATAG,function(tg) return cleantr(tg) end) end
 	if res.inline2 then repeat text,r=text:gsub("(.)"..ATAG.."(.-{%*?\\)","%1%2") until r==0
 	elseif res.inline then text=text:gsub("(.)"..ATAG,"%1") end
+	if res.text then 
+		text=text:gsub("^.-{","{")
+		text=text:gsub("}.-{","}{")
+		text=text:gsub("}([^}]+)$","}")
+	end
 	
 	if res.alphacol then
 		text=text
@@ -672,8 +677,9 @@ GUI={
 {x=3,y=10,class="checkbox",name="nostyle2",label="Except Def.",hint="Delete unused styles except Default"},
 {x=2,y=11,class="checkbox",name="inline",label="Remove inline tags"},
 {x=3,y=11,class="checkbox",name="inline2",label="Except last",hint="Remove inline tags except the last one"},
-{x=2,y=12,width=2,class="checkbox",name="nocom",label="Remove comments from lines",hint="Removes {comments} (not tags)"},
-{x=2,y=13,width=2,class="checkbox",name="notag",label="Remove all {\\tags} from selected lines"},
+{x=2,y=12,class="checkbox",name="text",label="Remove text"},
+{x=2,y=13,width=2,class="checkbox",name="nocom",label="Remove comments from lines",hint="Removes {comments} (not tags)"},
+{x=2,y=14,width=2,class="checkbox",name="notag",label="Remove all {\\tags} from selected lines"},
 
 {x=4,y=0,height=14,class="label",label="| \n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|"},
 
