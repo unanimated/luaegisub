@@ -315,6 +315,7 @@ function killemall(subs,sel)
 	if res.anna then trgt=killtag("an",trgt) end
 	if res.align then trgt=killtag("a",trgt) end
 	if res.wrap then trgt=killtag("q",trgt) end
+	if res.mask then trgt=killtag("p",trgt) end
 	if res["return"] then trgt=trgt:gsub("\\r.+([\\}])","%1") end
 	if res.kara then trgt=trgt:gsub("\\[Kk][fo]?[%d%.]+([\\}])","%1") end
 	if res.ital then repeat trgt,r=trgt:gsub("\\i[01]?([\\}])","%1") until r==0 end
@@ -681,7 +682,7 @@ GUI={
 {x=2,y=13,width=2,class="checkbox",name="nocom",label="Remove comments from lines",hint="Removes {comments} (not tags)"},
 {x=2,y=14,width=2,class="checkbox",name="notag",label="Remove all {\\tags} from selected lines"},
 
-{x=4,y=0,height=14,class="label",label="| \n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|"},
+{x=4,y=0,height=15,class="label",label="| \n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|"},
 
 {x=5,y=0,class="checkbox",name="skill",label="[start]",value=true},
 {x=6,y=0,class="checkbox",name="ikill",label="[inline]",value=true,hint="only kill, not hide"},
@@ -701,6 +702,7 @@ GUI={
 {x=5,y=11,class="checkbox",name="under",label="u"},
 {x=5,y=12,class="checkbox",name="stri",label="s"},
 {x=5,y=13,class="checkbox",name="wrap",label="q"},
+{x=5,y=14,class="checkbox",name="mask",label="p"},
 
 {x=6,y=1,class="checkbox",name="bee",label="be"},
 {x=6,y=2,class="checkbox",name="color1",label="c, 1c"},
