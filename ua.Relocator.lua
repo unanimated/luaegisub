@@ -5,12 +5,12 @@ script_name="Hyperdimensional Relocator"
 script_description="Advanced metamorphosis of multidimensional coordinates"
 script_author="reanimated"
 script_url="http://unanimated.hostfree.pw/ts/relocator.lua"
-script_version="4.5.2"
+script_version="4.5.3"
 script_namespace="ua.Relocator"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-	script_version="4.5.2"
+	script_version="4.5.3"
 	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
@@ -42,8 +42,8 @@ function relocator(subs,sel,act)
 
 	hyperconfig={
 	{x=12,y=0,width=2,class="label",label="Teleport        "},
-	{x=12,y=1,width=4,class="floatedit",name="eks",hint="X"},
-	{x=12,y=2,width=4,class="floatedit",name="wai",hint="Y"},
+	{x=12,y=1,width=6,class="floatedit",name="eks",hint="X"},
+	{x=12,y=2,width=6,class="floatedit",name="wai",hint="Y"},
 
 	{x=0,y=0,width=3,class="label",label="&Repositioning Field"},
 	{x=0,y=1,width=2,class="dropdown",name="posi",value="clip to frz",items=Repositioning},
@@ -100,13 +100,14 @@ function relocator(subs,sel,act)
 	{x=15,y=5,class="checkbox",name="tpexp",label="exp",hint="expand rectangular clip in opposite directions"},
 	{x=13,y=5,width=2,class="checkbox",name="tpmask",label="mask"},
 	{x=14,y=0,width=2,class="checkbox",name="warp",label="&Warp",hint="Warped Teleport"},
-	{x=12,y=6,width=4,class="checkbox",name="autopos",label="pos with tags missing",value=true,hint="Teleport position when \\pos tags missing"},
+	{x=12,y=6,width=2,class="checkbox",name="autopos",label="pos WTS",value=true,hint="Teleport position when \\pos tags missing"},
+	{x=14,y=6,width=2,class="checkbox",name="tpmaskNoRound",label="Mask no round",value=false,hint="Teleport mask without rounding"},
 
 	{x=0,y=7,width=3,class="checkbox",name="space",label="SpaceTravel &Guide",
 	hint="The Typesetter's Guide to the Hyperdimensional Relocator."},
 	{x=8,y=7,width=2,class="checkbox",name="rpt",label="Repeat",hint="Repeat with last settings (any function)"},
 	{x=10,y=7,width=3,class="checkbox",name="save",label="Save config",hint="Save current configuration"},
-	{x=13,y=7,width=3,class="label",label="[Incarnation "..script_version.."]"}
+	{x=13,y=7,width=4,class="label",label="[Incarnation "..script_version.."]"}
 	}
 	loadconfig()
 	if remember then
@@ -2542,6 +2543,13 @@ function teleport(subs,sel)
 		text=text:gsub("(}m )"..draw,"%1"..draw2)
 	end
 
+	if res.tpmaskNoRound then
+		draw=text:match("}m ([^{]+)")
+		draw2=draw:gsub("([%d.-]+) ([%d.-]+)",function(a,b) return a+xx+fx.." "..b+yy+fy end)
+		draw=esc(draw)
+		text=text:gsub("(}m )"..draw,"%1"..draw2)
+	end
+
 	if text~=line.text then relocated=relocated+1 end
 	text=roundpar(text,2)
 	line.text=text
@@ -3425,6 +3433,7 @@ function tpres()
 	res.tporg=false
 	res.tpclip=false
 	res.tpmask=false
+	res.tpmaskNoRound=false
 	res.warp=false
 	res.autopos=true
 	res.eks=0
