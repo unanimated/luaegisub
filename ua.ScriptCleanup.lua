@@ -652,12 +652,12 @@ function removeTextlessLines(subs, sel, keepInlineComments, ignoreCommentedLines
 			line=line:gsub("\"","\\\"")
 			line=line:gsub("\'","\\\'")
 
-			isComment = true
 			iLine = 1
 			while iLine <= line:len() do
 				if isDeletable then
 					if line:sub(iLine, iLine) == '{' then
 						-- check the tag field
+						isComment = true
 						while line:sub(iLine, iLine) ~= '}' do
 							iLine = iLine + 1
 							if iLine == line:len() + 1 then
