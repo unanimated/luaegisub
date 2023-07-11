@@ -3,12 +3,12 @@
 script_name="Script Cleanup"
 script_description="Garbage disposal and elimination of incriminating evidence"
 script_author="unanimated"
-script_version="5.0.1"
+script_version="5.0.2"
 script_namespace="ua.ScriptCleanup"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-	script_version="5.0.1"
+	script_version="5.0.2"
 	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
@@ -158,7 +158,7 @@ function cleanlines(subs,sel)
 		text=text:gsub("}.-{","}{")
 		text=text:gsub("}([^}]+)$","}")
 	end
-	
+
 	if res.alphacol then
 		text=text
 		:gsub("alpha&(%x%x)&","alpha&H%1&")
@@ -630,6 +630,76 @@ if text=="" then return orig end
     return text
 end
 
+-- Ghegghe functions
+
+function removeTextlessLines(subs, sel, keepInlineComments, ignoreCommentedLines) 
+	progress("Deleting empty lines")
+	noe_sel = {}
+
+	for s = #sel, 1, -1 do
+		line = subs[ sel[ s ] ].text
+
+		isDeletable = true
+		if not (ignoreCommentedLines and subs[ sel[ s ] ].comment) then
+			line=line:gsub("\\","\\\\")
+			line=line:gsub("\a","\\a")
+			line=line:gsub("\b","\\b")
+			line=line:gsub("\f","\\f")
+			line=line:gsub("\n","\\n")
+			line=line:gsub("\r","\\r")
+			line=line:gsub("\t","\\t")
+			line=line:gsub("\v","\\v")
+			line=line:gsub("\"","\\\"")
+			line=line:gsub("\'","\\\'")
+
+			isComment = true
+			iLine = 1
+			while iLine <= line:len() do
+				if isDeletable then
+					if line:sub(iLine, iLine) == '{' then
+						-- check the tag field
+						while line:sub(iLine, iLine) ~= '}' do
+							iLine = iLine + 1
+							if iLine == line:len() + 1 then
+								-- broken tag field
+								isDeletable = false
+								break
+							elseif line:sub(iLine, iLine) == '\\' then
+								-- tags
+								isComment = false
+							end
+						end
+						if keepInlineComments and isComment then
+							-- ignore line
+							isDeletable = false
+							break
+						end
+					else
+						-- return if there is some text in the line
+						isDeletable = false
+						break
+					end
+					iLine = iLine + 1
+				else
+					break
+				end
+			end
+		else
+			isDeletable = false
+		end
+
+		if isDeletable then
+			for z, i in ipairs(noe_sel) do 
+				noe_sel[ z ] = i - 1 
+			end
+			subs.delete( sel[ s ] )
+		else
+			table.insert( noe_sel, sel[ s ] )
+		end
+	end
+	
+	return noe_sel
+end
 
 function cleanup(subs,sel,act)
 ADD=aegisub.dialog.display
@@ -640,19 +710,19 @@ STAG="^{>?\\[^}]-}"
 if act==0 then act=sel[1] end
 chng=0 kleen=0
 GUI={
-{x=0,y=0,class="checkbox",name="nots",label="Remove TS timecodes",hint="Removes timecodes like {TS 12:36}"},
-{x=0,y=1,class="checkbox",name="clear_a",label="Clear Actor field"},
-{x=0,y=2,class="checkbox",name="clear_e",label="Clear Effect field"},
-{x=0,y=3,class="checkbox",name="layers",label="Raise dialogue layer by 5"},
-{x=0,y=4,class="checkbox",name="cleantag",label="Clean up tags",hint="Fixes duplicates, \\\\, \\}, }{, and other garbage"},
-{x=0,y=5,class="checkbox",name="ctrans",label="Clean up transforms"},
-{x=0,y=6,class="checkbox",name="overlap",label="Fix 1-frame gaps/overlaps"},
-{x=0,y=7,class="checkbox",name="nocomline",label="Delete commented lines"},
-{x=0,y=8,class="checkbox",name="noempty",label="Delete empty lines"},
-{x=0,y=9,class="checkbox",name="alphacol",label="Try to fix alpha / colour tags"},
-{x=0,y=10,class="checkbox",name="spaces",label="Fix start/end/double spaces"},
-{x=0,y=12,class="checkbox",name="info",label="Print info"},
-{x=0,y=13,class="checkbox",name="all",label="ALL OF THE ABOVE"},
+{x=0,y=0,width=2,class="checkbox",name="nots",label="Remove TS timecodes",hint="Removes timecodes like {TS 12:36}"},
+{x=0,y=1,width=2,class="checkbox",name="clear_a",label="Clear Actor field"},
+{x=0,y=2,width=2,class="checkbox",name="clear_e",label="Clear Effect field"},
+{x=0,y=3,width=2,class="checkbox",name="layers",label="Raise dialogue layer by 5"},
+{x=0,y=4,width=2,class="checkbox",name="cleantag",label="Clean up tags",hint="Fixes duplicates, \\\\, \\}, }{, and other garbage"},
+{x=0,y=5,width=2,class="checkbox",name="ctrans",label="Clean up transforms"},
+{x=0,y=6,width=2,class="checkbox",name="overlap",label="Fix 1-frame gaps/overlaps"},
+{x=0,y=7,width=2,class="checkbox",name="nocomline",label="Delete commented lines"},
+{x=0,y=8,width=2,class="checkbox",name="noempty",label="Delete empty lines"},
+{x=0,y=9,width=2,class="checkbox",name="alphacol",label="Try to fix alpha / colour tags"},
+{x=0,y=10,width=2,class="checkbox",name="spaces",label="Fix start/end/double spaces"},
+{x=0,y=12,width=2,class="checkbox",name="info",label="Print info"},
+{x=0,y=13,width=2,class="checkbox",name="all",label="ALL OF THE ABOVE"},
 
 {x=1,y=0,class="label",label="  "},
 
@@ -678,11 +748,17 @@ GUI={
 {x=3,y=10,class="checkbox",name="nostyle2",label="Except Def.",hint="Delete unused styles except Default"},
 {x=2,y=11,class="checkbox",name="inline",label="Remove inline tags"},
 {x=3,y=11,class="checkbox",name="inline2",label="Except last",hint="Remove inline tags except the last one"},
-{x=2,y=12,class="checkbox",name="text",label="Remove text"},
-{x=2,y=13,width=2,class="checkbox",name="nocom",label="Remove comments from lines",hint="Removes {comments} (not tags)"},
-{x=2,y=14,width=2,class="checkbox",name="notag",label="Remove all {\\tags} from selected lines"},
+{x=2,y=12,width=2,class="checkbox",name="nocom",label="Remove comments from lines",hint="Removes {comments} (not tags)"},
+{x=2,y=13,width=2,class="checkbox",name="notag",label="Remove all {\\tags} from selected lines"},
 
-{x=4,y=0,height=15,class="label",label="| \n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|"},
+{x=0,y=15,width=3,class="label",label="~  Ghegghe's functions  ~"},
+{x=0,y=16,width=3,class="checkbox",name="text",label="Remove text"},
+{x=0,y=17,width=3,class="checkbox",name="removeTextlessLines",label="Remove textless lines"},
+{x=0,y=18,class="label",label="          "},
+{x=1,y=18,class="checkbox",name="textlessLinesKeepInlineComments",label="Keep comments",hint="Keeps lines with comments inside"},
+{x=1,y=19,class="checkbox",name="textlessLinesKeepCommentedLines",label="Keep commented lines",value=true,hint="Keeps commented lines"},
+
+{x=4,y=0,height=19,class="label",label="| \n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|"},
 
 {x=5,y=0,class="checkbox",name="skill",label="[start]",value=true},
 {x=6,y=0,class="checkbox",name="ikill",label="[inline]",value=true,hint="only kill, not hide"},
@@ -746,7 +822,7 @@ GUI={
 	    C=0 for key,v in ipairs(GUI) do  if v.x<=3 and res[v.name] then C=1 end  end
 	    if C==0 then t_error("Run Selected: Error - nothing selected",1) end
 	    if res.all then 
-		for key,v in ipairs(GUI) do  if v.x>0 and v.name then res[v.name]=false end  end
+		for key,v in ipairs(GUI) do  if v.x>0 and v.name and v.y<15 then res[v.name]=false end  end
 		cleanlines(subs,sel)
 		sel=noemptycom(subs,sel)
 	    else cleanlines(subs,sel)
@@ -754,6 +830,9 @@ GUI={
 		else
 			if res.nocomline then sel=nocom_line(subs,sel) end
 			if res.noempty then sel=noempty(subs,sel) end
+		end
+		if res.removeTextlessLines then 
+			sel=removeTextlessLines(subs, sel, res.textlessLinesKeepInlineComments, res.textlessLinesKeepCommentedLines) 
 		end
 		table.sort(sel)
 		if res.nostyle or res.nostyle2 then sel=nostyle(subs,sel) end
