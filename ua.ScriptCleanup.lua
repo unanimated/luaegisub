@@ -154,9 +154,25 @@ function cleanlines(subs,sel)
 	if res.inline2 then repeat text,r=text:gsub("(.)"..ATAG.."(.-{%*?\\)","%1%2") until r==0
 	elseif res.inline then text=text:gsub("(.)"..ATAG,"%1") end
 	if res.text then 
-		text=text:gsub("^.-{","{")
-		text=text:gsub("}.-{","}{")
-		text=text:gsub("}([^}]+)$","}")
+		newText = ''
+		isInBrackets = false
+
+		for i = 1, text:len() do
+			char = text:sub(i,i)
+			-- start to save characters
+			if char == '{' then
+				isInBrackets = true
+			end
+			-- save the character in tag
+			if isInBrackets then
+				newText = newText..char
+			end
+			-- stop to save character
+			if char == '}' then
+				isInBrackets = false
+			end
+		end
+		text=newText
 	end
 
 	if res.alphacol then
@@ -758,7 +774,7 @@ GUI={
 {x=1,y=18,class="checkbox",name="textlessLinesKeepInlineComments",label="Keep comments",hint="Keeps lines with comments inside"},
 {x=1,y=19,class="checkbox",name="textlessLinesKeepCommentedLines",label="Keep commented lines",value=true,hint="Keeps commented lines"},
 
-{x=4,y=0,height=19,class="label",label="| \n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|"},
+{x=4,y=0,height=20,class="label",label="| \n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|"},
 
 {x=5,y=0,class="checkbox",name="skill",label="[start]",value=true},
 {x=6,y=0,class="checkbox",name="ikill",label="[inline]",value=true,hint="only kill, not hide"},
