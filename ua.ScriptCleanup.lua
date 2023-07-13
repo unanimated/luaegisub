@@ -3,12 +3,12 @@
 script_name="Script Cleanup"
 script_description="Garbage disposal and elimination of incriminating evidence"
 script_author="unanimated"
-script_version="5.0.2"
+script_version="5.0.4"
 script_namespace="ua.ScriptCleanup"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-	script_version="5.0.2"
+	script_version="5.0.4"
 	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
@@ -154,24 +154,23 @@ function cleanlines(subs,sel)
 	if res.inline2 then repeat text,r=text:gsub("(.)"..ATAG.."(.-{%*?\\)","%1%2") until r==0
 	elseif res.inline then text=text:gsub("(.)"..ATAG,"%1") end
 	if res.text then 
-		newText = ''
-		isInBrackets = false
+		local newText = ''
+		local i = 1
 
-		for i = 1, text:len() do
-			char = text:sub(i,i)
+		while i <= text:len() do
+			local char = text:sub(i, i)
 			-- start to save characters
 			if char == '{' then
-				isInBrackets = true
+				repeat
+					newText = newText .. char
+					i = i + 1
+					char = text:sub(i, i)
+				until char == "}"
+				newText = newText .. char
 			end
-			-- save the character in tag
-			if isInBrackets then
-				newText = newText..char
-			end
-			-- stop to save character
-			if char == '}' then
-				isInBrackets = false
-			end
+			i = i + 1
 		end
+
 		text=newText
 	end
 
@@ -646,76 +645,72 @@ if text=="" then return orig end
     return text
 end
 
--- Ghegghe functions
+-- Ghegghe's stuff
 
-function removeTextlessLines(subs, sel, keepInlineComments, ignoreCommentedLines) 
-	progress("Deleting empty lines")
-	noe_sel = {}
+function removeTextlessLines(subs, sel, ignoreCommentedLines, keepInlineComments) 
+	progress("Deleting textless lines...")
+	local newSel = {}
 
 	for s = #sel, 1, -1 do
-		line = subs[ sel[ s ] ].text
-
-		isDeletable = true
+		progress("Deleting textless lines " .. #sel - (s - 1) .. " / " .. #sel)
+		local hasDelete = true
+		local line = subs[ sel[ s ] ].text
+		-- ignore commented lines
 		if not (ignoreCommentedLines and subs[ sel[ s ] ].comment) then
-			line=line:gsub("\\","\\\\")
-			line=line:gsub("\a","\\a")
-			line=line:gsub("\b","\\b")
-			line=line:gsub("\f","\\f")
-			line=line:gsub("\n","\\n")
-			line=line:gsub("\r","\\r")
-			line=line:gsub("\t","\\t")
-			line=line:gsub("\v","\\v")
-			line=line:gsub("\"","\\\"")
-			line=line:gsub("\'","\\\'")
-
-			iLine = 1
+			local iLine = 1
 			while iLine <= line:len() do
-				if isDeletable then
-					if line:sub(iLine, iLine) == '{' then
-						-- check the tag field
-						isComment = true
-						while line:sub(iLine, iLine) ~= '}' do
-							iLine = iLine + 1
-							if iLine == line:len() + 1 then
-								-- broken tag field
-								isDeletable = false
-								break
-							elseif line:sub(iLine, iLine) == '\\' then
-								-- tags
-								isComment = false
-							end
-						end
-						if keepInlineComments and isComment then
-							-- ignore line
-							isDeletable = false
+				-- if "{" is opened
+				if line:sub(iLine, iLine) == "{" then
+					local hasTags = false
+
+					repeat
+						if line:sub(iLine, iLine) == "\\" then
+							hasTags = true
 							break
 						end
+						iLine = iLine + 1
+					until line:sub(iLine, iLine) == "}" or
+						iLine > line:len()
+
+					if hasTags then
+						while line:sub(iLine, iLine) ~= "}" do
+							iLine = iLine + 1
+						end
 					else
-						-- return if there is some text in the line
-						isDeletable = false
-						break
+						-- "{" not closed (text) or comment inline
+						if iLine > line:len() or keepInlineComments then
+							hasDelete = false
+							break
+						end
 					end
+					
+					-- jump to next
 					iLine = iLine + 1
 				else
+					-- text
+					hasDelete = false
 					break
-				end
+				end 
 			end
 		else
-			isDeletable = false
+			-- commented line
+			hasDelete = false
 		end
 
-		if isDeletable then
-			for z, i in ipairs(noe_sel) do 
-				noe_sel[ z ] = i - 1 
+		if hasDelete then
+			for z,i in ipairs(newSel) do 
+				newSel[z]=i-1 
 			end
-			subs.delete( sel[ s ] )
-		else
-			table.insert( noe_sel, sel[ s ] )
-		end
+			subs.delete(sel[s])
+	    else
+			table.insert(newSel,sel[s])
+	    end
 	end
-	
-	return noe_sel
+
+	return newSel
 end
+
+-- Ghegghe's end
 
 function cleanup(subs,sel,act)
 ADD=aegisub.dialog.display
@@ -755,7 +750,7 @@ GUI={
 {x=3,y=5,class="checkbox",name="parent2",label="Except \\pos",hint="fad(e), (i)clip, move, org\n(but not t or pos)"},
 {x=2,y=6,width=2,class="checkbox",name="allpers",label="Remove all perspective",hint="frx, fry, frz, fax, fay, org"},
 
-{x=2,y=7,width=2,class="label",label="      ~  Script Cleanup v"..script_version.."  ~"},
+{x=2,y=7,width=2,class="label",label="      ~  Script Cleanup v5.0.0  ~"},
 
 {x=2,y=8,width=2,class="checkbox",name="hspace",label="Remove hard spaces - \\h"},
 {x=2,y=9,class="checkbox",name="nobreak",label="Remove line breaks"},
@@ -767,14 +762,14 @@ GUI={
 {x=2,y=12,width=2,class="checkbox",name="nocom",label="Remove comments from lines",hint="Removes {comments} (not tags)"},
 {x=2,y=13,width=2,class="checkbox",name="notag",label="Remove all {\\tags} from selected lines"},
 
-{x=0,y=15,width=3,class="label",label="~  Ghegghe's functions  ~"},
+{x=0,y=15,width=3,class="label",label="  ~  Script Cleanup v"..script_version.."  ~  "},
+{x=4,y=15,class="checkbox",label="ver. info"},
 {x=0,y=16,width=3,class="checkbox",name="text",label="Remove text"},
-{x=0,y=17,width=3,class="checkbox",name="removeTextlessLines",label="Remove textless lines"},
-{x=0,y=18,class="label",label="          "},
-{x=1,y=18,class="checkbox",name="textlessLinesKeepInlineComments",label="Keep comments",hint="Keeps lines with comments inside"},
+{x=0,y=17,width=3,class="checkbox",name="removeTextlessLines",label="Remove textless lines",hint="Removes lines without text (tag doesn't count)"},
+{x=1,y=18,class="checkbox",name="textlessLinesKeepInlineComments",label="Keep inline comments",hint="Keeps lines with comments inside"},
 {x=1,y=19,class="checkbox",name="textlessLinesKeepCommentedLines",label="Keep commented lines",value=true,hint="Keeps commented lines"},
 
-{x=4,y=0,height=20,class="label",label="| \n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|"},
+{x=4,y=0,height=20,class="label",label="|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|"},
 
 {x=5,y=0,class="checkbox",name="skill",label="[start]",value=true},
 {x=6,y=0,class="checkbox",name="ikill",label="[inline]",value=true,hint="only kill, not hide"},
@@ -848,7 +843,7 @@ GUI={
 			if res.noempty then sel=noempty(subs,sel) end
 		end
 		if res.removeTextlessLines then 
-			sel=removeTextlessLines(subs, sel, res.textlessLinesKeepInlineComments, res.textlessLinesKeepCommentedLines) 
+			sel = removeTextlessLines(subs, sel, res.textlessLinesKeepCommentedLines, res.textlessLinesKeepInlineComments) 
 		end
 		table.sort(sel)
 		if res.nostyle or res.nostyle2 then sel=nostyle(subs,sel) end
