@@ -710,6 +710,33 @@ function removeTextlessLines(subs, sel, ignoreCommentedLines, keepInlineComments
 	return newSel
 end
 
+-- ver info
+verInfo = "Script Cleanup v" .. script_version .. "\n" .. [[
+
+	What's new:
+
+	New functions for clean your script:
+	- Remove text
+		Removes all the text from selected lines:
+		{tags(not removed)}text(removed){tags(not removed)}
+
+	- Remove textless lines
+		Removes the lines without text from selection:
+		{tags} -- removed
+		{tags}text -- not removed
+
+		Other options:
+		- Keep inline comments
+			{tags}{comments}
+			{comments}
+			lines like these wont be deleted
+		- Keep commented lines
+			Commented lines will be ignored
+			
+	Tag Manipulation:
+		Add "q" tag in tags list
+]]
+
 -- Ghegghe's end
 
 function cleanup(subs,sel,act)
@@ -736,7 +763,7 @@ GUI={
 {x=0,y=13,width=3,class="checkbox",name="all",label="ALL OF THE ABOVE"},
 
 {x=0,y=15,width=3,class="label",label="  ~  Script Cleanup v"..script_version.."  ~  "},
-{x=3,y=15,class="checkbox",label="ver. info"},
+{x=3,y=15,class="checkbox",name="info",label="ver. info"},
 {x=0,y=16,width=3,class="checkbox",name="text",label="Remove text"},
 {x=0,y=17,width=3,class="checkbox",name="removeTextlessLines",label="Remove textless lines",hint="Removes lines without text (tag doesn't count)"},
 {x=1,y=18,width=2,class="checkbox",name="textlessLinesKeepInlineComments",label="Keep inline comments",hint="Keeps lines with comments inside"},
@@ -828,24 +855,29 @@ GUI={
 	if P=="Dial 5" then res.layers=true cleanlines(subs,sel) end
 	if P=="Clean Tags" then res.cleantag=true cleanlines(subs,sel) end
 	if P=="Run selected" then
-	    C=0 for key,v in ipairs(GUI) do  if v.x<=3 and res[v.name] then C=1 end  end
-	    if C==0 then t_error("Run Selected: Error - nothing selected",1) end
-	    if res.all then 
-		for key,v in ipairs(GUI) do  if v.x>0 and v.name and v.y<15 then res[v.name]=false end  end
-		cleanlines(subs,sel)
-		sel=noemptycom(subs,sel)
-	    else cleanlines(subs,sel)
-		if res.nocomline and res.noempty then sel=noemptycom(subs,sel)
+		if res.info then
+			helpGUI=aegisub.dialog.display({{width=38,height=10,class="textbox",value=verInfo},{x=39,height=10,class="label",label="ScriptCleanup\nversion "..script_version}},
+			{"Close"},{close='Close'})
 		else
-			if res.nocomline then sel=nocom_line(subs,sel) end
-			if res.noempty then sel=noempty(subs,sel) end
+			C=0 for key,v in ipairs(GUI) do  if v.x<=4 and res[v.name] then C=1 end  end
+			if C==0 then t_error("Run Selected: Error - nothing selected",1) end
+			if res.all then 
+			for key,v in ipairs(GUI) do  if v.x>0 and v.name and v.y<15 then res[v.name]=false end  end
+			cleanlines(subs,sel)
+			sel=noemptycom(subs,sel)
+			else cleanlines(subs,sel)
+			if res.nocomline and res.noempty then sel=noemptycom(subs,sel)
+			else
+				if res.nocomline then sel=nocom_line(subs,sel) end
+				if res.noempty then sel=noempty(subs,sel) end
+			end
+			if res.removeTextlessLines then 
+				sel = removeTextlessLines(subs, sel, res.textlessLinesKeepCommentedLines, res.textlessLinesKeepInlineComments) 
+			end
+			table.sort(sel)
+			if res.nostyle or res.nostyle2 then sel=nostyle(subs,sel) end
+			end
 		end
-		if res.removeTextlessLines then 
-			sel = removeTextlessLines(subs, sel, res.textlessLinesKeepCommentedLines, res.textlessLinesKeepInlineComments) 
-		end
-		table.sort(sel)
-		if res.nostyle or res.nostyle2 then sel=nostyle(subs,sel) end
-	    end
 	end
 	if act>#subs then act=#subs end
 	return sel,act
