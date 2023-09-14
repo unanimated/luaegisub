@@ -92,9 +92,10 @@ STAG="^{>?\\[^}]-}"
 	{x=6,y=3,class="checkbox",name="alpha",label="alpha"},
 	{x=7,y=3,class="checkbox",name="space",label="[  ]",value=true,hint="workaround for spaces with full-line GBC"},
 
-	{x=0,y=10,width=3,class="checkbox",name="byline",label="multiply/add more with each line"},
+	{x=0,y=10,width=2,class="checkbox",name="byline",label="multiply iteration"},
 
-	{x=3,y=10,width=2,class="checkbox",name="regtag",label="regular tags",value=true},
+	{x=2,y=10,class="checkbox",name="regtag",label="regular tags",value=true},
+	{x=3,y=10,width=2,class="checkbox",name="shiftTimeByFrame",label="time by frame"},
 	{x=5,y=10,width=2,class="checkbox",name="tftag",label="tags in transforms",value=true},
 	{x=6,y=1,width=2,class="checkbox",name="rpt",label="repeat last"},
 	
@@ -367,8 +368,21 @@ function multiply(subs,sel)
 	if res.ml then line.margin_l=lmcalc(line.margin_l) end
 	if res.mr then line.margin_r=lmcalc(line.margin_r) end
 	if res.mv then line.margin_t=lmcalc(line.margin_t) end
-	if res.st then line.start_time=lmcalc(line.start_time) end
-	if res.et then line.end_time=lmcalc(line.end_time) end
+	if res.shiftTimeByFrame then
+		if res.st then 
+			frame = aegisub.frame_from_ms(line.start_time)
+			frame = lmcalc(frame) 
+			line.start_time = aegisub.ms_from_frame(frame)
+		end
+		if res.et then 
+			frame = aegisub.frame_from_ms(line.end_time)
+			frame = lmcalc(frame) 
+			line.end_time = aegisub.ms_from_frame(frame)
+		end
+	else
+		if res.st then line.start_time=lmcalc(line.start_time) end
+		if res.et then line.end_time=lmcalc(line.end_time) end
+	end
 	
 	if res.retxt then neg=1 text=retext(text) end
 	if res.react then neg=1 line.actor=retext(line.actor) end
