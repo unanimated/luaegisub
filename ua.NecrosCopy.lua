@@ -1,12 +1,12 @@
 script_name="NecrosCopy"
 script_description="Copy and fax things in the shadows while lines are splitting and breaking"
 script_author="reanimated"
-script_version="4.1"
+script_version="5.0.0"
 script_namespace="ua.NecrosCopy"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-	script_version="4.1.0"
+	script_version="5.0.0"
 	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
@@ -308,6 +308,238 @@ function necrostuff(subs,sel)
     trnsfrm=nil
 end
 
+-- Ghegghe's stuff
+
+function table.shallowCopy(table)
+	local newTable = {}
+	for key, value in pairs(table) do
+		newTable[ key ] = value
+	end
+	return newTable
+end
+
+-- returns an object with the "type" of the tag and his "value"
+function getTypeAndValue(tag)
+	local tags ={
+		{name="blur", tag="\\blur"},
+		{name="scale_x", tag="\\fscx"},
+		{name="scale_y", tag="\\fscy"},
+		{name="spacing", tag="\\fsp"},
+		{name="alpha", tag="\\alpha"},
+		{name="move", tag="\\move"},
+		{name="fade", tag="\\fade"},
+		{name="clip", tag="\\clip"},
+		{name="iclip", tag="\\iclip"},
+		{name="outline_x", tag="\\xbord"},
+		{name="outline_y", tag="\\ybord"},
+		{name="outline", tag="\\bord"},
+		{name="shadow_x", tag="\\xshad"},
+		{name="shadow_y", tag="\\yshad"},
+		{name="shadow", tag="\\shad"},
+
+		-- three character tags
+		{name="position", tag="\\pos"},
+		{name="origin", tag="\\org"},
+		{name="fade_simple", tag="\\fad"},
+		{name="angle", tag="\\frz"},
+		{name="angle_x", tag="\\frx"},
+		{name="angle_y", tag="\\fry"},
+		{name="shear_x", tag="\\fax"},
+		{name="shear_y", tag="\\fay"},
+		{name="baseline_offset", tag="\\pbo"},
+
+		-- two character tags
+		{name="fontsize", tag="\\fs"},
+		{name="align", tag="\\an"},
+		{name="color1", tag="\\1c"},
+		{name="color2", tag="\\2c"},
+		{name="color3", tag="\\3c"},
+		{name="color4", tag="\\4c"},
+		{name="alpha1", tag="\\1a"},
+		{name="alpha2", tag="\\2a"},
+		{name="alpha3", tag="\\3a"},
+		{name="alpha4", tag="\\4a"},
+		{name="blur_edges", tag="\\be"},
+		{name="k_sweep", tag="\\kf"},
+		{name="k_bord", tag="\\ko"},
+		{name="fontname", tag="\\fn"},
+
+		-- one character tags
+		{name="color", tag="\\c"},
+		{name="drawing", tag="\\p"},
+		{name="transform", tag="\\t"},
+		{name="wrapstyle", tag="\\q"},
+		{name="italic", tag="\\i"},
+		{name="underline", tag="\\u"},
+		{name="strikeout", tag="\\s"},
+		{name="bold", tag="\\b"},
+		{name="k_fill", tag="\\k"},
+		{name="reset", tag="\\r"},
+	}
+	for key, value in ipairs(tags) do
+		if tag:match(value.tag) then
+			return {type=value.tag, value=tag:gsub(value.tag, "")}
+		end
+	end
+	return nil
+end
+
+function getStartTags(stags)
+	local tagObj = {}
+
+	local iStags = 1
+	local char = stags:sub(iStags, iStags)
+	
+	if char == "{" then
+		-- if stag present
+		repeat
+			-- copy the single tag
+			local tag = ""
+			repeat
+				tag = tag .. char
+				iStags = iStags + 1
+				char = stags:sub(iStags, iStags)
+			until char == "\\" or char == "}"
+			table.insert(tagObj, getTypeAndValue(tag))
+		until char == "}"
+		return tagObj
+	else
+		return nil
+	end
+end
+
+-- groupcopy
+function groupstuff(subs, sel)
+	progress("GroupCopying, fetch groups...")
+
+	-- create an array of selected lines
+	local lines = {}
+	for i = 1, #sel do
+		lines[ i ] = subs[ sel[ i ] ]
+	end
+
+	-- get to copy lines from first group
+	local iLine = 1
+	while iLine <= #sel and not lines[ iLine ].comment do
+		iLine = iLine + 1
+	end
+	local toCopyLinesLength = iLine - 1
+
+	-- build GUI
+	local groupcopyGUI={
+		{x = 0, y = 0, 
+		class = "label", label="Ready to copy? groups detected: " .. toCopyLinesLength},
+		{x = 0, y = 1, 
+		class = "checkbox", name = "overwrite", value = true, 
+		label = "Overwrite tags", hint = "Overwrite identical tags"},
+		{x = 0, y = 2, 
+		class = "checkbox", name = "keepInline", value = true,
+		label = "Keep inline", hint = "Keeps inline tags in the lines where tags will be copied"},
+		{x = 0, y = 3, 
+		class = "checkbox", name = "keep", value = true,
+		label = "Keep old tags", hint = "Doesn't remove the start tags which doesn't match with new tags"},
+	}
+	if iLine > #sel then
+		table.insert(groupcopyGUI, 
+		{x = 0, y = 4, 
+		class = "label", label = "It's recommended to read the flight manual first"})
+	end
+	local press, checkboxes = ADD(
+		groupcopyGUI, 
+		{"Make me fly", "Not today"},
+		{ok = 'Make me fly', close = 'Not today'})
+
+	if press == "Not today" then 
+		-- exit
+		ak() 
+	elseif iLine > #sel then
+		t_error("Incorrectly formatted lines, it's recommended to read the flight manual first", true)
+	else
+		-- groupcopy
+		local iToCopyLines = 1
+
+		-- for all lines
+		while iLine <= #sel and iToCopyLines <= toCopyLinesLength do
+			progress("Groupcopying lines " .. iToCopyLines .. " / " .. toCopyLinesLength)
+
+			-- find next group
+			while iLine <= #sel and lines[ iLine ].comment do
+				iLine = iLine + 1
+			end
+
+			if iLine <= #sel then
+				-- fetch stags
+				-- [type, value]
+				local toCopyTags = getStartTags(lines[ iToCopyLines ].text)
+				
+				-- copying tags
+				while iLine <= #sel and not lines[ iLine ].comment do
+					local newTags = table.shallowCopy(toCopyTags)
+					local oldTags = getStartTags(lines[ iLine ].text)
+
+					if checkboxes.keep and oldTags ~= nil then
+						-- join tags
+						for _, oldValue in ipairs(oldTags) do
+							local isPresent = false
+							for newKey, newValue in ipairs(newTags) do
+								-- replace tag if is the same
+								-- transform check
+								if oldValue.type == newValue.type and
+								 	(oldValue ~= "\\t" or
+								  		(oldValue.type == "\\t" and
+										 oldValue.value == newValue.value)) then
+									isPresent = true
+									-- overwrite if selected
+									if checkboxes.overwrite then
+										newTags[ newKey ].value = oldValue.value
+									end
+								end
+							end
+
+							-- add the old tag 
+							if not isPresent then
+								table.insert(newTags, oldValue)
+							end
+						end
+					end
+					
+					-- clear the line
+					if checkboxes.keepInline then
+						lines[ iLine ].text = lines[ iLine ].text:gsub("^{.-}", "")
+					else
+						lines[ iLine ].text = lines[ iLine ].text:gsub("{.-}", "")
+					end
+
+					-- copy tags
+					local tags = ""
+					for key, value in ipairs(newTags) do
+						tags = tags .. value.type .. value.value
+					end
+					lines[ iLine ].text = "{" .. tags .. "}" .. lines[ iLine ].text
+					subs[ sel[ iLine ] ] = lines[ iLine ]
+					
+					iLine = iLine + 1
+				end
+				-- repeat with next group
+				iToCopyLines = iToCopyLines + 1
+			end
+		end
+
+		-- check if all lines were copied
+		if iLine < #sel then
+			-- more groups then copy lines
+			t_error("There were more groups then \"to copy\" lines.\nHowever, all the " .. toCopyLinesLength .. " \"to copy\" lines were copied in the first groups")
+		elseif iToCopyLines <= toCopyLinesLength then
+			-- more copy lines then groups
+			t_error("There were more \"to copy\" lines then groups.\nHowever, the first " .. iToCopyLines .. " were copied anyway")
+		end
+
+		progress("Groupcopy complete.")
+	end
+end
+
+-- Ghegghe's end
+
 function copytags(subs,sel)
 	for z,i in ipairs(sel) do
 		progress("Copypasting tags... "..z.."/"..#sel)
@@ -382,7 +614,6 @@ function copycolours(subs,sel)
 	return sel
 end
 
-
 --	3D shadow	--	[- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -]
 function shad3(subs,sel)
     for z=#sel,1,-1 do
@@ -423,7 +654,6 @@ function shad3(subs,sel)
     end
     return sel
 end
-
 
 --	Split into Letters	--	[- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -]
 function space(subs,sel)
@@ -561,7 +791,6 @@ function space(subs,sel)
 	end
 	return nsel
 end
-
 
 --	Split by \N	--	[- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -] [- -]
 function splitbreak(subs,sel)
@@ -796,8 +1025,6 @@ function rotxy(rot,xpos,y)
 	xpos=posX-X
 	return xpos,y
 end
-
-
 
 --	reanimatools	------------------------------------------------------------------------------------------------------------------------------------
 function addtag(tag,text) text=text:gsub("^({\\[^}]-)}","%1"..tag.."}") return text end
@@ -1168,19 +1395,43 @@ as it will restart after \N.
 [Un]hide lets you hide/unhide checked tags (by making them comments).
 Checked tags get hidden. If you don't check anything,
 whatever was hidden gets unhidden. Good for clips, for example.]]
+grouphelp=[[
+Groupcopy
+It allows you to copy all the start tag from N to N lines.
+You can also check if you want to overwrite existent tags, 
+keep inline and/or old start tags from lines on which tags will be copied.
+
+For make this script works, you must select all the lines from which tags will be copied,
+and the lines on which tags will be copied, separated at least by one commented line.
+
+Example:
+-{\b1} (copy from)
+-{\fad(300,400)} (copy from)
+-commented lines (separator) 
+-(first group of lines (1), \b will be copied here)
+-(first group of lines (2), \b will be copied here)
+-commented lines (separator) 
+-(second group of lines (1), \fad(300,400) will be copied here)
+-(second group of lines (2), \fad(300,400) will be copied here)
+-(second group of lines (3), \fad(300,400) will be copied here)
+
+Obviously, you can copy more than one tag for group.
+Having said that, have fun.]]
+
 
 function necrohell()
 	nekrohelp="http://unanimated.hostfree.pw/ts/scripts-manuals.htm#necroscopy"
 	repeat
 	if Pr=='clip2fax/frz' then nekrohelp=faxhelp end
 	if Pr=='necroscopy' then nekrohelp=necrohelp end
+	if Pr=='groupcopy' then nekrohelp=grouphelp end
 	if Pr=='copy tags/text' then nekrohelp=tagsthelp end
 	if Pr=='copy colours' then nekrohelp=callhelp end
 	if Pr=='3D shadow' then nekrohelp=shadehelp end
 	if Pr=='split letters' then nekrohelp=splathelp end
 	if Pr=='split by \\N' then nekrohelp=breakhelp end
-	Pr=aegisub.dialog.display({{width=32,height=10,class="textbox",value=nekrohelp},{x=36,height=10,class="label",label="NecrosCopy\nversion "..script_version}},
-	{"clip2fax/frz","necroscopy","copy tags/text","copy colours","3D shadow","split letters","split by \\N","cancel"},{close='cancel'})
+	Pr=aegisub.dialog.display({{width=38,height=10,class="textbox",value=nekrohelp},{x=39,height=10,class="label",label="NecrosCopy\nversion "..script_version}},
+	{"clip2fax/frz","necroscopy","groupcopy","copy tags/text","copy colours","3D shadow","split letters","split by \\N","cancel"},{close='cancel'})
 	until Pr=='cancel'
 end
 
@@ -1216,12 +1467,13 @@ end
 	{x=12,y=0,class="label",label=script_name.." v"..script_version},
 	{x=12,y=1,class="checkbox",name="help",label="necronomicon",hint="necrohelp"},
 	} 
-	P,res=ADD(GUI,{"clip2fax/frz","necroscopy","copy tags","copy text","copy colours","3D shadow","split letters","split by \\N","split"},{cancel='split'})
+	P,res=ADD(GUI,{"clip2fax/frz","necroscopy","groupcopy","copy tags","copy text","copy colours","3D shadow","split letters","split by \\N","split"},{cancel='split'})
 	
 	if P=="split" then ak() end
 	if res.help then P='' necrohell() end
 	if P=="clip2fax/frz" then if res.frz then frozt(subs,sel) else fucks(subs,sel) end end
 	if P=="necroscopy" then reversel(subs,sel) necrostuff(subs,sel) end
+	if P=="groupcopy" then reversel(subs,sel) groupstuff(subs,sel) end
 	if P=="copy tags" then reversel(subs,sel) copytags(subs,sel) end
 	if P=="copy text" then reversel(subs,sel) copytext(subs,sel) end
 	if P=="copy clip" then reversel(subs,sel) copyclip(subs,sel) end

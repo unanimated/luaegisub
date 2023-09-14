@@ -5,7 +5,7 @@ script_name="Hyperdimensional Relocator"
 script_description="Advanced metamorphosis of multidimensional coordinates"
 script_author="reanimated"
 script_url="http://unanimated.hostfree.pw/ts/relocator.lua"
-script_version="4.5.2"
+script_version="4.5.2.2"
 script_namespace="ua.Relocator"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
@@ -98,7 +98,7 @@ function relocator(subs,sel,act)
 	{x=12,y=4,class="checkbox",name="tpc1",label="c1",value=true,hint="affect top left corner of rectangular clip"},
 	{x=12,y=5,class="checkbox",name="tpc2",label="c2",value=true,hint="affect bottom right corner of rectangular clip"},
 	{x=15,y=5,class="checkbox",name="tpexp",label="exp",hint="expand rectangular clip in opposite directions"},
-	{x=13,y=5,width=2,class="checkbox",name="tpmask",label="mask"},
+	{x=13,y=5,class="checkbox",name="tpmask",label="mask",value=false,hint="Teleport mask without rounding"},
 	{x=14,y=0,width=2,class="checkbox",name="warp",label="&Warp",hint="Warped Teleport"},
 	{x=12,y=6,width=4,class="checkbox",name="autopos",label="pos with tags missing",value=true,hint="Teleport position when \\pos tags missing"},
 
@@ -2537,7 +2537,7 @@ function teleport(subs,sel)
 
 	if res.tpmask then
 		draw=text:match("}m ([^{]+)")
-		draw2=draw:gsub("([%d.-]+) ([%d.-]+)",function(a,b) return round(a+xx+fx).." "..round(b+yy+fy) end)
+		draw2=draw:gsub("([%d.-]+) ([%d.-]+)",function(a,b) return a+xx+fx.." "..b+yy+fy end)
 		draw=esc(draw)
 		text=text:gsub("(}m )"..draw,"%1"..draw2)
 	end

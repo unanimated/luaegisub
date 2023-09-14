@@ -92,9 +92,10 @@ STAG="^{>?\\[^}]-}"
 	{x=6,y=3,class="checkbox",name="alpha",label="alpha"},
 	{x=7,y=3,class="checkbox",name="space",label="[  ]",value=true,hint="workaround for spaces with full-line GBC"},
 
-	{x=0,y=10,width=3,class="checkbox",name="byline",label="multiply/add more with each line"},
+	{x=0,y=10,width=2,class="checkbox",name="byline",label="multiply iteration"},
 
-	{x=3,y=10,width=2,class="checkbox",name="regtag",label="regular tags",value=true},
+	{x=2,y=10,class="checkbox",name="regtag",label="regular tags",value=true},
+	{x=3,y=10,width=2,class="checkbox",name="shiftTimeByFrame",label="time by frame"},
 	{x=5,y=10,width=2,class="checkbox",name="tftag",label="tags in transforms",value=true},
 	{x=6,y=1,width=2,class="checkbox",name="rpt",label="repeat last"},
 	
@@ -202,7 +203,15 @@ function multiply(subs,sel)
     if res.clipx or res.clipy then clip=1 else clip=0 end
     for z,i in ipairs(sel) do
 	progress("Processing line: "..z.."/"..#sel)
-        if res.byline then count=z*c linec=z altcount=z*alt else count=c linec=1 altcount=alt end
+	if res.byline then 
+		count=z*c 
+		linec=z 
+		altcount=z*alt 
+	else 
+		count=c 
+		linec=1 
+		altcount=alt 
+	end
 	if not res.alt then altcount=count alt=res.add end
 	line=subs[i]
 	text=line.text
@@ -331,11 +340,49 @@ function multiply(subs,sel)
 	return "\\t("..a..","..calc2(tonumber(b)).."," end) end
 	
 	if res.ly then line.layer=lmcalc(line.layer) end
+	if res.alpha then 
+		text=text:gsub("\\alpha&H([%x]+)&", function(a)
+			return "\\alpha&H" .. hexAdd(a,res.add*linec) .. "&"
+		end)
+	end
+	if res["1a"] then 
+		text=text:gsub("\\1a&H([%x]+)&", function(a)
+			return "\\1a&H" .. hexAdd(a,res.add*linec) .. "&"
+		end)
+	end
+	if res["2a"] then 
+		text=text:gsub("\\2a&H([%x]+)&", function(a)
+			return "\\2a&H" .. hexAdd(a,res.add*linec) .. "&"
+		end)
+	end
+	if res["3a"] then 
+		text=text:gsub("\\3a&H([%x]+)&", function(a)
+			return "\\3a&H" .. hexAdd(a,res.add*linec) .. "&"
+		end)
+	end
+	if res["4a"] then 
+		text=text:gsub("\\4a&H([%x]+)&", function(a)
+			return "\\4a&H" .. hexAdd(a,res.add*linec) .. "&"
+		end)
+	end
 	if res.ml then line.margin_l=lmcalc(line.margin_l) end
 	if res.mr then line.margin_r=lmcalc(line.margin_r) end
 	if res.mv then line.margin_t=lmcalc(line.margin_t) end
-	if res.st then line.start_time=lmcalc(line.start_time) end
-	if res.et then line.end_time=lmcalc(line.end_time) end
+	if res.shiftTimeByFrame then
+		if res.st then 
+			frame = aegisub.frame_from_ms(line.start_time)
+			frame = lmcalc(frame) 
+			line.start_time = aegisub.ms_from_frame(frame)
+		end
+		if res.et then 
+			frame = aegisub.frame_from_ms(line.end_time)
+			frame = lmcalc(frame) 
+			line.end_time = aegisub.ms_from_frame(frame)
+		end
+	else
+		if res.st then line.start_time=lmcalc(line.start_time) end
+		if res.et then line.end_time=lmcalc(line.end_time) end
+	end
 	
 	if res.retxt then neg=1 text=retext(text) end
 	if res.react then neg=1 line.actor=retext(line.actor) end
@@ -345,6 +392,27 @@ function multiply(subs,sel)
 	line.text=text
         subs[i]=line
     end
+end
+
+function hexAdd(hexString, addValue)
+	if hexString == "FF" and addValue > 0 or 
+		hexString == "00" and addValue < 0  then
+		return hexString
+	elseif #hexString < 3 then
+		local newValue = tonumber(hexString, 16) + addValue
+		if newValue < 0 then
+			newValue = 0
+		elseif newValue > 255 then
+			newValue = 255
+		end
+		newValue = string.format("%X", newValue)
+		if #newValue < 2 then
+			newValue = "0" .. newValue
+		end
+		return newValue
+	else
+		return nil
+	end
 end
 
 function lmcalc(num)
