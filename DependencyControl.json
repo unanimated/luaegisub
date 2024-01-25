@@ -7,7 +7,7 @@
   "url": "@{baseUrl}",
   "maintainer": "unanimated",
   "macros": {
-    
+
     "ua.Cycles": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -28,10 +28,10 @@
         }
       },
       "changelog": {
-        "2.0.0": ["Check the Updates page"]
+        "2.0.0": [ "Check the Updates page" ]
       }
     },
-    
+
     "ua.iBus": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -52,10 +52,10 @@
         }
       },
       "changelog": {
-        "1.7.0": ["merged Italics and Bold scripts and added Underline and Strikeout; added DependencyControl"]
+        "1.7.0": [ "merged Italics and Bold scripts and added Underline and Strikeout; added DependencyControl" ]
       }
     },
-    
+
     "ua.LineBreaker": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -76,10 +76,10 @@
         }
       },
       "changelog": {
-        "2.4.0": ["Check the Updates page"]
+        "2.4.0": [ "Check the Updates page" ]
       }
     },
-    
+
     "ua.JoinSplitSnap": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -100,11 +100,11 @@
         }
       },
       "changelog": {
-        "1.2.0": ["improved snapping to adjacent lines"],
-        "1.1.0": ["merged all three for convenience; changed how Join works; added DependencyControl"]
+        "1.2.0": [ "improved snapping to adjacent lines" ],
+        "1.1.0": [ "merged all three for convenience; changed how Join works; added DependencyControl" ]
       }
     },
-    
+
     "ua.JumpToNext": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -125,11 +125,11 @@
         }
       },
       "changelog": {
-        "2.0.0": ["13 macros; Text/Style/Actor/Effect/Layer/CommentedLine x Next/Previous = 12 hotkeys + 1 for GUI version with all 12 options"],
-	"1.3.0": ["Added DependencyControl"]
+        "2.0.0": [ "13 macros; Text/Style/Actor/Effect/Layer/CommentedLine x Next/Previous = 12 hotkeys + 1 for GUI version with all 12 options" ],
+        "1.3.0": [ "Added DependencyControl" ]
       }
     },
-    
+
     "ua.ScriptCleanup": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -150,10 +150,10 @@
         }
       },
       "changelog": {
-        "5.0.0": ["Check the Updates page"]
+        "5.0.0": [ "Check the Updates page" ]
       }
     },
-    
+
     "ua.BlurAndGlow": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -174,10 +174,10 @@
         }
       },
       "changelog": {
-        "2.5.0": ["default blur part of config; cleaned up the code a bit; added DespondencyControl"]
+        "2.5.0": [ "default blur part of config; cleaned up the code a bit; added DespondencyControl" ]
       }
     },
-    
+
     "ua.HYDRA": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -198,10 +198,10 @@
         }
       },
       "changelog": {
-        "6.1.0": ["Check the Updates page"]
+        "6.1.0": [ "Check the Updates page" ]
       }
     },
-    
+
     "ua.Relocator": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -209,25 +209,26 @@
       "description": "Advanced metamorphosis of multidimensional coordinates",
       "channels": {
         "master": {
-          "version": "4.5.2",
-          "released": "2022-04-24",
+          "version": "4.6.0",
+          "released": "2024-01-25",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "e7a4e9f28363aa2deb27c3eab112dbd7d2d1ac73"
+              "sha1": "3816b2f156be34bc22a70c79c854e65ac02c3dcb"
             }
           ]
         }
       },
       "changelog": {
-	"4.5.2": ["Follow user defined rounding for vector clips"],
-        "4.5.1": ["Support for subpixel vector clips"],
-        "4.5.0": ["Check the Updates page"]
+        "4.6.0": [ "Support arbitrary fractions for rounding numbers" ],
+        "4.5.2": [ "Follow user defined rounding for vector clips" ],
+        "4.5.1": [ "Support for subpixel vector clips" ],
+        "4.5.0": [ "Check the Updates page" ]
       }
     },
-    
+
     "ua.Recalculator": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -248,10 +249,10 @@
         }
       },
       "changelog": {
-        "4.0.0": ["Check the Updates page"]
+        "4.0.0": [ "Check the Updates page" ]
       }
     },
-    
+
     "ua.Colorize": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -272,10 +273,10 @@
         }
       },
       "changelog": {
-        "4.5.0": ["Check the Updates page"]
+        "4.5.0": [ "Check the Updates page" ]
       }
     },
-    
+
     "ua.Selectrix": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -296,10 +297,10 @@
         }
       },
       "changelog": {
-        "3.4.0": ["Check the Updates page"]
+        "3.4.0": [ "Check the Updates page" ]
       }
     },
-    
+
     "ua.ChangeCase": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -320,10 +321,10 @@
         }
       },
       "changelog": {
-        "3.0.0": ["improved; added options; unicode support; added DespondencyControl"]
+        "3.0.0": [ "improved; added options; unicode support; added DespondencyControl" ]
       }
     },
-    
+
     "ua.MultiLineEditor": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -344,10 +345,10 @@
         }
       },
       "changelog": {
-        "1.8.0": ["Check the Updates page"]
+        "1.8.0": [ "Check the Updates page" ]
       }
     },
-    
+
     "ua.MultiCopy": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -368,10 +369,10 @@
         }
       },
       "changelog": {
-        "4.0.0": ["Check the Updates page"]
+        "4.0.0": [ "Check the Updates page" ]
       }
     },
-    
+
     "ua.FadeWorks": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -392,10 +393,10 @@
         }
       },
       "changelog": {
-        "5.0.0": ["Check the Updates page"]
+        "5.0.0": [ "Check the Updates page" ]
       }
     },
-    
+
     "ua.Significance": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -416,10 +417,10 @@
         }
       },
       "changelog": {
-        "3.5.0": ["Check the Updates page"]
+        "3.5.0": [ "Check the Updates page" ]
       }
     },
-    
+
     "ua.ShiftCut": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -440,10 +441,10 @@
         }
       },
       "changelog": {
-        "3.1.0": ["Check the Updates page"]
+        "3.1.0": [ "Check the Updates page" ]
       }
     },
-    
+
     "ua.TimeSigns": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -464,10 +465,10 @@
         }
       },
       "changelog": {
-        "2.8.0": ["Added DespondencyControl"]
+        "2.8.0": [ "Added DespondencyControl" ]
       }
     },
-    
+
     "ua.Masquerade": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -488,10 +489,10 @@
         }
       },
       "changelog": {
-        "3.0.0": ["Check the Updates page"]
+        "3.0.0": [ "Check the Updates page" ]
       }
     },
-    
+
     "ua.NecrosCopy": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -512,10 +513,10 @@
         }
       },
       "changelog": {
-        "4.1.0": ["Check the Updates page"]
+        "4.1.0": [ "Check the Updates page" ]
       }
     },
-    
+
     "ua.EncodeHardsub": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -536,12 +537,12 @@
         }
       },
       "changelog": {
-        "1.2.0": ["fixed an issue with the encode being deleted when not muxing audio; fixed some issues resulting from subtitles not being saved"],
-        "1.1.0": ["added option to mux the encode with audio"],
-        "1.0.1": ["Added DespondencyControl"]
+        "1.2.0": [ "fixed an issue with the encode being deleted when not muxing audio; fixed some issues resulting from subtitles not being saved" ],
+        "1.1.0": [ "added option to mux the encode with audio" ],
+        "1.0.1": [ "Added DespondencyControl" ]
       }
     },
-    
+
     "ua.Multiplexer": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -562,10 +563,10 @@
         }
       },
       "changelog": {
-        "1.1.0": ["Added DespondencyControl"]
+        "1.1.0": [ "Added DespondencyControl" ]
       }
     },
-    
+
     "ua.QC": {
       "url": "@{baseUrl}#@{namespace}",
       "author": "unanimated",
@@ -586,9 +587,9 @@
         }
       },
       "changelog": {
-        "2.9.0": ["Added DependencyControl"]
+        "2.9.0": [ "Added DependencyControl" ]
       }
     }
-        
+
   }
 }
