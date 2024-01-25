@@ -25,6 +25,7 @@ function cuts(subs,sel)
 	keyframes=aegisub.keyframes()
 	ATAG="{%*?\\[^}]-}"
 	STAG="^{\\[^}]-}"
+	STAG2="^{\\\\[^\\}]*?}"
 	failures={}
 	relocated=0
 	seln=#sel
@@ -1437,25 +1438,26 @@ function modifier(subs,sel,act)
 	if not poss then nopos=1 end
 	
 	if res.mod=="round numbers" then
+		local function round_replacer(str) return tostring(round2(str,res.rndec)) end
 		if poss and res.rnd=="all" or poss and res.rnd=="pos" then
-		  text=text:gsub("\\pos%(([%d.-]+),([%d.-]+)%)",function(a,b) return "\\pos("..round2(a,res.rndec)..","..round2(b,res.rndec)..")" end)
+		  text=re.sub(text,"\\\\pos\\(([\\d.-]+),([\\d.-]+)\\)",round_replacer)
 		end
-		if text:match("\\org") and res.rnd=="all" or text:match("\\org") and res.rnd=="org" then
-		  text=text:gsub("\\org%(([%d.-]+),([%d.-]+)%)",function(a,b) return "\\org("..round2(a,res.rndec)..","..round2(b,res.rndec)..")" end)
+		if re.match(text,"\\\\org") and res.rnd=="all" or re.match(text,"\\\\org") and res.rnd=="org" then
+		  text=re.sub(text,"\\\\org\\(([\\d.-]+),([\\d.-]+)\\)",round_replacer)
 		end
-		if text:match("\\move") and res.rnd=="all" or text:match("\\move") and res.rnd=="move" then
-		  text=text:gsub("\\move%(([%d.-]+),([%d.-]+),([%d.-]+),([%d.-]+)",function(mo1,mo2,mo3,mo4)
-		  return "\\move("..round2(mo1,res.rndec)..","..round2(mo2,res.rndec)..","..round2(mo3,res.rndec)..","..round2(mo4,res.rndec) end)
+		if re.match(text,"\\\\move") and res.rnd=="all" or re.match(text,"\\\\move") and res.rnd=="move" then
+		  text=re.sub(text,"\\\\move\\(([\\d.-]+),([\\d.-]+),([\\d.-]+),([\\d.-]+)",round_replacer)
 		end
-		if text:match("\\i?clip") and res.rnd=="all" or text:match("\\i?clip") and res.rnd=="clip" then
-		  for klip in text:gmatch("\\i?clip%([^%)]+%)") do
-		    klip2=klip:gsub("([%d.-]+)",function(c) return round2(c,res.rndec) end)
-		    text=text:gsub(esc(klip),klip2)
+		if re.match(text,"\\\\i?clip") and res.rnd=="all" or re.match(text,"\\\\i?clip") and res.rnd=="clip" then
+		  for klip in re.gmatch(text,"\\\\i?clip\\([^\\)]+\\)") do
+		    klip2=re.sub(klip.str,"([\\d.-]+)",round_replacer)
+		    text=re.sub(text,esc(klip.str),klip2)
 		  end
 		end
-		if text:match("\\p1") and res.rnd=="all" or text:match("\\p1") and res.rnd=="mask" then
-		  tags=text:match(STAG)
-		  text=text:gsub(STAG,"") :gsub("([%d.-]+)",function(m) return round2(m,res.rndec) end)
+		if re.match(text,"\\\\p1") and res.rnd=="all" or re.match(text,"\\\\p1") and res.rnd=="mask" then
+		  tags_match=re.match(text,STAG2)
+		  if tags_match then tags=tags_match[1].str else tags="" end
+		  text=re.sub(re.sub(text,STAG2,""),"([\\d.-]+)",round_replacer)
 		  text=tags..text
 		end
 	end
@@ -2552,7 +2554,11 @@ end
 --	reanimatools	----------------------------------------------------------
 function esc(str) str=str:gsub("[%%%(%)%[%]%.%-%+%*%?%^%$]","%%%1") return str end
 function round(n,dec) dec=dec or 0 n=math.floor(n*10^dec+0.5)/10^dec return n end
-function round2(n, fraction) fraction=fraction or 0.1 n=math.floor(n / fraction + 0.5) * fraction return n end
+function round2(n, fraction)
+	fraction=fraction or 0.1
+	n=math.floor(n / fraction + 0.5) * fraction
+	return n
+end
 function rnd3(n) n=math.floor(n*10^3+0.5)/10^3 return n end
 function wrap(str) return "{"..str.."}" end
 function detra(t) return t:gsub("\\t%b()","") end
