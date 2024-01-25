@@ -68,7 +68,7 @@ function relocator(subs,sel,act)
 	{x=6,y=1,width=2,class="dropdown",name="mod",value="round numbers",items=Morphing},
 	{x=6,y=2,class="label",label="round:"},
 	{x=7,y=2,class="dropdown",name="rnd",items=Rounding,value="all"},
-	{x=7,y=3,class="dropdown",name="rndec",items={"1","0.1","0.01","0.001"},value="1",hint="rounding"},
+	{x=7,y=3,class="floatedit",name="rndec",value="0.1",hint="rounding"},
 	{x=7,y=4,class="dropdown",name="freeze",items=Freezing,value="0"},
 	{x=6,y=4,class="checkbox",name="frz",label="frz",value=true,hint=""},
 	{x=6,y=5,class="checkbox",name="frx",label="frx",hint=""},
@@ -1427,7 +1427,6 @@ end
 function modifier(subs,sel,act)
     if not ak then cuts(subs,sel) end
     post=res.post force=res.force xx=res.eks yy=res.wai
-    if res.rndec then _,rr=res.rndec:gsub("0","") end
     FR={"frx","fry","frz"}
     for z,i in ipairs(sel) do
         progress("Morphing... #"..i-line0.." ["..z.."/"..#sel.."]")
@@ -1439,24 +1438,24 @@ function modifier(subs,sel,act)
 	
 	if res.mod=="round numbers" then
 		if poss and res.rnd=="all" or poss and res.rnd=="pos" then
-		  text=text:gsub("\\pos%(([%d.-]+),([%d.-]+)%)",function(a,b) return "\\pos("..round(a,rr)..","..round(b,rr)..")" end)
+		  text=text:gsub("\\pos%(([%d.-]+),([%d.-]+)%)",function(a,b) return "\\pos("..round2(a,res.rndec)..","..round2(b,res.rndec)..")" end)
 		end
 		if text:match("\\org") and res.rnd=="all" or text:match("\\org") and res.rnd=="org" then
-		  text=text:gsub("\\org%(([%d.-]+),([%d.-]+)%)",function(a,b) return "\\org("..round(a,rr)..","..round(b,rr)..")" end)
+		  text=text:gsub("\\org%(([%d.-]+),([%d.-]+)%)",function(a,b) return "\\org("..round2(a,res.rndec)..","..round2(b,res.rndec)..")" end)
 		end
 		if text:match("\\move") and res.rnd=="all" or text:match("\\move") and res.rnd=="move" then
 		  text=text:gsub("\\move%(([%d.-]+),([%d.-]+),([%d.-]+),([%d.-]+)",function(mo1,mo2,mo3,mo4)
-		  return "\\move("..round(mo1,rr)..","..round(mo2,rr)..","..round(mo3,rr)..","..round(mo4,rr) end)
+		  return "\\move("..round2(mo1,res.rndec)..","..round2(mo2,res.rndec)..","..round2(mo3,res.rndec)..","..round2(mo4,res.rndec) end)
 		end
 		if text:match("\\i?clip") and res.rnd=="all" or text:match("\\i?clip") and res.rnd=="clip" then
 		  for klip in text:gmatch("\\i?clip%([^%)]+%)") do
-		    klip2=klip:gsub("([%d.-]+)",function(c) return round(c,rr) end)
+		    klip2=klip:gsub("([%d.-]+)",function(c) return round2(c,res.rndec) end)
 		    text=text:gsub(esc(klip),klip2)
 		  end
 		end
 		if text:match("\\p1") and res.rnd=="all" or text:match("\\p1") and res.rnd=="mask" then
 		  tags=text:match(STAG)
-		  text=text:gsub(STAG,"") :gsub("([%d.-]+)",function(m) return round(m,rr) end)
+		  text=text:gsub(STAG,"") :gsub("([%d.-]+)",function(m) return round2(m,res.rndec) end)
 		  text=tags..text
 		end
 	end
@@ -2553,6 +2552,7 @@ end
 --	reanimatools	----------------------------------------------------------
 function esc(str) str=str:gsub("[%%%(%)%[%]%.%-%+%*%?%^%$]","%%%1") return str end
 function round(n,dec) dec=dec or 0 n=math.floor(n*10^dec+0.5)/10^dec return n end
+function round2(n, fraction) fraction=fraction or 0.1 n=math.floor(n / fraction + 0.5) * fraction return n end
 function rnd3(n) n=math.floor(n*10^3+0.5)/10^3 return n end
 function wrap(str) return "{"..str.."}" end
 function detra(t) return t:gsub("\\t%b()","") end
