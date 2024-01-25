@@ -209,19 +209,21 @@
       "description": "Advanced metamorphosis of multidimensional coordinates",
       "channels": {
         "master": {
-          "version": "4.5.0",
-          "released": "2018-08-05",
+          "version": "4.5.2",
+          "released": "2022-04-24",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "c1aa30d3af93c7f33f05841a37cd4f9e13c84951"
+              "sha1": "e7a4e9f28363aa2deb27c3eab112dbd7d2d1ac73"
             }
           ]
         }
       },
       "changelog": {
+	"4.5.2": ["Follow user defined rounding for vector clips"],
+        "4.5.1": ["Support for subpixel vector clips"],
         "4.5.0": ["Check the Updates page"]
       }
     },
