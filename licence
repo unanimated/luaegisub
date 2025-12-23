@@ -1,64 +1,9 @@
-﻿irrational typesetting licence
-version: hopefully the only one you'll ever have to see
+This is free and unencumbered software released into the public domain.
 
-copylight 2048 unanimated
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute this software, either in source code form or as a compiled binary, for any purpose, commercial or non-commercial, and by any means.
 
-(i wrote this in the future. i mean will write. i used hyperdimensional relocator to get there. i'm way ahead of everyone. stay tuned.)
+In jurisdictions that recognize copyright laws, the author or authors of this software dedicate any and all copyright interest in the software to the public domain. We make this dedication for the benefit of the public at large and to the detriment of our heirs and successors. We intend this dedication to be an overt act of relinquishment in perpetuity of all present and future rights to this software under copyright law.
 
-i was told to write a licence, so here it is. i have no fucking clue why anybody needs it, but whatever. i just want some ppl to get off my back.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-licences are usually written in all caps, presumably to be annoying as fuck, so since i'm nice and all, i'm doing the opposite. also i'm not making that ultra-small, unresizeable window either, so be grateful, you ungrateful bastards. also i know even less about writing licences than about writing lua code, so this might get a bit weird.
-
-disclaimer: you're using these scripts at your own risk. doing so is probably pretty safe, but who knows what can happen. i mean, i haven't heard about anyone dying doing that yet (though it's probably just a matter of time, so idk). at any rate, if something bad happens, it's your fault. so don't come blaming me. i have it in writing that i used the word "safe" together with "probably". also it only said "pretty safe", not "really safe", which underlines even more how it's your fault if you broke your fingers using line breaker or something. if you use hyperdimensional relocator and get evicted from your home, or wake up on another planet, it's not my fault. if you use colourise and turn into a nigger, it's not my fault. (no, that's not racist. what the fuck.) if you use blur and glow and start glowing and seeing blurry, it's your own fault. if you use multicopy and find your clones occupying your home, don't blame me. all your fault. if you use necroscopy and... well, you get the idea.
-
-you should be at least lvl 3 wizard to use these scripts. otherwise they might be a bit too strong for you.
-
-
-
-things you are allowed to do with my scripts:
-
-. delete them.
-
-. download them, put them on a remote part of your hard drive and forget about them.
-
-. scribble random notes inside of them. this makes them look more important, so go for it.
-
-. print them out and hang them on your walls. this is a fairly efficient use of them. you can make a gallery of shitty lua code and charge people for seeing it.
-
-. use them to spy on the us government. this course of action is highly encouraged. but be aware that they're spying back on you and probably have better scripts.
-
-. use them to rob a bank. yes, this is allowed. if you manage to rob a bank using my scripts, please tell me how you did that because i still can't figure it out.
-
-. make them do your homework.
-
-. use them for acts of terror, as long as nobody gets hurt. the definition of "acts of terror" is different every day, depending on politicians' agenda of the moment, so keep track.
-
-. use them to hack into the pentagon and find out how the fuck they managed to lose 21 trillion dollars. (possibly more by the time you read this.)
-
-. use them to cause the extinction of humanity. this would be very good for the planet, i hear, so please.
-
-. use them to solve the mysteries of the universe. better do that before the previous point, though. and it's probably gonna take a while. lua is slow. you'd probably get to 42 faster with python.
-
-. occasionally, you can also use them for typesetting.
-
-
-
-things you are not allowed to do with my scripts:
-
-. profit from using them. not sure how you'd make a profit from this shit, but don't.
-
-. break the internet. don't fucking do that. i need the internet. but feel free to break google. they're arseholes.
-
-
-
-by using my scripts, you are agreeing to the following:
-
-. google is evil. aside from their omnipresent spying and political support for genocidal psychopaths and mass murderers, there's also recaptcha. it's about a million times more annoying than regular captcha, takes anywhere between 10-1000 times longer to complete, and doesn't even work half of the time. and it's fucking everywhere. seriously, what the fuck, google? mass murder not good enough? fuck you.
-
-
-
-that should cover all the important points. if i forgot any, i don't really care. should you find yourself offended by something i've said, know that such a turn of events would leave me completely indifferent.
-
-
-
-tl;dr just fucking use the scripts and don't read this crap.
+For more information, please refer to https://unlicense.org
