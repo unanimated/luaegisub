@@ -499,20 +499,20 @@
       "description": "Copy and Fax Things. Occasionally perform a necroscopy.",
       "channels": {
         "master": {
-          "version": "4.1.0",
+          "version": "4.2.0",
           "released": "2018-06-24",
           "default": true,
           "files": [
             {
               "name": ".lua",
               "url": "@{fileBaseUrl}@{fileName}",
-              "sha1": "b25234859bc304d941b4c0a70a38345f11a55a21"
+              "sha1": "864db67d7b1a722c982663a6f580fd836b5bdb85"
             }
           ]
         }
       },
       "changelog": {
-        "4.1.0": ["Check the Updates page"]
+        "4.2.0": ["Check the Updates page"]
       }
     },
     
