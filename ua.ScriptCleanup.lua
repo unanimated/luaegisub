@@ -3,12 +3,12 @@
 script_name="Script Cleanup"
 script_description="Garbage disposal and elimination of incriminating evidence"
 script_author="unanimated"
-script_version="5.0"
+script_version="5.0.4"
 script_namespace="ua.ScriptCleanup"
 
 local haveDepCtrl,DependencyControl,depRec=pcall(require,"l0.DependencyControl")
 if haveDepCtrl then
-	script_version="5.0.0"
+	script_version="5.0.4"
 	depRec=DependencyControl{feed="https://raw.githubusercontent.com/unanimated/luaegisub/master/DependencyControl.json"}
 end
 
@@ -153,7 +153,27 @@ function cleanlines(subs,sel)
 	if res.ctrans then text=text:gsub(ATAG,function(tg) return cleantr(tg) end) end
 	if res.inline2 then repeat text,r=text:gsub("(.)"..ATAG.."(.-{%*?\\)","%1%2") until r==0
 	elseif res.inline then text=text:gsub("(.)"..ATAG,"%1") end
-	
+	if res.text then 
+		local newText = ''
+		local i = 1
+
+		while i <= text:len() do
+			local char = text:sub(i, i)
+			-- start to save characters
+			if char == '{' then
+				repeat
+					newText = newText .. char
+					i = i + 1
+					char = text:sub(i, i)
+				until char == "}"
+				newText = newText .. char
+			end
+			i = i + 1
+		end
+
+		text=newText
+	end
+
 	if res.alphacol then
 		text=text
 		:gsub("alpha&(%x%x)&","alpha&H%1&")
@@ -310,6 +330,7 @@ function killemall(subs,sel)
 	if res.anna then trgt=killtag("an",trgt) end
 	if res.align then trgt=killtag("a",trgt) end
 	if res.wrap then trgt=killtag("q",trgt) end
+	if res.mask then trgt=killtag("p",trgt) end
 	if res["return"] then trgt=trgt:gsub("\\r.+([\\}])","%1") end
 	if res.kara then trgt=trgt:gsub("\\[Kk][fo]?[%d%.]+([\\}])","%1") end
 	if res.ital then repeat trgt,r=trgt:gsub("\\i[01]?([\\}])","%1") until r==0 end
@@ -624,6 +645,99 @@ if text=="" then return orig end
     return text
 end
 
+-- Ghegghe's stuff
+
+function removeTextlessLines(subs, sel, ignoreCommentedLines, keepInlineComments) 
+	progress("Deleting textless lines...")
+	local newSel = {}
+
+	for s = #sel, 1, -1 do
+		progress("Deleting textless lines " .. #sel - (s - 1) .. " / " .. #sel)
+		local hasDelete = true
+		local line = subs[ sel[ s ] ].text
+		-- ignore commented lines
+		if not (ignoreCommentedLines and subs[ sel[ s ] ].comment) then
+			local iLine = 1
+			while iLine <= line:len() do
+				-- if "{" is opened
+				if line:sub(iLine, iLine) == "{" then
+					local hasTags = false
+
+					repeat
+						if line:sub(iLine, iLine) == "\\" then
+							hasTags = true
+							break
+						end
+						iLine = iLine + 1
+					until line:sub(iLine, iLine) == "}" or
+						iLine > line:len()
+
+					if hasTags then
+						while line:sub(iLine, iLine) ~= "}" do
+							iLine = iLine + 1
+						end
+					else
+						-- "{" not closed (text) or comment inline
+						if iLine > line:len() or keepInlineComments then
+							hasDelete = false
+							break
+						end
+					end
+					
+					-- jump to next
+					iLine = iLine + 1
+				else
+					-- text
+					hasDelete = false
+					break
+				end 
+			end
+		else
+			-- commented line
+			hasDelete = false
+		end
+
+		if hasDelete then
+			for z,i in ipairs(newSel) do 
+				newSel[z]=i-1 
+			end
+			subs.delete(sel[s])
+	    else
+			table.insert(newSel,sel[s])
+	    end
+	end
+
+	return newSel
+end
+
+-- ver info
+verInfo = "Script Cleanup v" .. script_version .. "\n" .. [[
+
+	What's new:
+
+	New functions for clean your script:
+	- Remove text
+		Removes all the text from selected lines:
+		{tags(not removed)}text(removed){tags(not removed)}
+
+	- Remove textless lines
+		Removes the lines without text from selection:
+		{tags} -- removed
+		{tags}text -- not removed
+
+		Other options:
+		- Keep inline comments
+			{tags}{comments}
+			{comments}
+			lines like these wont be deleted
+		- Keep commented lines
+			Commented lines will be ignored
+			
+	Tag Manipulation:
+		Add "q" tag in tags list
+]]
+
+-- Ghegghe's end
 
 function cleanup(subs,sel,act)
 ADD=aegisub.dialog.display
@@ -634,96 +748,102 @@ STAG="^{>?\\[^}]-}"
 if act==0 then act=sel[1] end
 chng=0 kleen=0
 GUI={
-{x=0,y=0,class="checkbox",name="nots",label="Remove TS timecodes",hint="Removes timecodes like {TS 12:36}"},
-{x=0,y=1,class="checkbox",name="clear_a",label="Clear Actor field"},
-{x=0,y=2,class="checkbox",name="clear_e",label="Clear Effect field"},
-{x=0,y=3,class="checkbox",name="layers",label="Raise dialogue layer by 5"},
-{x=0,y=4,class="checkbox",name="cleantag",label="Clean up tags",hint="Fixes duplicates, \\\\, \\}, }{, and other garbage"},
-{x=0,y=5,class="checkbox",name="ctrans",label="Clean up transforms"},
-{x=0,y=6,class="checkbox",name="overlap",label="Fix 1-frame gaps/overlaps"},
-{x=0,y=7,class="checkbox",name="nocomline",label="Delete commented lines"},
-{x=0,y=8,class="checkbox",name="noempty",label="Delete empty lines"},
-{x=0,y=9,class="checkbox",name="alphacol",label="Try to fix alpha / colour tags"},
-{x=0,y=10,class="checkbox",name="spaces",label="Fix start/end/double spaces"},
-{x=0,y=12,class="checkbox",name="info",label="Print info"},
-{x=0,y=13,class="checkbox",name="all",label="ALL OF THE ABOVE"},
+{x=0,y=0,width=3,class="checkbox",name="nots",label="Remove TS timecodes",hint="Removes timecodes like {TS 12:36}"},
+{x=0,y=1,width=3,class="checkbox",name="clear_a",label="Clear Actor field"},
+{x=0,y=2,width=3,class="checkbox",name="clear_e",label="Clear Effect field"},
+{x=0,y=3,width=3,class="checkbox",name="layers",label="Raise dialogue layer by 5"},
+{x=0,y=4,width=3,class="checkbox",name="cleantag",label="Clean up tags",hint="Fixes duplicates, \\\\, \\}, }{, and other garbage"},
+{x=0,y=5,width=3,class="checkbox",name="ctrans",label="Clean up transforms"},
+{x=0,y=6,width=3,class="checkbox",name="overlap",label="Fix 1-frame gaps/overlaps"},
+{x=0,y=7,width=3,class="checkbox",name="nocomline",label="Delete commented lines"},
+{x=0,y=8,width=3,class="checkbox",name="noempty",label="Delete empty lines"},
+{x=0,y=9,width=3,class="checkbox",name="alphacol",label="Try to fix alpha / colour tags"},
+{x=0,y=10,width=3,class="checkbox",name="spaces",label="Fix start/end/double spaces"},
+{x=0,y=12,width=3,class="checkbox",name="info",label="Print info"},
+{x=0,y=13,width=3,class="checkbox",name="all",label="ALL OF THE ABOVE"},
 
-{x=1,y=0,class="label",label="  "},
+{x=0,y=15,width=3,class="label",label="  ~  Script Cleanup v"..script_version.."  ~  "},
+{x=3,y=15,class="checkbox",name="info",label="ver. info"},
+{x=0,y=16,width=3,class="checkbox",name="text",label="Remove text"},
+{x=0,y=17,width=3,class="checkbox",name="removeTextlessLines",label="Remove textless lines",hint="Removes lines without text (tag doesn't count)"},
+{x=1,y=18,width=2,class="checkbox",name="textlessLinesKeepInlineComments",label="Keep inline comments",hint="Keeps lines with comments inside"},
+{x=1,y=19,width=2,class="checkbox",name="textlessLinesKeepCommentedLines",label="Keep commented lines",value=true,hint="Keeps commented lines"},
 
-{x=2,y=0,width=2,class="checkbox",name="allcol",label="Remove all colour tags"},
-{x=2,y=1,class="checkbox",name="allphas",label="Remove all alphas"},
-{x=3,y=1,class="checkbox",name="alpha14",label="Only 1a-4a"},
-{x=2,y=2,class="checkbox",name="allrot",label="Remove all rotations",hint="frx, fry, frz"},
-{x=3,y=2,class="checkbox",name="xyrot",label="Only x, y",hint="remove frx, fry"},
-{x=2,y=3,class="checkbox",name="allsize",label="Remove size/scaling",hint="fs, fscx, fscy"},
-{x=3,y=3,class="checkbox",name="scales",label="Only scaling",hint="remove fscx, fscy"},
-{x=2,y=4,class="checkbox",name="allshad",label="Remove all shadows",hint="shad, xshad, yshad"},
-{x=3,y=4,class="checkbox",name="xyshad",label="Only x, y",hint="remove xshad, yshad"},
-{x=2,y=5,class="checkbox",name="parent",label="Remove parentheses",hint="fad(e), (i)clip, pos, move, org\n(but not t)"},
-{x=3,y=5,class="checkbox",name="parent2",label="Except \\pos",hint="fad(e), (i)clip, move, org\n(but not t or pos)"},
-{x=2,y=6,width=2,class="checkbox",name="allpers",label="Remove all perspective",hint="frx, fry, frz, fax, fay, org"},
+{x=3,y=0,width=2,class="checkbox",name="allcol",label="Remove all colour tags"},
+{x=3,y=1,class="checkbox",name="allphas",label="Remove all alphas"},
+{x=4,y=1,class="checkbox",name="alpha14",label="Only 1a-4a"},
+{x=3,y=2,class="checkbox",name="allrot",label="Remove all rotations",hint="frx, fry, frz"},
+{x=4,y=2,class="checkbox",name="xyrot",label="Only x, y",hint="remove frx, fry"},
+{x=3,y=3,class="checkbox",name="allsize",label="Remove size/scaling",hint="fs, fscx, fscy"},
+{x=4,y=3,class="checkbox",name="scales",label="Only scaling",hint="remove fscx, fscy"},
+{x=3,y=4,class="checkbox",name="allshad",label="Remove all shadows",hint="shad, xshad, yshad"},
+{x=4,y=4,class="checkbox",name="xyshad",label="Only x, y",hint="remove xshad, yshad"},
+{x=3,y=5,class="checkbox",name="parent",label="Remove parentheses",hint="fad(e), (i)clip, pos, move, org\n(but not t)"},
+{x=4,y=5,class="checkbox",name="parent2",label="Except \\pos",hint="fad(e), (i)clip, move, org\n(but not t or pos)"},
+{x=3,y=6,width=2,class="checkbox",name="allpers",label="Remove all perspective",hint="frx, fry, frz, fax, fay, org"},
 
-{x=2,y=7,width=2,class="label",label="      ~  Script Cleanup v"..script_version.."  ~"},
+{x=3,y=7,width=2,class="label",label="      ~  Script Cleanup v5.0.0  ~"},
 
-{x=2,y=8,width=2,class="checkbox",name="hspace",label="Remove hard spaces - \\h"},
-{x=2,y=9,class="checkbox",name="nobreak",label="Remove line breaks"},
-{x=3,y=9,class="checkbox",name="nobreak2",label="...no space",hint="Remove line breaks, leave no spaces"},
-{x=2,y=10,class="checkbox",name="nostyle",label="Delete unused styles"},
-{x=3,y=10,class="checkbox",name="nostyle2",label="Except Def.",hint="Delete unused styles except Default"},
-{x=2,y=11,class="checkbox",name="inline",label="Remove inline tags"},
-{x=3,y=11,class="checkbox",name="inline2",label="Except last",hint="Remove inline tags except the last one"},
-{x=2,y=12,width=2,class="checkbox",name="nocom",label="Remove comments from lines",hint="Removes {comments} (not tags)"},
-{x=2,y=13,width=2,class="checkbox",name="notag",label="Remove all {\\tags} from selected lines"},
+{x=3,y=8,width=2,class="checkbox",name="hspace",label="Remove hard spaces - \\h"},
+{x=3,y=9,class="checkbox",name="nobreak",label="Remove line breaks"},
+{x=4,y=9,class="checkbox",name="nobreak2",label="...no space",hint="Remove line breaks, leave no spaces"},
+{x=3,y=10,class="checkbox",name="nostyle",label="Delete unused styles"},
+{x=4,y=10,class="checkbox",name="nostyle2",label="Except Def.",hint="Delete unused styles except Default"},
+{x=3,y=11,class="checkbox",name="inline",label="Remove inline tags"},
+{x=4,y=11,class="checkbox",name="inline2",label="Except last",hint="Remove inline tags except the last one"},
+{x=3,y=12,width=2,class="checkbox",name="nocom",label="Remove comments from lines",hint="Removes {comments} (not tags)"},
+{x=3,y=13,width=2,class="checkbox",name="notag",label="Remove all {\\tags} from selected lines"},
 
-{x=4,y=0,height=14,class="label",label="| \n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|"},
+{x=5,y=0,height=20,class="label",label="|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|"},
 
-{x=5,y=0,class="checkbox",name="skill",label="[start]",value=true},
-{x=6,y=0,class="checkbox",name="ikill",label="[inline]",value=true,hint="only kill, not hide"},
-{x=7,y=0,width=2,class="checkbox",name="inverse",label="[inverse/unhide]",hint="kill all except checked ones\n\n'Unhide' for 'Hide Tags'"},
-{x=7,y=1,width=2,class="checkbox",name="onlyt",label="[from \\t]",hint="remove only from transforms\n\n n/a for 'Hide Tags'"},
+{x=6,y=0,class="checkbox",name="skill",label="[start]",value=true},
+{x=7,y=0,class="checkbox",name="ikill",label="[inline]",value=true,hint="only kill, not hide"},
+{x=8,y=0,width=2,class="checkbox",name="inverse",label="[inverse/unhide]",hint="kill all except checked ones\n\n'Unhide' for 'Hide Tags'"},
+{x=8,y=1,width=2,class="checkbox",name="onlyt",label="[from \\t]",hint="remove only from transforms\n\n n/a for 'Hide Tags'"},
 
-{x=5,y=1,class="checkbox",name="blur",label="blur"},
-{x=5,y=2,class="checkbox",name="border",label="bord",hint="includes xbord and ybord [not for Hide]"},
-{x=5,y=3,class="checkbox",name="shadow",label="shad",hint="includes xshad and yshad for Hide"},
-{x=5,y=4,class="checkbox",name="fsize",label="fs"},
-{x=5,y=5,class="checkbox",name="fspace",label="fsp"},
-{x=5,y=6,class="checkbox",name="scalex",label="fscx"},
-{x=5,y=7,class="checkbox",name="scaley",label="fscy"},
-{x=5,y=8,class="checkbox",name="fname",label="fn"},
-{x=5,y=9,class="checkbox",name="ital",label="i"},
-{x=5,y=10,class="checkbox",name="bold",label="b"},
-{x=5,y=11,class="checkbox",name="under",label="u"},
-{x=5,y=12,class="checkbox",name="stri",label="s"},
-{x=5,y=13,class="checkbox",name="wrap",label="q"},
+{x=6,y=1,class="checkbox",name="blur",label="blur"},
+{x=6,y=2,class="checkbox",name="border",label="bord",hint="includes xbord and ybord [not for Hide]"},
+{x=6,y=3,class="checkbox",name="shadow",label="shad",hint="includes xshad and yshad for Hide"},
+{x=6,y=4,class="checkbox",name="fsize",label="fs"},
+{x=6,y=5,class="checkbox",name="fspace",label="fsp"},
+{x=6,y=6,class="checkbox",name="scalex",label="fscx"},
+{x=6,y=7,class="checkbox",name="scaley",label="fscy"},
+{x=6,y=8,class="checkbox",name="fname",label="fn"},
+{x=6,y=9,class="checkbox",name="ital",label="i"},
+{x=6,y=10,class="checkbox",name="bold",label="b"},
+{x=6,y=11,class="checkbox",name="under",label="u"},
+{x=6,y=12,class="checkbox",name="stri",label="s"},
+{x=6,y=13,class="checkbox",name="wrap",label="q"},
+{x=6,y=14,class="checkbox",name="mask",label="p"},
 
-{x=6,y=1,class="checkbox",name="bee",label="be"},
-{x=6,y=2,class="checkbox",name="color1",label="c, 1c"},
-{x=6,y=3,class="checkbox",name="color2",label="2c"},
-{x=6,y=4,class="checkbox",name="color3",label="3c"},
-{x=6,y=5,class="checkbox",name="color4",label="4c"},
-{x=6,y=6,class="checkbox",name="alpha",label="alpha"},
-{x=6,y=7,class="checkbox",name="alfa1",label="1a"},
-{x=6,y=8,class="checkbox",name="alfa2",label="2a"},
-{x=6,y=9,class="checkbox",name="alfa3",label="3a"},
-{x=6,y=10,class="checkbox",name="alfa4",label="4a"},
-{x=6,y=11,class="checkbox",name="align",label="a"},
-{x=6,y=12,class="checkbox",name="anna",label="an"},
-{x=6,y=13,class="checkbox",name="clip",label="(i)clip"},
+{x=7,y=1,class="checkbox",name="bee",label="be"},
+{x=7,y=2,class="checkbox",name="color1",label="c, 1c"},
+{x=7,y=3,class="checkbox",name="color2",label="2c"},
+{x=7,y=4,class="checkbox",name="color3",label="3c"},
+{x=7,y=5,class="checkbox",name="color4",label="4c"},
+{x=7,y=6,class="checkbox",name="alpha",label="alpha"},
+{x=7,y=7,class="checkbox",name="alfa1",label="1a"},
+{x=7,y=8,class="checkbox",name="alfa2",label="2a"},
+{x=7,y=9,class="checkbox",name="alfa3",label="3a"},
+{x=7,y=10,class="checkbox",name="alfa4",label="4a"},
+{x=7,y=11,class="checkbox",name="align",label="a"},
+{x=7,y=12,class="checkbox",name="anna",label="an"},
+{x=7,y=13,class="checkbox",name="clip",label="(i)clip"},
 
-{x=7,y=2,class="checkbox",name="fade",label="fad"},
-{x=7,y=3,class="checkbox",name="posi",label="pos"},
-{x=7,y=4,class="checkbox",name="move",label="move"},
-{x=7,y=5,class="checkbox",name="org",label="org"},
-{x=7,y=6,class="checkbox",name="frz",label="frz"},
-{x=7,y=7,class="checkbox",name="frx",label="frx"},
-{x=7,y=8,class="checkbox",name="fry",label="fry"},
-{x=7,y=9,class="checkbox",name="fax",label="fax"},
-{x=7,y=10,class="checkbox",name="fay",label="fay"},
-{x=7,y=11,width=2,class="checkbox",name="kara",label="k/kf/ko"},
-{x=7,y=12,class="checkbox",name="return",label="r"},
-{x=7,y=13,class="checkbox",name="trans",label="t"},
+{x=8,y=2,class="checkbox",name="fade",label="fad"},
+{x=8,y=3,class="checkbox",name="posi",label="pos"},
+{x=8,y=4,class="checkbox",name="move",label="move"},
+{x=8,y=5,class="checkbox",name="org",label="org"},
+{x=8,y=6,class="checkbox",name="frz",label="frz"},
+{x=8,y=7,class="checkbox",name="frx",label="frx"},
+{x=8,y=8,class="checkbox",name="fry",label="fry"},
+{x=8,y=9,class="checkbox",name="fax",label="fax"},
+{x=8,y=10,class="checkbox",name="fay",label="fay"},
+{x=8,y=11,width=2,class="checkbox",name="kara",label="k/kf/ko"},
+{x=8,y=12,class="checkbox",name="return",label="r"},
+{x=8,y=13,class="checkbox",name="trans",label="t"},
 
-{x=8,y=12,height=2,class="checkbox",name="hidline",label="hide\ninline",hint='Hide ALL inline tags'},
+{x=9,y=12,height=2,class="checkbox",name="hidline",label="hide\ninline",hint='Hide ALL inline tags'},
 }
 	P,res=ADD(GUI,
 	{"Run selected","Comments","Tags","Dial 5","Clean Tags","^ Kill Tags","Hide Tags","Cancer"},{ok='Run selected',cancel='Cancer'})
@@ -735,21 +855,29 @@ GUI={
 	if P=="Dial 5" then res.layers=true cleanlines(subs,sel) end
 	if P=="Clean Tags" then res.cleantag=true cleanlines(subs,sel) end
 	if P=="Run selected" then
-	    C=0 for key,v in ipairs(GUI) do  if v.x<=3 and res[v.name] then C=1 end  end
-	    if C==0 then t_error("Run Selected: Error - nothing selected",1) end
-	    if res.all then 
-		for key,v in ipairs(GUI) do  if v.x>0 and v.name then res[v.name]=false end  end
-		cleanlines(subs,sel)
-		sel=noemptycom(subs,sel)
-	    else cleanlines(subs,sel)
-		if res.nocomline and res.noempty then sel=noemptycom(subs,sel)
+		if res.info then
+			helpGUI=aegisub.dialog.display({{width=38,height=10,class="textbox",value=verInfo},{x=39,height=10,class="label",label="ScriptCleanup\nversion "..script_version}},
+			{"Close"},{close='Close'})
 		else
-			if res.nocomline then sel=nocom_line(subs,sel) end
-			if res.noempty then sel=noempty(subs,sel) end
+			C=0 for key,v in ipairs(GUI) do  if v.x<=4 and res[v.name] then C=1 end  end
+			if C==0 then t_error("Run Selected: Error - nothing selected",1) end
+			if res.all then 
+			for key,v in ipairs(GUI) do  if v.x>0 and v.name and v.y<15 then res[v.name]=false end  end
+			cleanlines(subs,sel)
+			sel=noemptycom(subs,sel)
+			else cleanlines(subs,sel)
+			if res.nocomline and res.noempty then sel=noemptycom(subs,sel)
+			else
+				if res.nocomline then sel=nocom_line(subs,sel) end
+				if res.noempty then sel=noempty(subs,sel) end
+			end
+			if res.removeTextlessLines then 
+				sel = removeTextlessLines(subs, sel, res.textlessLinesKeepCommentedLines, res.textlessLinesKeepInlineComments) 
+			end
+			table.sort(sel)
+			if res.nostyle or res.nostyle2 then sel=nostyle(subs,sel) end
+			end
 		end
-		table.sort(sel)
-		if res.nostyle or res.nostyle2 then sel=nostyle(subs,sel) end
-	    end
 	end
 	if act>#subs then act=#subs end
 	return sel,act
